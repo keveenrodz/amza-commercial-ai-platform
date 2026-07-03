@@ -1,0 +1,837 @@
+# CONTEXTO DEL PROYECTO
+
+Vas a construir un agente de WhatsApp que se conecta a un número real
+vía la API oficial de Meta (WhatsApp Cloud API) y responde mensajes
+con un LLM. Incluye un dashboard local para ver conversaciones, leer
+historial, intervenir manualmente y togglear cada chat entre modo IA
+(responde el bot) y modo Humano (responde la persona desde el
+dashboard).
+
+A diferencia de implementaciones con Baileys / WhatsApp Web, NO hay
+QR ni sesión que escanear. La autenticación es por ACCESS_TOKEN
+permanente + PHONE_NUMBER_ID + WHATSAPP_BUSINESS_ACCOUNT_ID
+configurados desde el panel de Meta for Developers. Los mensajes
+entrantes llegan por webhook HTTP, no por un proceso bot que mantiene
+un socket abierto.
+
+Toda la data vive en SQLite local (data/messages.db). El proyecto es
+una sola app Next.js (no hay proceso bot separado).
+
+# OBJETIVO FINAL
+
+Cuando termines, debe funcionar esto:
+
+1. `npm run dev` levanta el dashboard Next.js en localhost:3000.
+2. Al abrir el dashboard:
+   - Si las variables de entorno de Meta NO están configuradas (o el
+     test contra Graph API falla), muestra una pantalla
+     "Configura tu API de WhatsApp" con los pasos exactos para crear
+     la app en Meta for Developers, obtener el token de acceso
+     permanente, registrar el PHONE_NUMBER_ID y configurar el
+     webhook con su VERIFY_TOKEN.
+   - Si las env vars están y el test pasa, transición automática al
+     dashboard real (lista de conversaciones + panel) sin recargar.
+3. Endpoints de webhook expuestos por la app:
+   - GET /api/webhook — verificación de Meta. Responde con
+     hub.challenge si hub.verify_token coincide con META_VERIFY_TOKEN
+     del .env.local.
+   - POST /api/webhook — recibe mensajes entrantes. Verifica la
+     firma X-Hub-Signature-256 con META_APP_SECRET. Responde 200 OK
+     inmediatamente y procesa el payload de forma asíncrona (Meta
+     reintenta si tarda más de ~10s).
+4. Cuando alguien escribe al WhatsApp del usuario:
+   - Meta envía el evento al webhook.
+   - Verificas firma, deduplicas por message.id (Meta reintenta hasta
+     7 días si no hay 200), guardas el mensaje en SQLite.
+   - Si la conversación está en modo AI: llamas a OpenRouter con
+     historial reciente + system prompt, guardas la respuesta y haces
+     POST a https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages.
+   - Si está en modo HUMAN: solo guardas y NO respondes.
+5. Dashboard real (después de configurar):
+   - Header con el display_phone_number que devuelve Graph API y un
+     botón "Probar conexión" (re-fetchea /api/connection/status).
+   - Columna izquierda: lista de conversaciones, ordenadas por último
+     mensaje, badge IA / HUMANO.
+   - Columna derecha: panel de conversación.
+     - Toggle AI/HUMAN por chat.
+     - Input de texto + botón "Enviar" cuando el chat está en HUMAN.
+       Llama directamente a Graph API (sin outbox — Next.js puede
+       hacer HTTP outbound, no hay separación de procesos).
+     - Botón "Borrar" para borrar la conversación con confirmación.
+     - Polling cada 2 segundos a /api/conversations y
+       /api/messages/[id] (NO usar WebSocket en v1).
+
+# STACK OBLIGATORIO
+
+- Next.js 16 App Router + TypeScript + React 19 (Turbopack default).
+- Tailwind CSS 4
+- better-sqlite3 11+ — base de datos local file-based
+- openai SDK (apuntando a OpenRouter via baseURL)
+- Node.js 20+
+
+NO usar Prisma, Drizzle, Supabase, Redis, WebSockets, Vercel, Twilio
+ni Baileys. NO usar SDK no oficial de Meta — todas las llamadas a
+Graph API se hacen con fetch nativo de Node.
+
+# ESTRUCTURA DE CARPETAS
+
+```
+agente-whatsapp/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx                  # renderiza ConnectionGate
+│   │   ├── layout.tsx
+│   │   ├── globals.css
+│   │   └── api/
+│   │       ├── webhook/
+│   │       │   └── route.ts          # GET (verify) + POST (receive)
+│   │       ├── connection/
+│   │       │   └── status/route.ts   # devuelve config OK/missing
+│   │       ├── conversations/
+│   │       │   ├── route.ts          # GET lista
+│   │       │   └── [conversationId]/route.ts  # DELETE
+│   │       ├── messages/
+│   │       │   └── [conversationId]/route.ts  # GET + POST
+│   │       └── mode/
+│   │           └── [conversationId]/route.ts  # POST cambia AI/HUMAN
+│   ├── components/
+│   │   ├── ConnectionGate.tsx
+│   │   ├── ConfigScreen.tsx          # equivalente a QRScreen
+│   │   ├── DashboardHeader.tsx
+│   │   ├── ConversationList.tsx
+│   │   ├── ConversationPanel.tsx
+│   │   ├── MessageBubble.tsx
+│   │   └── ModeToggle.tsx
+│   └── lib/
+│       ├── db.ts
+│       ├── openrouter.ts
+│       ├── system-prompt.ts
+│       └── meta/
+│           ├── client.ts             # send/fetch contra Graph API
+│           ├── verify.ts             # firma X-Hub-Signature-256
+│           └── handler.ts            # procesa payloads del webhook
+├── data/                             # gitignored, runtime
+├── .env.local
+├── .env.example
+├── .gitignore
+├── package.json
+├── tsconfig.json
+├── next.config.ts
+├── postcss.config.mjs
+├── Procfile
+├── nixpacks.toml
+├── .nvmrc                            # 22
+└── README.md
+```
+
+# VARIABLES DE ENTORNO
+
+`.env.example`:
+```
+# Meta WhatsApp Cloud API
+META_ACCESS_TOKEN=EAAG...
+META_PHONE_NUMBER_ID=1234567890
+META_WABA_ID=1234567890
+META_APP_SECRET=abcdef...
+META_VERIFY_TOKEN=algo-aleatorio-que-vos-elegis
+META_GRAPH_VERSION=v21.0
+
+# OpenRouter
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_MODEL=openai/gpt-4o-mini
+```
+
+Notas para documentar en el README:
+- META_ACCESS_TOKEN: tiene que ser un System User Token permanente.
+  Los tokens de "test" duran 24h y van a romper en producción.
+- META_VERIFY_TOKEN: lo eliges tú, cualquier string. Tiene que
+  coincidir con el que pegas en el panel de Meta cuando configuras
+  el webhook.
+- META_APP_SECRET: aparece en App Dashboard → Settings → Basic.
+- META_GRAPH_VERSION: v21.0 al momento de escribir esto. Actualizar
+  cada ~6 meses.
+
+# PACKAGE.JSON
+
+```json
+{
+  "name": "agente-whatsapp",
+  "version": "0.1.0",
+  "private": true,
+  "engines": { "node": ">=20.9.0" },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "next": "^16.0.0",
+    "openai": "^4.77.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^16.0.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2"
+  }
+}
+```
+
+NO necesitamos tsx, concurrently, pino, qrcode, qrcode-terminal,
+@whiskeysockets/baileys. Una sola app Next.js.
+
+# SCHEMA SQLITE
+
+src/lib/db.ts inicializa better-sqlite3 en ./data/messages.db, crea
+carpeta y archivo si no existen, y ejecuta este DDL:
+
+```sql
+PRAGMA journal_mode = WAL;
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  phone TEXT UNIQUE NOT NULL,         -- E.164 sin '+', ej '5491155555555'
+  name TEXT,
+  mode TEXT CHECK(mode IN ('AI','HUMAN')) NOT NULL DEFAULT 'AI',
+  last_message_at INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id INTEGER NOT NULL REFERENCES conversations(id),
+  role TEXT CHECK(role IN ('user','assistant','human')) NOT NULL,
+  content TEXT NOT NULL,
+  -- ID que devolvió Graph al enviar (para correlación con statuses) o
+  -- ID del mensaje entrante (para dedup). NULL para mensajes humanos
+  -- que todavía no se enviaron.
+  wa_message_id TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conv
+  ON messages(conversation_id, created_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_wa_id
+  ON messages(wa_message_id) WHERE wa_message_id IS NOT NULL;
+
+-- Dedup de webhooks. Meta reintenta hasta 7 días si no respondemos 200,
+-- y a veces manda el mismo evento varias veces aunque hayamos
+-- respondido.
+CREATE TABLE IF NOT EXISTS processed_webhook_messages (
+  wa_message_id TEXT PRIMARY KEY,
+  processed_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+```
+
+NO hay connection_state ni outbox (a diferencia de la versión
+Baileys). El estado de conexión se calcula on-the-fly leyendo env
+vars + haciendo un GET a Graph. El envío es un POST directo en el
+mismo proceso de Next.js.
+
+Helpers que db.ts debe exportar:
+- getOrCreateConversation(phone, name?)
+- getConversationById(id)
+- insertMessage(conversationId, role, content, waMessageId?) —
+  TRANSACCIONAL: insert + UPDATE last_message_at en la misma
+  transacción.
+- updateMessageWaId(messageId, waMessageId)
+- getMessages(conversationId, limit = 50)
+- getRecentHistory(conversationId, limit = 20) — DESC + reverse en
+  JS (más eficiente que ORDER BY ASC sobre toda la tabla).
+- setMode(conversationId, mode)
+- listConversations() — incluye last_message_preview con subquery
+  para evitar N+1.
+- deleteConversation(id) — borra mensajes + conversación en una
+  transacción atómica.
+- wasMessageProcessed(waMessageId) — boolean. Lookup en
+  processed_webhook_messages.
+- markMessageProcessed(waMessageId) — INSERT OR IGNORE.
+
+# ⚠️ LECCIÓN APRENDIDA — VERIFICACIÓN DEL WEBHOOK
+
+GET /api/webhook recibe 3 query params de Meta cuando configuras el
+webhook desde el panel:
+
+```typescript
+// /api/webhook GET
+import { NextResponse, type NextRequest } from "next/server";
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const mode = url.searchParams.get("hub.mode");
+  const token = url.searchParams.get("hub.verify_token");
+  const challenge = url.searchParams.get("hub.challenge");
+
+  if (mode === "subscribe" && token === process.env.META_VERIFY_TOKEN) {
+    // IMPORTANTE: devolver el challenge como text/plain RAW, no JSON.
+    return new NextResponse(challenge ?? "", {
+      status: 200,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+  return new NextResponse("forbidden", { status: 403 });
+}
+```
+
+Errores típicos:
+- Devolver el challenge como JSON: Meta lo rechaza.
+- Olvidar el Content-Type: text/plain: a veces funciona, a veces no.
+- Confundir META_VERIFY_TOKEN con META_ACCESS_TOKEN. Son cosas
+  distintas: el VERIFY_TOKEN lo eliges tú y solo se usa en el
+  handshake del webhook.
+
+# ⚠️ LECCIÓN APRENDIDA — VERIFICACIÓN DE FIRMA
+
+POST /api/webhook debe rechazar todo lo que no venga firmado por
+Meta. Sin esto, cualquiera con la URL pública puede inyectar
+mensajes falsos en tu DB y forzar respuestas del LLM (gastando
+créditos) o impersonar contactos.
+
+Meta firma el body con HMAC-SHA256 usando el App Secret y lo manda
+en el header X-Hub-Signature-256: sha256=<hex>.
+
+```typescript
+// src/lib/meta/verify.ts
+import crypto from "node:crypto";
+
+export function verifySignature(
+  rawBody: string,
+  signatureHeader: string | null,
+  appSecret: string
+): boolean {
+  if (!signatureHeader?.startsWith("sha256=")) return false;
+  const provided = signatureHeader.slice("sha256=".length);
+  const expected = crypto
+    .createHmac("sha256", appSecret)
+    .update(rawBody, "utf-8")
+    .digest("hex");
+  // timingSafeEqual requiere mismo length.
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(
+    Buffer.from(provided, "hex"),
+    Buffer.from(expected, "hex")
+  );
+}
+```
+
+CRÍTICO: el HMAC se calcula sobre el body raw, no sobre el JSON
+parseado. En Next.js App Router:
+
+```typescript
+// /api/webhook POST
+export async function POST(req: NextRequest) {
+  const raw = await req.text();              // ← RAW primero
+  const sig = req.headers.get("x-hub-signature-256");
+  const ok = verifySignature(raw, sig, process.env.META_APP_SECRET!);
+  if (!ok) return new NextResponse("invalid signature", { status: 401 });
+
+  let payload: unknown;
+  try { payload = JSON.parse(raw); }
+  catch { return new NextResponse("bad json", { status: 400 }); }
+
+  // Despachar PROCESAMIENTO async, responder 200 ya.
+  void processWebhookPayload(payload).catch((err) =>
+    console.error("[webhook] error procesando:", err)
+  );
+  return NextResponse.json({ ok: true });
+}
+```
+
+Si parseas el JSON antes y vuelves a JSON.stringify para hashear, el
+resultado puede no coincidir (whitespace, orden de keys, escaping de
+unicode). Siempre req.text() primero, hashear, después parsear.
+
+# ⚠️ LECCIÓN APRENDIDA — RESPONDER 200 RÁPIDO
+
+Meta tiene un timeout de ~10s en webhooks. Si tardas más, considera
+el evento como fallado y reintenta — y si tu LLM tarda 5–15s en
+responder, vas a recibir el mismo mensaje 3 o 4 veces y mandar 3 o 4
+respuestas idénticas al usuario.
+
+Solución (v1 simple): responde 200 inmediatamente y procesa en
+background con void processWebhookPayload(...) (no await).
+Combinado con la dedup por wa_message_id, los reintentos fantasma
+de Meta se ignoran.
+
+(En v2: cola real con persistencia y workers separados. Para v1 con
+tráfico bajo, void + dedup es suficiente.)
+
+# ⚠️ LECCIÓN APRENDIDA — DEDUP POR MESSAGE_ID
+
+Meta puede entregar el mismo messages[i].id varias veces aunque
+hayas respondido 200 (race conditions de su lado). Sin dedup vas a:
+- duplicar el mensaje del usuario en la DB,
+- llamar al LLM 2 veces,
+- responder al usuario 2 veces.
+
+Antes de procesar cualquier mensaje entrante:
+
+```typescript
+const waMsgId = msg.id;  // wamid.HBgL...
+if (wasMessageProcessed(waMsgId)) {
+  console.log(`[webhook] mensaje ${waMsgId} ya procesado, ignorando`);
+  continue;
+}
+markMessageProcessed(waMsgId);   // marcamos ANTES de procesar
+// ... resto del flujo
+```
+
+Marcar antes de procesar (no después) es importante: si crashea en
+medio del LLM call, no quieres re-procesar; prefieres perder ese
+mensaje y verlo en logs antes que mandar respuestas duplicadas.
+
+# ESTRUCTURA DEL PAYLOAD ENTRANTE
+
+Meta manda algo así (los campos NO son estables — el SDK puede no
+existir, parseamos defensivamente):
+
+```json
+{
+  "object": "whatsapp_business_account",
+  "entry": [{
+    "id": "WABA_ID",
+    "changes": [{
+      "field": "messages",
+      "value": {
+        "messaging_product": "whatsapp",
+        "metadata": { "display_phone_number": "...", "phone_number_id": "..." },
+        "contacts": [{ "profile": { "name": "..." }, "wa_id": "5491155..." }],
+        "messages": [{
+          "from": "5491155...",
+          "id": "wamid.HBgL...",
+          "timestamp": "1714234567",
+          "type": "text",
+          "text": { "body": "hola" }
+        }],
+        "statuses": [ ... ]   // sent/delivered/read — para v1 solo log
+      }
+    }]
+  }]
+}
+```
+
+Procesamiento:
+
+```typescript
+// src/lib/meta/handler.ts
+export async function processWebhookPayload(payload: any): Promise<void> {
+  if (payload?.object !== "whatsapp_business_account") return;
+  for (const entry of payload.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      if (change.field !== "messages") continue;
+      const value = change.value ?? {};
+      // statuses: por ahora solo log
+      for (const status of value.statuses ?? []) {
+        console.log(`[webhook] status ${status.status} para ${status.id}`);
+      }
+      const contacts = value.contacts ?? [];
+      const nameByPhone = new Map<string, string | null>(
+        contacts.map((c: any) => [c.wa_id, c.profile?.name ?? null])
+      );
+      for (const msg of value.messages ?? []) {
+        await handleIncomingMessage(msg, nameByPhone.get(msg.from) ?? null);
+      }
+    }
+  }
+}
+```
+
+handleIncomingMessage:
+
+1. Filtrar msg.type !== "text" para v1 (audio, image, sticker,
+   location, etc. fuera de scope — log y continue).
+2. wa_message_id = msg.id. Dedup con wasMessageProcessed.
+3. Marcar procesado antes de continuar.
+4. Extraer texto: msg.text.body.
+5. Phone: msg.from (E.164 sin '+').
+6. getOrCreateConversation(phone, pushName).
+7. insertMessage(convo.id, 'user', text, msg.id).
+8. RE-LEER conversation para chequear modo (toggle pudo cambiar):
+   ```typescript
+   const fresh = getConversationById(convo.id);
+   if (!fresh || fresh.mode !== 'AI') return;
+   ```
+9. Modo AI: getRecentHistory(20) + system prompt → LLM. Mapear
+   human → assistant para el LLM (los mensajes humanos del dashboard
+   salieron del lado del bot).
+10. Guardar reply como assistant.
+11. await sendTextMessage(phone, reply) y guardar el wa_message_id
+    devuelto en el row del mensaje (UPDATE).
+
+Logs detallados: [wh] ← mensaje de X: "...", [wh] LLM en Xms,
+[wh] → enviado a Y (wamid: ...). Sirven mucho para debugging.
+
+# CLIENTE GRAPH API
+
+```typescript
+// src/lib/meta/client.ts
+const GRAPH = `https://graph.facebook.com/${process.env.META_GRAPH_VERSION ?? "v21.0"}`;
+
+export async function sendTextMessage(
+  phone: string,
+  body: string
+): Promise<{ wa_message_id: string }> {
+  const phoneId = process.env.META_PHONE_NUMBER_ID;
+  const token = process.env.META_ACCESS_TOKEN;
+  if (!phoneId || !token) {
+    throw new Error("META_PHONE_NUMBER_ID o META_ACCESS_TOKEN no configurados");
+  }
+  const res = await fetch(`${GRAPH}/${phoneId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: phone,                       // E.164 sin '+'
+      type: "text",
+      text: { preview_url: false, body },
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Graph API ${res.status}: ${errText}`);
+  }
+  const json = await res.json();
+  const id = json?.messages?.[0]?.id;
+  if (!id) throw new Error(`Respuesta Graph sin id: ${JSON.stringify(json)}`);
+  return { wa_message_id: id };
+}
+
+/** Test de conexión: valida token + phone id leyendo metadata del número. */
+export async function getPhoneNumberInfo(): Promise<{
+  display_phone_number: string;
+  verified_name: string;
+  quality_rating: string;
+}> {
+  const phoneId = process.env.META_PHONE_NUMBER_ID;
+  const token = process.env.META_ACCESS_TOKEN;
+  const res = await fetch(
+    `${GRAPH}/${phoneId}?fields=display_phone_number,verified_name,quality_rating`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`Graph ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+```
+
+# ⚠️ LECCIÓN APRENDIDA — VENTANA DE 24h
+
+WhatsApp Cloud API solo permite mandar mensajes de texto libre
+dentro de las 24h posteriores al último mensaje del cliente. Pasada
+esa ventana hay que usar Message Templates preaprobados.
+
+Para este agente eso está bien: respondes a la gente que te escribe,
+así que estás dentro de la ventana por definición. Pero documenta la
+limitación en el README:
+
+- Si el operador en modo HUMAN intenta escribir y la última actividad
+  del cliente es de hace más de 24h, la API va a devolver error
+  131047 ("re-engagement message"). En la UI: capturar ese error y
+  mostrar cartel "fuera de la ventana de 24h, no se puede enviar
+  texto libre".
+- Plantillas (type: "template") quedan fuera del scope v1.
+
+# ⚠️ LECCIÓN APRENDIDA — CONFIG STATUS / GATE
+
+Reemplaza la pantalla "Conecta tu WhatsApp + QR" del proyecto Baileys
+por una pantalla "Configura la API" que reporta cuáles env vars
+faltan y si Graph responde. La API:
+
+```typescript
+// /api/connection/status
+import { NextResponse } from "next/server";
+import { getPhoneNumberInfo } from "@/lib/meta/client";
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  const required = [
+    "META_ACCESS_TOKEN",
+    "META_PHONE_NUMBER_ID",
+    "META_APP_SECRET",
+    "META_VERIFY_TOKEN",
+  ];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    return NextResponse.json(
+      { status: "missing_config", missing },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  try {
+    const info = await getPhoneNumberInfo();
+    return NextResponse.json(
+      {
+        status: "connected",
+        phone: info.display_phone_number,
+        verified_name: info.verified_name,
+        quality: info.quality_rating,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  } catch (err: any) {
+    return NextResponse.json(
+      { status: "error", message: String(err?.message ?? err) },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
+}
+```
+
+ConfigScreen.tsx muestra:
+- Si status === 'missing_config': lista de variables faltantes, link
+  al README, instrucciones cortas.
+- Si status === 'error': el mensaje de error de Graph (ej. token
+  expirado, phone_number_id inválido).
+- Mientras connected, transición al dashboard real.
+
+Sin pantalla intermedia "esperando escaneo" ni QR. La transición es
+instantánea apenas el endpoint responde connected.
+
+# ⚠️ NEXT.JS 16 — params es Promise
+
+Todos los route handlers con [segmento] dinámico:
+
+```typescript
+interface Ctx { params: Promise<{ conversationId: string }>; }
+export async function GET(_req: NextRequest, { params }: Ctx) {
+  const { conversationId } = await params;
+}
+```
+
+Lo mismo con cookies() y headers() — son async.
+
+# ⚠️ NEXT.JS — serverExternalPackages
+
+next.config.ts:
+```typescript
+import type { NextConfig } from "next";
+const nextConfig: NextConfig = {
+  serverExternalPackages: ["better-sqlite3"],
+};
+export default nextConfig;
+```
+
+(No pino ni @whiskeysockets/baileys — no los usamos.)
+
+# ENVÍO DESDE EL DASHBOARD (modo HUMAN)
+
+Como TODO corre en el mismo proceso Next.js, NO hay outbox.
+
+POST /api/messages/[id] con role 'human':
+
+```typescript
+const convo = getConversationById(id);
+if (!convo) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+// 1. Insertar local primero (visible inmediatamente en el dashboard).
+const messageId = insertMessage(convo.id, "human", content, null);
+
+// 2. Enviar a Graph. Si falla, devolver el error al frontend para que
+//    muestre toast — el mensaje queda en la DB con wa_message_id NULL,
+//    y aparece tachado o con icono de error en MessageBubble.
+try {
+  const { wa_message_id } = await sendTextMessage(convo.phone, content);
+  updateMessageWaId(messageId, wa_message_id);
+  return NextResponse.json({ ok: true, messageId });
+} catch (err: any) {
+  return NextResponse.json(
+    { ok: false, messageId, error: String(err?.message ?? err) },
+    { status: 502 }
+  );
+}
+```
+
+Más simple que la versión Baileys (que tenía que pasar por outbox
+porque bot y Next.js eran procesos distintos sin memoria compartida).
+
+# SYSTEM PROMPT INICIAL
+
+```typescript
+// src/lib/system-prompt.ts
+export const SYSTEM_PROMPT = `
+Eres un asistente virtual amable. Responde en español neutro,
+en mensajes breves de 2 a 4 líneas. No uses emojis.
+Si el usuario pide algo que no puedes resolver, responde:
+"Déjame derivarte con un asesor humano."
+`.trim();
+```
+
+El usuario va a personalizar este archivo con el prompt de SU
+negocio. Documenta en el README cómo se hace.
+
+# UI / TAILWIND
+
+Igual que el proyecto original:
+- Paleta neutra (grises) + verde esmeralda (IA) + ámbar (HUMANO).
+- Sin librerías de componentes (no shadcn, no Radix). Tailwind 4
+  vanilla.
+- MessageBubble: user blanco izquierda, assistant verde derecha,
+  human ámbar derecha. Mostrar pequeño icono de error si
+  wa_message_id es NULL en un mensaje role='human' o 'assistant'
+  (significa que falló el envío a Graph).
+- ConversationList: badge IA verde / HUMAN ámbar, "hace X min".
+- ConversationPanel: input deshabilitado en modo IA. Habilitado y
+  enviable en modo HUMAN. Si la API responde 502 con error 131047
+  (24h window), mostrar cartel rojo "fuera de la ventana de 24h".
+
+ConfigScreen:
+- Header con logo / título "Configura tu API de WhatsApp".
+- Card con la lista de env vars requeridas, marcando cuáles faltan
+  con check ✓ y cuáles no con cruz ✗.
+- Bloque copiable con la URL del webhook
+  (https://TU_DOMINIO/api/webhook) y el VERIFY_TOKEN actual, para
+  pegar en el panel de Meta.
+- Pasos numerados:
+  1. Crear app en https://developers.facebook.com/
+  2. Agregar producto WhatsApp.
+  3. Copiar Phone Number ID, WABA ID, App Secret.
+  4. Generar System User Token permanente.
+  5. Configurar webhook con la URL de arriba y META_VERIFY_TOKEN.
+  6. Suscribir el webhook al campo messages.
+
+# DEPLOY EN PRODUCCIÓN (EasyPanel sin Docker)
+
+Diferencias respecto al proyecto Baileys:
+
+1. Procfile:
+   ```
+   web: npm run start
+   ```
+   (NO start:all — es una sola app.)
+
+2. nixpacks.toml:
+   ```toml
+   providers = ["node"]
+   [variables]
+   NIXPACKS_NODE_VERSION = "22"
+   [phases.setup]
+   nixPkgs = ["nodejs_22", "npm-10_x", "python3", "gcc", "gnumake"]
+   [phases.install]
+   cmds = ["npm ci --include=dev"]
+   [phases.build]
+   cmds = ["npm run build"]
+   [start]
+   cmd = "npm run start"
+   ```
+
+3. .nvmrc: 22
+
+4. Volumen persistente: /app/data (NO necesitamos /app/auth porque
+   no hay sesión Baileys).
+
+5. HTTPS obligatorio: Meta solo acepta webhooks por HTTPS. En
+   localhost para desarrollo: ngrok http 3000 o Cloudflare Tunnel.
+   La URL pública va en el panel de Meta como webhook.
+
+# DESARROLLO LOCAL — TÚNEL HTTPS
+
+Documenta en el README un quickstart con ngrok:
+
+```bash
+npm run dev
+# en otra terminal
+ngrok http 3000
+# copiar la URL https://abc123.ngrok-free.app y configurarla en
+# Meta panel → WhatsApp → Configuration → Webhook
+# usando META_VERIFY_TOKEN del .env.local.
+```
+
+# SEGURIDAD — DASHBOARD SIN AUTH
+
+Igual que en el proyecto Baileys: el dashboard no tiene
+autenticación. Si vas a desplegar a internet, antes pon basic auth
+(a nivel proxy o Cloudflare Access). Si no, cualquiera con la URL
+puede leer todas las conversaciones y enviar mensajes haciéndose
+pasar por el dueño.
+
+ADICIONAL en este proyecto: el endpoint POST /api/webhook SÍ está
+protegido por verificación de firma — incluso si expones la URL,
+nadie sin el META_APP_SECRET puede inyectar mensajes falsos. La
+protección de firma NO es opcional.
+
+# REGLAS DE TRABAJO PARA TI (Claude Code)
+
+1. Trabaja archivo por archivo en este orden:
+   (a) package.json con engines + deps
+   (b) .env.example, .gitignore, tsconfig.json, next.config.ts,
+       postcss.config.mjs
+   (c) src/app/layout.tsx, src/app/globals.css
+   (d) src/lib/db.ts con DDL completo y helpers
+   (e) src/lib/openrouter.ts y src/lib/system-prompt.ts
+   (f) src/lib/meta/verify.ts
+   (g) src/lib/meta/client.ts (sendTextMessage, getPhoneNumberInfo)
+   (h) src/lib/meta/handler.ts (processWebhookPayload,
+       handleIncomingMessage)
+   (i) API routes: webhook (GET + POST), connection/status,
+       conversations, messages/[id], mode/[id], conversations/[id]
+       DELETE
+   (j) Componentes: ModeToggle, MessageBubble, ConversationList,
+       ConversationPanel (con composer HUMAN + manejo error 24h),
+       DashboardHeader, ConfigScreen, ConnectionGate
+   (k) src/app/page.tsx
+   (l) Procfile, nixpacks.toml, .nvmrc
+   (m) README.md con quickstart ngrok + pasos en panel de Meta
+
+2. Después de archivos críticos (db.ts, meta/verify.ts,
+   meta/client.ts, meta/handler.ts, webhook/route.ts) muestra el
+   código y espera confirmación. Para boilerplate (configs, layout)
+   haz batch sin preguntar.
+
+3. Después de cada batch importante ejecuta npx tsc --noEmit para
+   validar tipos. Arregla errores sin preguntar.
+
+4. Cuando termines de declarar dependencias, ejecuta npm install tú
+   mismo (avisa que tarda ~1 min por compilación nativa de
+   better-sqlite3).
+
+5. NO inventes features fuera del scope. Sin templates, sin
+   imágenes, sin function calling, sin grupos. Anota ideas en
+   sección "Mejoras pendientes" del README.
+
+6. NO uses Drizzle, Prisma, Supabase, Redis, WebSockets, Vercel,
+   Twilio ni Baileys.
+
+7. Idioma de comentarios y mensajes al usuario: español neutro.
+
+8. Cuando el usuario quiera probar:
+   - Levanta npm run dev en background.
+   - Recordale que el webhook necesita ser público — ofrece el
+     comando ngrok http 3000.
+   - Pidele que pegue la URL pública + el VERIFY_TOKEN en el panel
+     de Meta y que se suscriba al campo messages.
+   - Si la verificación del webhook falla con 403: el VERIFY_TOKEN
+     del .env.local no coincide con el del panel de Meta.
+   - Si el POST llega pero la firma falla con 401: META_APP_SECRET
+     incorrecto, o el body se está parseando antes de hashear.
+   - Si el envío con sendTextMessage falla con 401 / OAuth error:
+     token expirado o sin permisos. Generar System User Token
+     permanente desde Business Settings, no usar el token "test"
+     de 24h.
+
+# PRIMER PASO
+
+Empieza mostrando el package.json que vas a generar (engines, deps,
+sin Baileys ni tsx ni concurrently) y espera confirmación antes de
+ejecutar npm install.
+
+Empieza ahora.
+```
+
+
+

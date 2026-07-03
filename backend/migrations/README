@@ -1,0 +1,10 @@
+Database migrations managed with Alembic.
+
+Create a new migration:
+    alembic revision --autogenerate -m "description"
+
+Apply all pending migrations:
+    alembic upgrade head
+
+Revert last migration:
+    alembic downgrade -1
