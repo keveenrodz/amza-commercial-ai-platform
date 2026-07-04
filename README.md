@@ -54,7 +54,6 @@ conda create -n amza-commercial-ai-platform python=3.12
 conda activate amza-commercial-ai-platform
 ```
 
-Why conda and not the system Python: Ubuntu 22.04 ships Python 3.10.
 The `pyproject.toml` enforces `requires-python = ">=3.12"` and will reject older versions.
 
 Verify:
