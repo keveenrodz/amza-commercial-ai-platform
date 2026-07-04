@@ -85,7 +85,7 @@ They must NOT be modified unless a formal architecture decision is made.
 |---|---|---|---|---|
 | 000 Technology Stack | ✅ | N/A | N/A | ✅ |
 | 001 Project Setup | ✅ | ✅ | ✅ | ✅ |
-| 002 Domain Model | ✅ | ⏳ pending | — | — |
+| 002 Domain Model | ✅ | ✅ | ✅ | ✅ |
 | 003 Persistence Model | not written | — | — | — |
 
 ---
@@ -114,20 +114,15 @@ They must NOT be modified unless a formal architecture decision is made.
 
 # Next Step
 
-**Implement specification 002_Domain_Model.md.**
+**Write and implement specification 003_Persistence_Model.md.**
 
-This means creating the pure Python domain layer in `core/`:
+This means:
 
-* Enums in `core/enums/`
-* Typed ID value objects in `core/value_objects/`
-* Entity dataclasses in `core/entities/`
-* Domain events in `core/events/`
-* Interfaces (Protocols) in `core/interfaces/`
-* Domain exceptions in `core/exceptions/`
-
-After implementation, validate with `ruff check .` and `mypy app core` from `backend/`.
-
-No SQLAlchemy, no Pydantic, no FastAPI inside `core/`.
+1. Write `specifications/MVP/003_Persistence_Model.md`.
+2. Implement: SQLAlchemy 2.x mapped models in `infrastructure/database/` and `modules/*/models/`.
+3. Create the first Alembic migration covering all entities.
+4. Validate with `ruff check .`, `mypy app core`, and `alembic upgrade head`.
+5. Commit.
 
 ---
 
@@ -265,4 +260,4 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-🟡 In progress — 001 complete, implementing 002.
+🟡 In progress — 002 complete, writing spec 003.

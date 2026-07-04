@@ -26,10 +26,10 @@ Orden de implementación:
 |---|---|
 | 000 Technology Stack | ✅ spec — referencia, sin implementación |
 | 001 Project Setup | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
-| 002 Domain Model | ✅ spec + ⏳ pendiente de implementar |
+| 002 Domain Model | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
 | 003 Persistence Model | ❌ spec no escrito aún |
 
-**Siguiente acción:** implementar `specifications/MVP/002_Domain_Model.md`.
+**Siguiente acción:** escribir e implementar `specifications/MVP/003_Persistence_Model.md`.
 
 No avanzar hasta que la implementación haya sido validada.
 
