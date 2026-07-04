@@ -86,7 +86,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 000 Technology Stack | ✅ | N/A | N/A | ✅ |
 | 001 Project Setup | ✅ | ✅ | ✅ | ✅ |
 | 002 Domain Model | ✅ | ✅ | ✅ | ✅ |
-| 003 Persistence Model | not written | — | — | — |
+| 003 Persistence Model | ✅ | ✅ | ✅ | — |
 
 ---
 
@@ -104,8 +104,6 @@ They must NOT be modified unless a formal architecture decision is made.
 
 **What does NOT exist yet:**
 
-* Domain entities in `core/` (no code, only the spec)
-* SQLAlchemy models
 * Any business logic
 * Any API endpoints
 * Any frontend pages
@@ -114,15 +112,13 @@ They must NOT be modified unless a formal architecture decision is made.
 
 # Next Step
 
-**Write and implement specification 003_Persistence_Model.md.**
+**Write and implement specification 004 (next to be defined).**
 
-This means:
-
-1. Write `specifications/MVP/003_Persistence_Model.md`.
-2. Implement: SQLAlchemy 2.x mapped models in `infrastructure/database/` and `modules/*/models/`.
-3. Create the first Alembic migration covering all entities.
-4. Validate with `ruff check .`, `mypy app core`, and `alembic upgrade head`.
-5. Commit.
+Spec 003 is fully implemented:
+- 7 ORM models across `modules/*/models/`
+- `infrastructure/database/` (base, engine, session)
+- Migration `0001_initial_schema.py` applied to `data/amza.db`
+- 46 source files passing `ruff check .` and `mypy app core infrastructure`
 
 ---
 
@@ -260,4 +256,4 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-🟡 In progress — 002 complete, writing spec 003.
+🟡 In progress — 003 complete, pending commit and next spec.

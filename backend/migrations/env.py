@@ -8,6 +8,14 @@ from sqlalchemy import engine_from_config, pool
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.config import settings
+from infrastructure.database.base import Base
+from modules.agents.models.agent import AgentModel  # noqa: F401
+from modules.configuration.models.organization import OrganizationModel  # noqa: F401
+from modules.opportunities.models.contact import ContactModel  # noqa: F401
+from modules.opportunities.models.conversation import ConversationModel  # noqa: F401
+from modules.opportunities.models.message import MessageModel  # noqa: F401
+from modules.opportunities.models.opportunity import OpportunityModel  # noqa: F401
+from modules.users.models.internal_user import InternalUserModel  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
@@ -15,7 +23,7 @@ config.set_main_option("sqlalchemy.url", settings.database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
