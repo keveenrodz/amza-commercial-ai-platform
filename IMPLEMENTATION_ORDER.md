@@ -20,13 +20,16 @@ Ningún desarrollador (humano o IA) deberá implementar funcionalidades fuera de
 
 # Especificaciones del MVP (leer una por una)
 
-Actualmente la única especificación autorizada es:
+Orden de implementación:
 
-specifications/MVP/000_Technology_Stack.md
+| Spec | Estado |
+|---|---|
+| 000 Technology Stack | ✅ spec — referencia, sin implementación |
+| 001 Project Setup | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
+| 002 Domain Model | ✅ spec + ⏳ pendiente de implementar |
+| 003 Persistence Model | ❌ spec no escrito aún |
 
-Después:
-
-specifications/MVP/001_Project_Setup.md
+**Siguiente acción:** implementar `specifications/MVP/002_Domain_Model.md`.
 
 No avanzar hasta que la implementación haya sido validada.
 

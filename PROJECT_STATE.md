@@ -46,7 +46,7 @@ The platform is based on:
 * SQLAlchemy 2.x
 * SQLite (MVP)
 * PostgreSQL (future)
-* Next.js
+* Next.js 15
 * TypeScript
 * OpenRouter
 * Telegram (MVP)
@@ -62,123 +62,93 @@ Conversations are only one part of an Opportunity.
 
 # Documentation Status
 
-Completed documents:
+All documentation is complete and frozen.
 
 ✅ Vision and Product Principles
-
 ✅ Business Validation
-
 ✅ Product Glossary
-
 ✅ Engineering Principles
-
 ✅ Architecture
-
 ✅ Roadmap
-
 ✅ Product Specification
+✅ Technology Stack (000)
 
-✅ Technology Stack
+These documents are the source of truth.
 
-✅ Domain Model
-
-✅ Persistence Model
-
-These documents are considered the source of truth.
+They must NOT be modified unless a formal architecture decision is made.
 
 ---
 
-# Current Repository Structure
+# Specifications Status
 
-```text
-docs/
-    engineering/
-    product/
-
-specifications/
-    MVP/
-
-IMPLEMENTATION_ORDER.md
-README.md
-PROJECT_STATE.md
-```
+| Spec | Document | Implementation | Validated | Committed |
+|---|---|---|---|---|
+| 000 Technology Stack | ✅ | N/A | N/A | ✅ |
+| 001 Project Setup | ✅ | ✅ | ✅ | ✅ |
+| 002 Domain Model | ✅ | ⏳ pending | — | — |
+| 003 Persistence Model | not written | — | — | — |
 
 ---
 
-# Current Implementation Stage
+# Current State
 
-The project is still in the architecture phase.
+**What exists in the repository:**
 
-No production code has been generated yet.
+* Complete project skeleton (backend + frontend + Docker + CI)
+* FastAPI app initialized and running
+* SQLAlchemy + Alembic configured
+* Ruff + MyPy + pre-commit configured
+* Vitest + Playwright configured
+* Docker Compose working
+* All tools validated locally
 
-The documentation is considered sufficiently mature to begin implementation.
+**What does NOT exist yet:**
 
-Future development should alternate between:
-
-Specification
-
-↓
-
-Implementation
-
-↓
-
-Review
-
-↓
-
-Validation
-
-↓
-
-Next Specification
-
-No large documentation efforts should be added unless strictly necessary.
+* Domain entities in `core/` (no code, only the spec)
+* SQLAlchemy models
+* Any business logic
+* Any API endpoints
+* Any frontend pages
 
 ---
-# Metodologia del proyecto
 
-Fase 1 — Producto
------------------
-Vision
-Business
-Roadmap
-Product Specification
+# Next Step
 
-↓
+**Implement specification 002_Domain_Model.md.**
 
-Fase 2 — Ingeniería
--------------------
-Glossary
-Engineering Principles
-Architecture
-Technology Stack
+This means creating the pure Python domain layer in `core/`:
 
-↓
+* Enums in `core/enums/`
+* Typed ID value objects in `core/value_objects/`
+* Entity dataclasses in `core/entities/`
+* Domain events in `core/events/`
+* Interfaces (Protocols) in `core/interfaces/`
+* Domain exceptions in `core/exceptions/`
 
-Fase 3 — Especificaciones
--------------------------
-Cada documento describe UNA implementación.
+After implementation, validate with `ruff check .` and `mypy app core` from `backend/`.
 
-↓
+No SQLAlchemy, no Pydantic, no FastAPI inside `core/`.
 
-Fase 4 — Desarrollo
--------------------
-Claude Code implementa.
+---
 
-↓
+# Working Methodology
 
-Fase 5 — Revisión
------------------
-Validación manual.
+Each specification represents one implementation milestone.
 
-↓
+The workflow is always:
 
-Fase 6 — Commit
+1. Read `PROJECT_STATE.md` and `IMPLEMENTATION_ORDER.md`.
+2. Read the current specification.
+3. Implement only that specification.
+4. Validate (run lint, type check, tests).
+5. Commit.
+6. Update `PROJECT_STATE.md`.
+7. Continue with the next specification.
 
-↓
+Never implement multiple specifications simultaneously.
 
-Repetir
+Never write code not covered by the current specification.
+
 ---
 
 # Naming Decisions
@@ -190,6 +160,10 @@ amza-commercial-ai-platform
 Python package:
 
 amza-commercial-ai-platform
+
+Conda environment:
+
+amza-commercial-ai-platform (Python 3.12.13)
 
 Architecture:
 
@@ -235,47 +209,44 @@ The customer should never notice when the conversation changes between AI and a 
 
 ---
 
-# Current MVP Goal
+# Frozen Decisions
 
-Validate that a hybrid commercial workflow improves business performance by:
+These decisions must not be changed during the MVP without explicit approval.
 
-* reducing response times;
-* reducing repetitive work;
-* improving commercial follow-up;
-* increasing sales without increasing staff.
+Architecture:
+✅ Hexagonal (Ports and Adapters)
 
----
+Technology Stack:
+✅ Frozen (see 000_Technology_Stack.md)
 
-# Working Methodology
+Domain Model:
+✅ Frozen (see 002_Domain_Model.md)
 
-Each specification represents one implementation milestone.
+Opportunity as aggregate root:
+✅ Frozen
 
-The workflow is always:
+Python version:
+✅ 3.12
 
-1. Read project documentation.
-2. Read one specification.
-3. Implement only that specification.
-4. Validate.
-5. Commit.
-6. Continue.
+FastAPI:
+✅ Frozen
 
-Never implement multiple specifications simultaneously.
+SQLAlchemy 2.x:
+✅ Frozen
 
----
+SQLite for MVP:
+✅ Frozen
 
-# Next Planned Specification
-
-010_Backend_Foundation.md
-
-Goal:
-
-Create the backend skeleton following the approved architecture without implementing business logic.
+Telegram for MVP:
+✅ Frozen
 
 ---
 
-# Long-Term Goal
+# Decisions Pending
 
-Build a reusable Commercial Operations Platform capable of serving multiple organizations while keeping the architecture clean, modular and maintainable.
+CRM integration: pending until MVP validation.
+
+WhatsApp: blocked by Meta approval process.
 
 ---
 
@@ -294,84 +265,4 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-Status:
-
-🟢 Ready to begin implementation.
----
-
-# Completed Specifications
-
-000 Technology Stack
-
-Completed
-
-001 Project Setup
-
-Completed
-
-002 Business Domain Model
-
-Completed
-
-003 Persistence Model
-
-Completed
-
----
-
-# Current Sprint
-
-Goal:
-
-Backend Foundation
-
-Current Specification:
-
-010_Backend_Foundation.md
-
-Status:
-
-Ready to implement.
-
----
-
-Decisions Pending
-
-- CRM: Pending
-
-Waiting until MVP validation.
-
-- WhatsApp: Pending
-
-Blocked by Meta approval.
-
----
-
-# Desicion Frozen
-
-Architecture:
-✅ Frozen
-
-Technology Stack:
-✅ Frozen
-
-Opportunity Model:
-✅ Frozen
-
-Hexagonal:
-✅ Frozen
-
-Python:
-✅ Frozen
-
-FastAPI:
-✅ Frozen
-
-SQLAlchemy:
-✅ Frozen
-
-SQLite MVP:
-✅ Frozen
-
-Telegram MVP:
-✅ Frozen
+🟡 In progress — 001 complete, implementing 002.
