@@ -86,7 +86,8 @@ They must NOT be modified unless a formal architecture decision is made.
 | 000 Technology Stack | ✅ | N/A | N/A | ✅ |
 | 001 Project Setup | ✅ | ✅ | ✅ | ✅ |
 | 002 Domain Model | ✅ | ✅ | ✅ | ✅ |
-| 003 Persistence Model | ✅ | ✅ | ✅ | — |
+| 003 Persistence Model | ✅ | ✅ | ✅ | ✅ |
+| 004 (por definir) | ❌ | — | — | — |
 
 ---
 
@@ -95,30 +96,55 @@ They must NOT be modified unless a formal architecture decision is made.
 **What exists in the repository:**
 
 * Complete project skeleton (backend + frontend + Docker + CI)
-* FastAPI app initialized and running
-* SQLAlchemy + Alembic configured
-* Ruff + MyPy + pre-commit configured
+* FastAPI app initialized and running on port 8000
+* Ruff + MyPy + pre-commit configured (46 source files passing clean)
 * Vitest + Playwright configured
-* Docker Compose working
-* All tools validated locally
+* Docker Compose working (backend:8000, frontend:3000)
+* GitHub Actions CI configured
+* Complete domain layer in `core/` (spec 002)
+* Complete persistence layer in `infrastructure/database/` and `modules/*/models/` (spec 003)
+* First Alembic migration applied — `data/amza.db` created with all 7 tables
+
+**Persistence layer details (spec 003):**
+
+* `infrastructure/database/base.py` — `DeclarativeBase`
+* `infrastructure/database/engine.py` — `AsyncEngine` (sqlite+aiosqlite URL transform)
+* `infrastructure/database/session.py` — `AsyncSessionFactory` + `get_session()` dependency
+* `modules/configuration/models/organization.py` — `OrganizationModel`
+* `modules/opportunities/models/contact.py` — `ContactModel` (unique: external_id + channel_type + org)
+* `modules/opportunities/models/opportunity.py` — `OpportunityModel`
+* `modules/opportunities/models/conversation.py` — `ConversationModel`
+* `modules/opportunities/models/message.py` — `MessageModel` (campo: `extra_metadata` → columna DB: `metadata`)
+* `modules/users/models/internal_user.py` — `InternalUserModel`
+* `modules/agents/models/agent.py` — `AgentModel`
+* `migrations/versions/0001_initial_schema.py` — aplicada con `alembic upgrade head`
 
 **What does NOT exist yet:**
 
-* Any business logic
-* Any API endpoints
-* Any frontend pages
+* Repository implementations (adaptadores de infraestructura para los Protocols de `core/interfaces/`)
+* Application services / use cases
+* API endpoints (FastAPI routers)
+* Frontend pages con lógica de negocio
 
 ---
 
 # Next Step
 
-**Write and implement specification 004 (next to be defined).**
+**Escribir e implementar `specifications/MVP/004_...`**
 
-Spec 003 is fully implemented:
-- 7 ORM models across `modules/*/models/`
-- `infrastructure/database/` (base, engine, session)
-- Migration `0001_initial_schema.py` applied to `data/amza.db`
-- 46 source files passing `ruff check .` and `mypy app core infrastructure`
+El siguiente spec lógico según la arquitectura hexagonal es **004 Repository Implementations** — implementar los adaptadores SQLAlchemy que satisfacen los Protocols definidos en `core/interfaces/repositories.py`.
+
+Esto incluye:
+- `SQLAlchemyOpportunityRepository`
+- `SQLAlchemyContactRepository`
+- `SQLAlchemyConversationRepository`
+- `SQLAlchemyMessageRepository`
+- `SQLAlchemyOrganizationRepository`
+- `SQLAlchemyAgentRepository`
+- `SQLAlchemyInternalUserRepository`
+- `SQLAlchemyUnitOfWork`
+
+Confirmar con el usuario antes de definir el spec 004.
 
 ---
 
@@ -256,4 +282,4 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-🟡 In progress — 003 complete, pending commit and next spec.
+🟡 En progreso — 003 completo y committed (aa2614b). Siguiente: escribir spec 004.

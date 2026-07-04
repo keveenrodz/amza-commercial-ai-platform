@@ -27,9 +27,12 @@ Orden de implementación:
 | 000 Technology Stack | ✅ spec — referencia, sin implementación |
 | 001 Project Setup | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
 | 002 Domain Model | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
-| 003 Persistence Model | ❌ spec no escrito aún |
+| 003 Persistence Model | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (aa2614b) |
+| 004 Repository Implementations | ❌ spec no escrito aún |
 
-**Siguiente acción:** escribir e implementar `specifications/MVP/003_Persistence_Model.md`.
+**Siguiente acción:** confirmar con el usuario el alcance de spec 004, luego escribirlo e implementarlo.
+
+La propuesta es: implementar los adaptadores SQLAlchemy para los 7 Protocols de `core/interfaces/repositories.py` + `UnitOfWork`.
 
 No avanzar hasta que la implementación haya sido validada.
 
