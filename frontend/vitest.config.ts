@@ -4,10 +4,17 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  css: {
+    postcss: {
+      plugins: [],
+    },
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./tests/setup.ts"],
     globals: true,
+    css: false,
+    passWithNoTests: true,
     coverage: {
       reporter: ["text", "lcov"],
       exclude: ["node_modules/", ".next/", "tests/", "*.config.*"],
