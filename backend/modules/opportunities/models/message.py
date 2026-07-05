@@ -20,9 +20,11 @@ class MessageModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(sa.Uuid(native_uuid=False), primary_key=True)
     conversation_id: Mapped[uuid.UUID] = mapped_column(sa.Uuid(native_uuid=False), nullable=False)
     sender_role: Mapped[str] = mapped_column(sa.String(50), nullable=False)
+    content_type: Mapped[str] = mapped_column(sa.String(50), nullable=False)
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     channel_type: Mapped[str] = mapped_column(sa.String(50), nullable=False)
     sent_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    provider_message_id: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     extra_metadata: Mapped[dict[str, Any] | None] = mapped_column(
         "metadata", sa.JSON, nullable=True
     )

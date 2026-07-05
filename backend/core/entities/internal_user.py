@@ -11,7 +11,7 @@ from core.value_objects.identifiers import InternalUserId, OrganizationId
 class InternalUser:
     id: InternalUserId
     organization_id: OrganizationId
-    name: str
+    full_name: str
     email: str
     role: InternalUserRole
     status: InternalUserStatus

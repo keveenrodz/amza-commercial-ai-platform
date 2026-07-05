@@ -24,6 +24,7 @@ class ContactModel(Base):
     external_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     channel_type: Mapped[str] = mapped_column(sa.String(50), nullable=False)
     display_name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    status: Mapped[str] = mapped_column(sa.String(50), nullable=False)
     phone_number: Mapped[str | None] = mapped_column(sa.String(50), nullable=True)
     email: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)

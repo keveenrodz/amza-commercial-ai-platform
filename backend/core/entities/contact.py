@@ -18,3 +18,5 @@ class Contact:
     status: ContactStatus
     created_at: datetime
     updated_at: datetime
+    phone_number: str | None = None
+    email: str | None = None

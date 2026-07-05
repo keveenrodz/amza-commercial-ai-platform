@@ -28,11 +28,13 @@ Orden de implementación:
 | 001 Project Setup | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
 | 002 Domain Model | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
 | 003 Persistence Model | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (aa2614b) |
-| 004 Repository Implementations | ❌ spec no escrito aún |
+| 004 Repository Implementations | ✅ spec + ✅ implementado + ✅ validado (81 archivos) |
+| 005 Application Services | ❌ spec no escrito aún |
 
-**Siguiente acción:** confirmar con el usuario el alcance de spec 004, luego escribirlo e implementarlo.
+**Siguiente acción:** confirmar con el usuario el alcance de spec 005, luego escribirlo e implementarlo.
 
-La propuesta es: implementar los adaptadores SQLAlchemy para los 7 Protocols de `core/interfaces/repositories.py` + `UnitOfWork`.
+La propuesta es: casos de uso que coordinan dominio + repositorios + providers:
+`ReceiveMessageUseCase`, `AssignToAdvisorUseCase`, `ReturnToAIUseCase`, `GetOpportunityUseCase`.
 
 No avanzar hasta que la implementación haya sido validada.
 

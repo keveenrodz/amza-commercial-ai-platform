@@ -10,5 +10,5 @@ from core.value_objects.identifiers import ConversationId, OpportunityId
 class Conversation:
     id: ConversationId
     opportunity_id: OpportunityId
-    created_at: datetime
-    updated_at: datetime
+    started_at: datetime
+    ended_at: datetime | None

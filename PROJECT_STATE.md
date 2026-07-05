@@ -87,7 +87,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 001 Project Setup | ✅ | ✅ | ✅ | ✅ |
 | 002 Domain Model | ✅ | ✅ | ✅ | ✅ |
 | 003 Persistence Model | ✅ | ✅ | ✅ | ✅ |
-| 004 (por definir) | ❌ | — | — | — |
+| 004 Repository Implementations | ✅ | ✅ | ✅ | — |
 
 ---
 
@@ -97,7 +97,7 @@ They must NOT be modified unless a formal architecture decision is made.
 
 * Complete project skeleton (backend + frontend + Docker + CI)
 * FastAPI app initialized and running on port 8000
-* Ruff + MyPy + pre-commit configured (46 source files passing clean)
+* Ruff + MyPy + pre-commit configured (81 source files passing clean)
 * Vitest + Playwright configured
 * Docker Compose working (backend:8000, frontend:3000)
 * GitHub Actions CI configured
@@ -119,9 +119,17 @@ They must NOT be modified unless a formal architecture decision is made.
 * `modules/agents/models/agent.py` — `AgentModel`
 * `migrations/versions/0001_initial_schema.py` — aplicada con `alembic upgrade head`
 
+**Repository layer (spec 004):**
+
+* `modules/opportunities/repositories/` — OpportunityRepository, ContactRepository, ConversationRepository, MessageRepository
+* `modules/configuration/repositories/organization.py` — OrganizationRepository
+* `modules/users/repositories/internal_user.py` — InternalUserRepository
+* `modules/agents/repositories/agent.py` — AgentRepository
+* `infrastructure/database/unit_of_work.py` — SQLAlchemyUnitOfWork
+* Migración `0002_fix_entity_model_alignment.py` aplicada
+
 **What does NOT exist yet:**
 
-* Repository implementations (adaptadores de infraestructura para los Protocols de `core/interfaces/`)
 * Application services / use cases
 * API endpoints (FastAPI routers)
 * Frontend pages con lógica de negocio
@@ -130,21 +138,18 @@ They must NOT be modified unless a formal architecture decision is made.
 
 # Next Step
 
-**Escribir e implementar `specifications/MVP/004_...`**
+**Escribir e implementar `specifications/MVP/005_...`**
 
-El siguiente spec lógico según la arquitectura hexagonal es **004 Repository Implementations** — implementar los adaptadores SQLAlchemy que satisfacen los Protocols definidos en `core/interfaces/repositories.py`.
+El siguiente spec lógico es **005 Application Services** — los casos de uso que coordinan
+entidades, repositorios y providers para ejecutar la lógica de negocio.
 
-Esto incluye:
-- `SQLAlchemyOpportunityRepository`
-- `SQLAlchemyContactRepository`
-- `SQLAlchemyConversationRepository`
-- `SQLAlchemyMessageRepository`
-- `SQLAlchemyOrganizationRepository`
-- `SQLAlchemyAgentRepository`
-- `SQLAlchemyInternalUserRepository`
-- `SQLAlchemyUnitOfWork`
+Casos de uso candidatos para MVP:
+- `ReceiveMessageUseCase` — procesar mensaje entrante de un canal
+- `AssignToAdvisorUseCase` — transferir oportunidad a asesor humano
+- `ReturnToAIUseCase` — devolver oportunidad al agente IA
+- `GetOpportunityUseCase` — consultar el estado de una oportunidad
 
-Confirmar con el usuario antes de definir el spec 004.
+Confirmar con el usuario antes de definir el spec 005.
 
 ---
 
@@ -282,4 +287,4 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-🟡 En progreso — 003 completo y committed (aa2614b). Siguiente: escribir spec 004.
+🟡 En progreso — 004 completo y validado (pending commit). Siguiente: escribir spec 005.

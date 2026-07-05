@@ -12,7 +12,8 @@ class Agent:
     id: AgentId
     organization_id: OrganizationId
     name: str
-    description: str
+    system_prompt: str
+    model: str
     status: AgentStatus
     created_at: datetime
     updated_at: datetime
