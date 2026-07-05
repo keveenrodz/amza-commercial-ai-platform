@@ -57,10 +57,10 @@ class SQLAlchemyMessageRepository:
         result = await self._session.execute(
             select(MessageModel)
             .where(MessageModel.conversation_id == conversation_id.value)
-            .order_by(MessageModel.sent_at.asc())
+            .order_by(MessageModel.sent_at.desc())
             .limit(limit)
         )
-        return [_to_entity(m) for m in result.scalars().all()]
+        return [_to_entity(m) for m in reversed(result.scalars().all())]
 
     async def save(self, message: Message) -> None:
         await self._session.merge(_from_entity(message))

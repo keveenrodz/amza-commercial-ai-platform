@@ -4,6 +4,7 @@ from core.enums.opportunity import OpportunityStatus
 from core.value_objects.identifiers import (
     AgentId,
     ContactId,
+    InternalUserId,
     OpportunityId,
     OrganizationId,
 )
@@ -53,4 +54,22 @@ class AgentNotFoundError(DomainError):
 class OrganizationNotFoundError(DomainError):
     def __init__(self, organization_id: OrganizationId) -> None:
         super().__init__(f"Organization {organization_id} not found")
+        self.organization_id = organization_id
+
+
+class OrganizationSlugNotFoundError(DomainError):
+    def __init__(self, slug: str) -> None:
+        super().__init__(f"Organization with slug {slug!r} not found")
+        self.slug = slug
+
+
+class InternalUserNotFoundError(DomainError):
+    def __init__(self, user_id: InternalUserId) -> None:
+        super().__init__(f"InternalUser {user_id} not found")
+        self.user_id = user_id
+
+
+class NoActiveAgentError(DomainError):
+    def __init__(self, organization_id: OrganizationId) -> None:
+        super().__init__(f"No active agent found for organization {organization_id}")
         self.organization_id = organization_id
