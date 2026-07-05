@@ -87,7 +87,9 @@ They must NOT be modified unless a formal architecture decision is made.
 | 001 Project Setup | ✅ | ✅ | ✅ | ✅ |
 | 002 Domain Model | ✅ | ✅ | ✅ | ✅ |
 | 003 Persistence Model | ✅ | ✅ | ✅ | ✅ |
-| 004 Repository Implementations | ✅ | ✅ | ✅ | — |
+| 004 Repository Implementations | ✅ | ✅ | ✅ | ✅ |
+| 005 Application Services | ✅ | ✅ | ✅ | ✅ |
+| 006 (por definir) | ❌ | — | — | — |
 
 ---
 
@@ -97,7 +99,7 @@ They must NOT be modified unless a formal architecture decision is made.
 
 * Complete project skeleton (backend + frontend + Docker + CI)
 * FastAPI app initialized and running on port 8000
-* Ruff + MyPy + pre-commit configured (81 source files passing clean)
+* Ruff + MyPy + pre-commit configured (86 source files passing clean)
 * Vitest + Playwright configured
 * Docker Compose working (backend:8000, frontend:3000)
 * GitHub Actions CI configured
@@ -128,9 +130,19 @@ They must NOT be modified unless a formal architecture decision is made.
 * `infrastructure/database/unit_of_work.py` — SQLAlchemyUnitOfWork
 * Migración `0002_fix_entity_model_alignment.py` aplicada
 
+**Application Services (spec 005):**
+
+* `app/use_cases/receive_incoming_message.py` — `ReceiveIncomingMessageUseCase` + `IncomingMessageInput`
+* `app/use_cases/assign_to_advisor.py` — `AssignToAdvisorUseCase`
+* `app/use_cases/return_to_ai.py` — `ReturnToAIUseCase`
+* `app/use_cases/get_conversation_history.py` — `GetConversationHistoryUseCase` + `ConversationHistory`
+* `app/exceptions.py` — handlers HTTP para todas las excepciones de dominio (404/422/400)
+* 3 excepciones nuevas en `core/exceptions/domain.py`: `OrganizationSlugNotFoundError`, `InternalUserNotFoundError`, `NoActiveAgentError`
+* `_build_context()` en `ReceiveIncomingMessageUseCase` — extension point documentado para el resumen por inactividad (spec 006)
+
 **What does NOT exist yet:**
 
-* Application services / use cases
+* Implementaciones concretas de `AIProvider` y `ChannelProvider` (adaptadores Telegram + OpenRouter)
 * API endpoints (FastAPI routers)
 * Frontend pages con lógica de negocio
 
@@ -138,18 +150,17 @@ They must NOT be modified unless a formal architecture decision is made.
 
 # Next Step
 
-**Escribir e implementar `specifications/MVP/005_...`**
+**Escribir e implementar spec 006.**
 
-El siguiente spec lógico es **005 Application Services** — los casos de uso que coordinan
-entidades, repositorios y providers para ejecutar la lógica de negocio.
+El stack de negocio está completo hasta la capa de aplicación. El siguiente paso es conectar la plataforma con el mundo exterior: implementar los adaptadores concretos de `AIProvider` y `ChannelProvider`, y exponer los casos de uso a través de API endpoints FastAPI.
 
-Casos de uso candidatos para MVP:
-- `ReceiveMessageUseCase` — procesar mensaje entrante de un canal
-- `AssignToAdvisorUseCase` — transferir oportunidad a asesor humano
-- `ReturnToAIUseCase` — devolver oportunidad al agente IA
-- `GetOpportunityUseCase` — consultar el estado de una oportunidad
+Spec 006 propuesto — **Provider Implementations + API Layer**:
+- Adaptador `TelegramChannelProvider` (`infrastructure/channels/telegram.py`)
+- Adaptador `OpenRouterAIProvider` (`infrastructure/ai/openrouter.py`) — incluye la discusión de resumen por inactividad y optimización de costos LLM (decisión postergada desde spec 005)
+- Routers FastAPI: webhook de Telegram, endpoints de gestión de oportunidades
+- Dependency injection wiring en `app/dependencies.py`
 
-Confirmar con el usuario antes de definir el spec 005.
+Confirmar alcance exacto con el usuario antes de escribir el spec.
 
 ---
 
@@ -287,4 +298,4 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-🟡 En progreso — 004 completo y validado (pending commit). Siguiente: escribir spec 005.
+🟡 En progreso — 005 completo y committed (ace5e30). Siguiente: definir y escribir spec 006.

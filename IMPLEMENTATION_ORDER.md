@@ -28,13 +28,24 @@ Orden de implementación:
 | 001 Project Setup | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
 | 002 Domain Model | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
 | 003 Persistence Model | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (aa2614b) |
-| 004 Repository Implementations | ✅ spec + ✅ implementado + ✅ validado (81 archivos) |
-| 005 Application Services | ❌ spec no escrito aún |
+| 004 Repository Implementations | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (9cc20cf) |
+| 005 Application Services | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (ace5e30) |
+| 006 Provider Implementations + API Layer | ❌ spec no escrito aún |
 
-**Siguiente acción:** confirmar con el usuario el alcance de spec 005, luego escribirlo e implementarlo.
+**Siguiente acción:** confirmar con el usuario el alcance exacto de spec 006, luego escribirlo e implementarlo.
 
-La propuesta es: casos de uso que coordinan dominio + repositorios + providers:
-`ReceiveMessageUseCase`, `AssignToAdvisorUseCase`, `ReturnToAIUseCase`, `GetOpportunityUseCase`.
+Propuesta para spec 006 (dos partes en un mismo spec o dos specs separados — confirmar):
+
+**Parte A — Provider Implementations:**
+- `infrastructure/channels/telegram.py` → `TelegramChannelProvider` (satisface `ChannelProvider` Protocol)
+- `infrastructure/ai/openrouter.py` → `OpenRouterAIProvider` (satisface `AIProvider` Protocol)
+- Incluye la discusión de `AIProvider.summarize()` y optimización de costos LLM (postergada desde spec 005)
+
+**Parte B — API Layer:**
+- `app/routers/telegram_webhook.py` → endpoint POST `/webhook/telegram`
+- `app/routers/opportunities.py` → endpoints de gestión (asignar asesor, devolver a AI, historial)
+- `app/dependencies.py` → wiring completo de inyección de dependencias
+- Configuración de seguridad básica (token de webhook)
 
 No avanzar hasta que la implementación haya sido validada.
 
