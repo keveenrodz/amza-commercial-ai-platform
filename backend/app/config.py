@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     telegram_bot_token: str = ""
+    telegram_webhook_secret: str = ""
 
     working_memory_size: int = 20
     summary_trigger_messages: int = 30

@@ -43,6 +43,9 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "ANN"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["ANN"]
 "migrations/**/*.py" = ["E501", "W291"]
+# B008 (no llamar funciones en defaults de argumento) marca falsos positivos en el patrón de
+# Depends() que FastAPI recomienda explícitamente para inyección de dependencias.
+"app/api/routers/**/*.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.12"
