@@ -90,7 +90,8 @@ They must NOT be modified unless a formal architecture decision is made.
 | 004 Repository Implementations | ✅ | ✅ | ✅ | ✅ |
 | 005 Application Services | ✅ | ✅ | ✅ | ✅ |
 | 006 Conversation Memory & Providers | ✅ | ✅ | ✅ | ✅ |
-| 007 (por definir — API Layer) | ❌ | — | — | — |
+| 007 API Layer | ✅ | ✅ | ✅ | ✅ |
+| 008 (por definir) | ❌ | — | — | — |
 
 ---
 
@@ -172,22 +173,55 @@ They must NOT be modified unless a formal architecture decision is made.
   aplicación, para que `OpenRouterAIProvider`/`TelegramChannelProvider` no dependan de
   repositorios
 
+**API Layer (spec 007):**
+
+* `app/api/dto/telegram.py` — `TelegramUpdate`/`TelegramMessage`/`TelegramUser`/`TelegramChat`
+  (modelan solo lo que el MVP necesita, `extra="ignore"`); `app/api/dto/opportunity.py` —
+  `OpportunityResponse`/`MessageResponse`/`ConversationHistoryResponse` con `from_domain()`,
+  `AssignAdvisorRequest`. Tres capas separadas: Request/Response HTTP → Input del caso de uso →
+  entidad de dominio, nunca se reutiliza una para otra
+* `app/api/routers/telegram_webhook.py` — `POST /webhooks/telegram/{organization_slug}`. Siempre
+  200 salvo secreto inválido (401): body malformado, tipo de update no soportado
+  (`edited_message`, `callback_query`, etc.), o fallo de procesamiento (org inexistente, agente no
+  configurado, error del `AIProvider`) — todos se loguean y absorben, nunca se deja que Telegram
+  reintente. Decisión de negocio documentada: se privilegia evitar procesamiento duplicado sobre
+  garantizar la entrega ante fallos de infraestructura (sin cola de reintentos en el MVP)
+* `app/api/routers/opportunities.py` — REST anidado bajo `/organizations/{slug}/opportunities/...`
+  (recurso en la URL, no query param). `organization_slug` se ignora intencionalmente (comentado
+  en código) en las rutas por-ID — `opportunity_id` (UUID) ya es suficiente identificador en MVP
+* `app/api/routers/health.py` — `GET /health` (liveness) y `GET /health/ready` (DB + 
+  `AIProvider.health()` + `ChannelProvider.health()`, con detalle por dependencia)
+* `app/use_cases/list_open_opportunities.py` — `ListOpenOpportunitiesUseCase`, única lógica nueva
+  de este spec (para que el router de listado no toque `OpportunityRepository` directo)
+* `app/security.py` — `verify_telegram_secret` (nuevo setting `telegram_webhook_secret`)
+* `app/dependencies.py` — cableado completo, providers/servicios/use cases vía `@lru_cache`
+  (lazy, no construcción eager al importar)
+* `app/config.py` corregido: `.env` se resuelve contra la raíz del repo (ruta absoluta desde
+  `__file__`), no contra el cwd — bug preexistente desde spec 001, encontrado al validar
+  credenciales reales
+* Principio: "un bot pertenece a una organización, no al revés" — para MVP resuelto por
+  configuración operativa (URL del webhook), no por modelo de datos
+* Smoke-tested con credenciales reales: `@AmzaCommercialBot` (Telegram) y OpenRouter responden
+  correctamente; los 4 casos del webhook (sin secreto→401, tipo no soportado→200, fallo de
+  negocio→200 sin 404, endpoint REST normal→404 sí propaga) verificados con `curl`
+
 **What does NOT exist yet:**
 
-* API endpoints (FastAPI routers) — webhook Telegram, gestión de oportunidades
-* Dependency injection wiring en `app/dependencies.py`
+* Prueba end-to-end del camino feliz completo (falta seed de Organization/Agent + un chat_id real
+  de Telegram para verificar que el bot responde de verdad — requiere al usuario escribiéndole al
+  bot)
 * Frontend pages con lógica de negocio
 
 ---
 
 # Next Step
 
-**Spec 007 — API Layer.**
+**Definir spec 008.**
 
-`AIProvider`, `ChannelProvider`, `ConversationContextAssembler` y
-`ConversationSummarizationService` ya existen. El siguiente paso es exponerlos vía HTTP: routers
-FastAPI (webhook de Telegram, endpoints de gestión de oportunidades) y el wiring de
-`app/dependencies.py` que hoy está vacío.
+La plataforma queda operable de punta a punta: Telegram → webhook → use cases →
+OpenRouter/Telegram providers → respuesta al cliente, más endpoints de gestión para que un
+asesor humano tome/devuelva oportunidades. Antes de spec 008, validar manualmente el camino feliz
+completo (seed de datos + mensaje real por Telegram).
 
 La hoja de ruta de evoluciones futuras (Memory Extraction, Knowledge Base, AI Task Framework,
 Embedding Search, Background Jobs, Model Routing, Prompt Management, Context Optimization) queda
@@ -330,5 +364,6 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-🟡 En progreso — 006 completo, validado (ruff + mypy limpios, migración aplicada) y committed
-(c34d087). Siguiente: definir y escribir spec 007 (API Layer).
+🟡 En progreso — 007 completo, validado (ruff + mypy limpios, app arrancada y probada con curl
+contra credenciales reales) y committed (0000d9e). Siguiente: validar camino feliz end-to-end
+con un mensaje real de Telegram, luego definir spec 008.
