@@ -205,11 +205,47 @@ They must NOT be modified unless a formal architecture decision is made.
   correctamente; los 4 casos del webhook (sin secreto→401, tipo no soportado→200, fallo de
   negocio→200 sin 404, endpoint REST normal→404 sí propaga) verificados con `curl`
 
+**Validación end-to-end real (post spec 007) — camino feliz confirmado con Telegram real:**
+
+* Seed de datos: `backend/scripts/seed_dev_data.py` — crea `Organization` (`amza-empaques`) +
+  `Agent` (`openai/gpt-4.1-nano`, elegido tras comparar costo real contra un modelo de
+  razonamiento — ver "Decisiones de esta validación" abajo). Idempotente
+* `backend/scripts/register_telegram_webhook.py <url>` — registra el webhook contra una URL
+  pública (ngrok en desarrollo local) sin copiar el bot token/secreto a mano
+* `backend/scripts/inspect_conversations.sql` — dos queries de solo lectura para revisar
+  contactos y conversaciones completas directo en la BD (más confiable que los logs para
+  confirmar que algo realmente se persistió, no solo que el webhook devolvió 200)
+* **Bug real encontrado y corregido:** `ChannelProvider.send()` resolvía `Contact` vía una sesión
+  de BD separada de la transacción del use case — al escribir un contacto nuevo por primera vez,
+  esa sesión no veía la fila todavía sin commit, lanzaba `ContactNotFoundError`, y la transacción
+  completa (contacto, oportunidad, conversación, mensajes) hacía rollback. Cero mensajes al
+  cliente, sin error visible salvo el log. Fix: `send()` ahora recibe el `Contact` ya resuelto por
+  el use case — el provider queda completamente stateless (`core/interfaces/providers.py`,
+  `infrastructure/channels/telegram.py`, `app/use_cases/receive_incoming_message.py`)
+* Fix relacionado: `database_url` con ruta sqlite relativa fallaba ("unable to open database
+  file") al correr scripts desde un directorio distinto a `backend/` — mismo patrón que el bug de
+  `.env` ya corregido, resuelto igual (resolver contra `backend/`, no contra el cwd)
+* **Confirmado con mensajes reales de dos contactos de Telegram distintos**, con respuestas
+  coherentes generadas por el agente y persistidas correctamente en `messages`
+
+**Decisiones de esta validación:**
+
+* `openai/gpt-4.1-nano` elegido sobre `deepseek/deepseek-v4-flash` para el agente: aunque
+  `deepseek` tiene tarifa por token más barata, es un modelo de razonamiento que generó ~110
+  tokens ocultos de "pensamiento" por respuesta — costo real medido ~2.3x mayor para la misma
+  calidad de respuesta en este caso de uso (mensajes cortos de atención al cliente). El campo
+  `usage.cost` de la respuesta de OpenRouter es la fuente de verdad para comparar costo real, no
+  la tabla de precios por token
+* Telegram Bot API no entrega número de teléfono del usuario (solo lo comparte si el usuario usa
+  un botón explícito de "compartir contacto", no implementado). `Contact.phone_number` existe en
+  la entidad pero queda vacío para contactos de Telegram
+* Gap identificado, no corregido (pendiente de decisión de producto): `TelegramUser.username` se
+  recibe en el DTO del webhook pero se descarta — nunca se guarda en `Contact`. Hoy solo se
+  persiste `first_name` (como `display_name`) y `chat_id` (como `external_id`)
+
 **What does NOT exist yet:**
 
-* Prueba end-to-end del camino feliz completo (falta seed de Organization/Agent + un chat_id real
-  de Telegram para verificar que el bot responde de verdad — requiere al usuario escribiéndole al
-  bot)
+* Captura de `username` de Telegram (gap identificado arriba, decisión de producto pendiente)
 * Frontend pages con lógica de negocio
 
 ---
@@ -218,10 +254,9 @@ They must NOT be modified unless a formal architecture decision is made.
 
 **Definir spec 008.**
 
-La plataforma queda operable de punta a punta: Telegram → webhook → use cases →
-OpenRouter/Telegram providers → respuesta al cliente, más endpoints de gestión para que un
-asesor humano tome/devuelva oportunidades. Antes de spec 008, validar manualmente el camino feliz
-completo (seed de datos + mensaje real por Telegram).
+La plataforma está operable de punta a punta y **validada con mensajes reales**: Telegram →
+webhook → use cases → OpenRouter/Telegram providers → respuesta al cliente, más endpoints de
+gestión para que un asesor humano tome/devuelva oportunidades.
 
 La hoja de ruta de evoluciones futuras (Memory Extraction, Knowledge Base, AI Task Framework,
 Embedding Search, Background Jobs, Model Routing, Prompt Management, Context Optimization) queda
@@ -364,6 +399,7 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-🟡 En progreso — 007 completo, validado (ruff + mypy limpios, app arrancada y probada con curl
-contra credenciales reales) y committed (0000d9e). Siguiente: validar camino feliz end-to-end
-con un mensaje real de Telegram, luego definir spec 008.
+🟢 Plataforma operable de punta a punta, validada con mensajes reales de Telegram (dos contactos
+distintos, respuestas coherentes del agente, todo persistido correctamente). Un bug real
+encontrado y corregido en el proceso (`ChannelProvider.send()`, ver detalle arriba) — committed
+(52a5359). Siguiente: definir spec 008.
