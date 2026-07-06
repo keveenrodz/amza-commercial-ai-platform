@@ -13,8 +13,7 @@ from infrastructure.database.base import Base
 class MessageModel(Base):
     __tablename__ = "messages"
     __table_args__ = (
-        sa.Index("ix_messages_conversation_id", "conversation_id"),
-        sa.Index("ix_messages_sent_at", "sent_at"),
+        sa.Index("ix_messages_conversation_id_sent_at", "conversation_id", "sent_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(sa.Uuid(native_uuid=False), primary_key=True)

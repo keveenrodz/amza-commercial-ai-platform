@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
 from core.entities.agent import Agent
 from core.entities.contact import Contact
 from core.entities.conversation import Conversation
+from core.entities.conversation_summary import ConversationSummary
 from core.entities.internal_user import InternalUser
 from core.entities.message import Message
 from core.entities.opportunity import Opportunity
@@ -58,7 +60,32 @@ class MessageRepository(Protocol):
         limit: int,
     ) -> list[Message]: ...
 
+    async def list_since(
+        self,
+        conversation_id: ConversationId,
+        after: datetime | None,
+    ) -> list[Message]:
+        """after es exclusivo: sent_at > after, nunca >= (evita re-resumir el mensaje de corte)."""
+        ...
+
+    async def count_since(
+        self,
+        conversation_id: ConversationId,
+        after: datetime | None,
+    ) -> int:
+        """after es exclusivo, mismo criterio que list_since."""
+        ...
+
     async def save(self, message: Message) -> None: ...
+
+
+class ConversationSummaryRepository(Protocol):
+    async def get_latest(
+        self,
+        conversation_id: ConversationId,
+    ) -> ConversationSummary | None: ...
+
+    async def save(self, summary: ConversationSummary) -> None: ...
 
 
 class ContactRepository(Protocol):
@@ -104,6 +131,7 @@ class UnitOfWork(Protocol):
     opportunities: OpportunityRepository
     conversations: ConversationRepository
     messages: MessageRepository
+    conversation_summaries: ConversationSummaryRepository
     contacts: ContactRepository
     agents: AgentRepository
     organizations: OrganizationRepository

@@ -20,5 +20,9 @@ class Settings(BaseSettings):
 
     telegram_bot_token: str = ""
 
+    working_memory_size: int = 20
+    summary_trigger_messages: int = 30
+    summarization_model: str = "openai/gpt-4.1-nano"
+
 
 settings = Settings()

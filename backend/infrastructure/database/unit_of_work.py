@@ -6,6 +6,7 @@ from core.interfaces.repositories import (
     AgentRepository,
     ContactRepository,
     ConversationRepository,
+    ConversationSummaryRepository,
     InternalUserRepository,
     MessageRepository,
     OpportunityRepository,
@@ -13,6 +14,9 @@ from core.interfaces.repositories import (
 )
 from modules.agents.repositories.agent import SQLAlchemyAgentRepository
 from modules.configuration.repositories.organization import SQLAlchemyOrganizationRepository
+from modules.memory.repositories.conversation_summary import (
+    SQLAlchemyConversationSummaryRepository,
+)
 from modules.opportunities.repositories.contact import SQLAlchemyContactRepository
 from modules.opportunities.repositories.conversation import SQLAlchemyConversationRepository
 from modules.opportunities.repositories.message import SQLAlchemyMessageRepository
@@ -24,6 +28,7 @@ class SQLAlchemyUnitOfWork:
     opportunities: OpportunityRepository
     conversations: ConversationRepository
     messages: MessageRepository
+    conversation_summaries: ConversationSummaryRepository
     contacts: ContactRepository
     agents: AgentRepository
     organizations: OrganizationRepository
@@ -37,6 +42,7 @@ class SQLAlchemyUnitOfWork:
         self.opportunities = SQLAlchemyOpportunityRepository(self._session)
         self.conversations = SQLAlchemyConversationRepository(self._session)
         self.messages = SQLAlchemyMessageRepository(self._session)
+        self.conversation_summaries = SQLAlchemyConversationSummaryRepository(self._session)
         self.contacts = SQLAlchemyContactRepository(self._session)
         self.agents = SQLAlchemyAgentRepository(self._session)
         self.organizations = SQLAlchemyOrganizationRepository(self._session)

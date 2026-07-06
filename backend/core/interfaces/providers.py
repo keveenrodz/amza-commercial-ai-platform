@@ -1,10 +1,27 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from core.entities.message import Message
 from core.entities.opportunity import Opportunity
 from core.value_objects.identifiers import AgentId
+
+
+@dataclass(frozen=True)
+class ConversationContext:
+    summary: str | None
+    recent_messages: list[Message]
+
+
+@dataclass(frozen=True)
+class CompletionRequest:
+    model: str
+    system_prompt: str
+    user_prompt: str
+    temperature: float = 0.0
+    max_tokens: int | None = None
+    timeout: float | None = None
 
 
 class ChannelProvider(Protocol):
@@ -14,6 +31,8 @@ class ChannelProvider(Protocol):
 
 
 class AIProvider(Protocol):
-    async def generate(self, messages: list[Message], agent_id: AgentId) -> str: ...
+    async def generate(self, context: ConversationContext, agent_id: AgentId) -> str: ...
+
+    async def complete(self, request: CompletionRequest) -> str: ...
 
     async def health(self) -> bool: ...

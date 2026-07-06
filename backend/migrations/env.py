@@ -11,6 +11,7 @@ from app.config import settings
 from infrastructure.database.base import Base
 from modules.agents.models.agent import AgentModel  # noqa: F401
 from modules.configuration.models.organization import OrganizationModel  # noqa: F401
+from modules.memory.models.conversation_summary import ConversationSummaryModel  # noqa: F401
 from modules.opportunities.models.contact import ContactModel  # noqa: F401
 from modules.opportunities.models.conversation import ConversationModel  # noqa: F401
 from modules.opportunities.models.message import MessageModel  # noqa: F401

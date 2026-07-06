@@ -3,8 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.services.conversation_context_assembler import ConversationContextAssembler
+from app.services.conversation_summarization_service import ConversationSummarizationService
 from core.entities.contact import Contact
 from core.entities.conversation import Conversation
 from core.entities.message import Message
@@ -23,7 +26,7 @@ from core.value_objects.identifiers import (
 )
 from infrastructure.database.unit_of_work import SQLAlchemyUnitOfWork
 
-_AI_CONTEXT_MESSAGES = 50
+logger = structlog.get_logger()
 
 
 @dataclass(frozen=True)
@@ -43,10 +46,16 @@ class ReceiveIncomingMessageUseCase:
         session_factory: async_sessionmaker[AsyncSession],
         ai_provider: AIProvider,
         channel_provider: ChannelProvider,
+        context_assembler: ConversationContextAssembler,
+        summarization_service: ConversationSummarizationService,
+        summary_trigger_messages: int,
     ) -> None:
         self._session_factory = session_factory
         self._ai_provider = ai_provider
         self._channel_provider = channel_provider
+        self._context_assembler = context_assembler
+        self._summarization_service = summarization_service
+        self._summary_trigger_messages = summary_trigger_messages
 
     async def execute(self, input: IncomingMessageInput) -> Opportunity:  # noqa: A002
         async with SQLAlchemyUnitOfWork(self._session_factory) as uow:
@@ -123,10 +132,8 @@ class ReceiveIncomingMessageUseCase:
             await uow.opportunities.save(opportunity)
 
             if opportunity.attention_mode == AttentionMode.AI:
-                context = await self._build_context(conversation, uow)
-                response_text = await self._ai_provider.generate(
-                    context, opportunity.agent_id
-                )
+                context = await self._context_assembler.assemble(conversation.id, uow)
+                response_text = await self._ai_provider.generate(context, opportunity.agent_id)
                 response_message = Message(
                     id=MessageId.generate(),
                     conversation_id=conversation.id,
@@ -140,25 +147,25 @@ class ReceiveIncomingMessageUseCase:
                 await self._channel_provider.send(response_message, opportunity)
 
             await uow.commit()
-            return opportunity
 
-    async def _build_context(
-        self,
-        conversation: Conversation,
-        uow: SQLAlchemyUnitOfWork,
-    ) -> list[Message]:
-        """
-        Retorna los mensajes de contexto para AIProvider.generate().
+        if opportunity.attention_mode == AttentionMode.AI:
+            await self._maybe_summarize(conversation.id)
 
-        SPEC 006 — Resumen por inactividad:
-        Cuando last_activity_at lleva más de 2 horas sin actividad, este método deberá:
-        - Llamar AIProvider.summarize(all_messages, agent_id) -> str
-        - Guardar el resumen como Message(sender_role=SYSTEM) en DB para trazabilidad
-        - Retornar [summary_message] + últimos 50 mensajes no-SYSTEM
-        El diseño exacto (costos, cuándo resumir vs. truncar) se decide en spec 006
-        junto con la implementación de AIProvider.
-        """
-        return await uow.messages.list_by_conversation(
-            conversation.id,
-            limit=_AI_CONTEXT_MESSAGES,
-        )
+        return opportunity
+
+    async def _maybe_summarize(self, conversation_id: ConversationId) -> None:
+        # Segunda transacción, deliberadamente separada de la principal: el cliente ya recibió
+        # su respuesta vía channel_provider.send() antes de llegar aquí, así que un fallo o la
+        # latencia de este bloque no le afectan. Best-effort — si falla, se loguea y se
+        # recalculará en el siguiente disparo. Sin asyncio.create_task(): sin cola de tareas ni
+        # supervisión, una excepción ahí se tragaría en silencio.
+        try:
+            async with SQLAlchemyUnitOfWork(self._session_factory) as uow:
+                previous = await uow.conversation_summaries.get_latest(conversation_id)
+                since = previous.up_to_sent_at if previous else None
+                count = await uow.messages.count_since(conversation_id, after=since)
+                if count >= self._summary_trigger_messages:
+                    await self._summarization_service.execute(conversation_id, uow)
+                    await uow.commit()
+        except Exception:
+            logger.warning("summary.generation_failed", conversation_id=str(conversation_id))

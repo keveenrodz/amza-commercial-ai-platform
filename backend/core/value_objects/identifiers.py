@@ -54,3 +54,8 @@ class ConversationId(_BaseId):
 @dataclass(frozen=True)
 class MessageId(_BaseId):
     pass
+
+
+@dataclass(frozen=True)
+class ConversationSummaryId(_BaseId):
+    pass

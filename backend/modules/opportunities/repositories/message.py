@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from datetime import datetime
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.entities.message import Message
@@ -61,6 +63,33 @@ class SQLAlchemyMessageRepository:
             .limit(limit)
         )
         return [_to_entity(m) for m in reversed(result.scalars().all())]
+
+    async def list_since(
+        self,
+        conversation_id: ConversationId,
+        after: datetime | None,
+    ) -> list[Message]:
+        # after es exclusivo: sent_at > after, nunca >= (evita re-resumir el mensaje de corte)
+        stmt = select(MessageModel).where(MessageModel.conversation_id == conversation_id.value)
+        if after is not None:
+            stmt = stmt.where(MessageModel.sent_at > after)
+        result = await self._session.execute(stmt.order_by(MessageModel.sent_at.asc()))
+        return [_to_entity(m) for m in result.scalars().all()]
+
+    async def count_since(
+        self,
+        conversation_id: ConversationId,
+        after: datetime | None,
+    ) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(MessageModel)
+            .where(MessageModel.conversation_id == conversation_id.value)
+        )
+        if after is not None:
+            stmt = stmt.where(MessageModel.sent_at > after)
+        result = await self._session.execute(stmt)
+        return result.scalar_one()
 
     async def save(self, message: Message) -> None:
         await self._session.merge(_from_entity(message))
