@@ -89,7 +89,8 @@ They must NOT be modified unless a formal architecture decision is made.
 | 003 Persistence Model | ✅ | ✅ | ✅ | ✅ |
 | 004 Repository Implementations | ✅ | ✅ | ✅ | ✅ |
 | 005 Application Services | ✅ | ✅ | ✅ | ✅ |
-| 006 (por definir) | ❌ | — | — | — |
+| 006 Conversation Memory & Providers | ✅ | ✅ | ✅ | ✅ |
+| 007 (por definir — API Layer) | ❌ | — | — | — |
 
 ---
 
@@ -140,27 +141,58 @@ They must NOT be modified unless a formal architecture decision is made.
 * 3 excepciones nuevas en `core/exceptions/domain.py`: `OrganizationSlugNotFoundError`, `InternalUserNotFoundError`, `NoActiveAgentError`
 * `_build_context()` en `ReceiveIncomingMessageUseCase` — extension point documentado para el resumen por inactividad (spec 006)
 
+**Conversation Memory & Providers (spec 006):**
+
+* `core/interfaces/providers.py` — `AIProvider.generate(context, agent_id)` ahora recibe
+  `ConversationContext` (resumen + mensajes recientes) en vez de `list[Message]` crudo; nuevo
+  `AIProvider.complete(request: CompletionRequest)` como primitiva de texto libre, sin atarse a
+  ningún `Agent` — usada por tareas de IA que no son "conversar" (hoy: resumir)
+* Principio arquitectónico frozen: los servicios de aplicación deciden qué tarea de IA ejecutar;
+  `AIProvider` únicamente ejecuta inferencias, nunca contiene lógica de negocio
+* `core/entities/conversation_summary.py` — `ConversationSummary`, entidad propia (no
+  `Message(SYSTEM)`), append-only y versionada (`version` monótono, nunca UPDATE)
+* `modules/memory/` — `ConversationSummaryModel` + `SQLAlchemyConversationSummaryRepository`
+* `MessageRepository` gana `list_since`/`count_since` (cursor `after` exclusivo)
+* `app/services/conversation_context_assembler.py` — `ConversationContextAssembler`: ensambla
+  contexto de respuesta (últimos `working_memory_size` mensajes + último resumen)
+* `app/services/conversation_summarization_service.py` — `ConversationSummarizationService`:
+  sabe generar un resumen, nunca decide cuándo — esa decisión vive en cada caller
+* `ReceiveIncomingMessageUseCase` dispara resumen por umbral (`summary_trigger_messages`,
+  default 30) en una segunda transacción post-commit, best-effort (try/except, sin
+  `asyncio.create_task`)
+* `AssignToAdvisorUseCase`/`ReturnToAIUseCase` disparan resumen incondicionalmente al cambiar de
+  modo (evento de negocio, no de tamaño)
+* `infrastructure/ai/openrouter.py` — `OpenRouterAIProvider` (primera implementación de
+  `AIProvider`); `infrastructure/channels/telegram.py` — `TelegramChannelProvider` (primera
+  implementación de `ChannelProvider`)
+* Migración `0003_add_conversation_summaries.py` — nueva tabla + reemplaza los 2 índices simples
+  de `messages` por un compuesto `(conversation_id, sent_at)`
+* ADR documentado en el spec (no bloqueante, a evaluar si el acoplamiento molesta en la práctica):
+  mover la resolución de `Agent`/`Contact` fuera de los providers hacia los servicios de
+  aplicación, para que `OpenRouterAIProvider`/`TelegramChannelProvider` no dependan de
+  repositorios
+
 **What does NOT exist yet:**
 
-* Implementaciones concretas de `AIProvider` y `ChannelProvider` (adaptadores Telegram + OpenRouter)
-* API endpoints (FastAPI routers)
+* API endpoints (FastAPI routers) — webhook Telegram, gestión de oportunidades
+* Dependency injection wiring en `app/dependencies.py`
 * Frontend pages con lógica de negocio
 
 ---
 
 # Next Step
 
-**Escribir e implementar spec 006.**
+**Spec 007 — API Layer.**
 
-El stack de negocio está completo hasta la capa de aplicación. El siguiente paso es conectar la plataforma con el mundo exterior: implementar los adaptadores concretos de `AIProvider` y `ChannelProvider`, y exponer los casos de uso a través de API endpoints FastAPI.
+`AIProvider`, `ChannelProvider`, `ConversationContextAssembler` y
+`ConversationSummarizationService` ya existen. El siguiente paso es exponerlos vía HTTP: routers
+FastAPI (webhook de Telegram, endpoints de gestión de oportunidades) y el wiring de
+`app/dependencies.py` que hoy está vacío.
 
-Spec 006 propuesto — **Provider Implementations + API Layer**:
-- Adaptador `TelegramChannelProvider` (`infrastructure/channels/telegram.py`)
-- Adaptador `OpenRouterAIProvider` (`infrastructure/ai/openrouter.py`) — incluye la discusión de resumen por inactividad y optimización de costos LLM (decisión postergada desde spec 005)
-- Routers FastAPI: webhook de Telegram, endpoints de gestión de oportunidades
-- Dependency injection wiring en `app/dependencies.py`
-
-Confirmar alcance exacto con el usuario antes de escribir el spec.
+La hoja de ruta de evoluciones futuras (Memory Extraction, Knowledge Base, AI Task Framework,
+Embedding Search, Background Jobs, Model Routing, Prompt Management, Context Optimization) queda
+registrada en la sección "Future Evolution" de `006_Conversation_Memory_and_Providers.md` —
+deliberadamente fuera de alcance hasta que exista evidencia de negocio, no antes.
 
 ---
 
@@ -298,4 +330,5 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-🟡 En progreso — 005 completo y committed (ace5e30). Siguiente: definir y escribir spec 006.
+🟡 En progreso — 006 completo, validado (ruff + mypy limpios, migración aplicada) y committed
+(c34d087). Siguiente: definir y escribir spec 007 (API Layer).
