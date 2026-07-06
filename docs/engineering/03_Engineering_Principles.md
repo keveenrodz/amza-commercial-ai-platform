@@ -159,7 +159,10 @@ Nunca realizar optimizaciones prematuras.
 
 No crearla.
 
-Las abstracciones deberán aparecer únicamente cuando exista una necesidad real.
+Toda nueva abstracción (`Protocol`, interfaz, capa intermedia) deberá justificar la existencia
+de al menos dos implementaciones posibles, o representar un límite arquitectónico claro (un
+puerto hacia infraestructura: base de datos, proveedor de IA, canal de mensajería). Si no
+cumple ninguna de las dos condiciones, preferir una clase concreta.
 
 ---
 
