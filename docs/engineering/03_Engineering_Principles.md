@@ -245,6 +245,23 @@ Las pruebas deberán ser:
 
 No escribir pruebas frágiles o excesivamente acopladas a la implementación.
 
+## Regla formal de pruebas automatizadas (vigente desde spec 008)
+
+Toda especificación que introduzca comportamiento nuevo deberá incluir pruebas automatizadas de
+ese comportamiento antes de poder considerarse completa.
+
+Cuando una especificación modifique comportamiento existente, también deberá actualizar las
+pruebas afectadas.
+
+Retomar retroactivamente las pruebas de especificaciones anteriores es deuda técnica y deberá
+registrarse por separado — no bloquea el avance de especificaciones nuevas, pero tampoco se
+resuelve implícitamente por omisión.
+
+*Automated Testing: every specification introducing new behavior must include automated tests
+covering that behavior before the specification is considered complete. When a specification
+modifies existing behavior, the affected tests must also be updated. Retrofitting tests for
+previous specifications is technical debt and shall be tracked separately.*
+
 ---
 
 # Observabilidad
