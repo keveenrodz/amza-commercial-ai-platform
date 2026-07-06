@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from core.entities.contact import Contact
 from core.entities.message import Message
-from core.entities.opportunity import Opportunity
 from core.value_objects.identifiers import AgentId
 
 
@@ -25,7 +25,7 @@ class CompletionRequest:
 
 
 class ChannelProvider(Protocol):
-    async def send(self, message: Message, opportunity: Opportunity) -> None: ...
+    async def send(self, message: Message, contact: Contact) -> None: ...
 
     async def health(self) -> bool: ...
 

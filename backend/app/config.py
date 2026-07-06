@@ -1,11 +1,13 @@
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # .env vive en la raíz del repo, no en backend/. Resuelto contra este archivo (no contra el cwd)
 # para que funcione igual con `cd backend && python main.py` que desde cualquier otro directorio.
 # Docker Compose no depende de esto: inyecta las variables directamente vía `env_file:`.
-_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+_ENV_FILE = _BACKEND_DIR.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -21,6 +23,20 @@ class Settings(BaseSettings):
     debug: bool = False
 
     database_url: str = "sqlite:///./data/amza.db"
+
+    @field_validator("database_url")
+    @classmethod
+    def _resolve_sqlite_path(cls, v: str) -> str:
+        # Mismo problema que _ENV_FILE arriba: una ruta sqlite relativa ("./data/amza.db")
+        # depende del cwd en el momento de ejecutar, no de dónde vive el proyecto. Se resuelve
+        # contra backend/ sin importar si el valor viene del default, de .env o de una variable
+        # de entorno real. URLs no-sqlite (Postgres en producción) pasan sin tocar.
+        prefix = "sqlite:///"
+        if v.startswith(prefix):
+            path = v.removeprefix(prefix)
+            if not path.startswith("/"):
+                return f"{prefix}{(_BACKEND_DIR / path).resolve()}"
+        return v
 
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"

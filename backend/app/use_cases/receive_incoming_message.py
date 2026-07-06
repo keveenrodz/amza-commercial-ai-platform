@@ -144,7 +144,7 @@ class ReceiveIncomingMessageUseCase:
                     sent_at=datetime.now(tz=UTC),
                 )
                 await uow.messages.save(response_message)
-                await self._channel_provider.send(response_message, opportunity)
+                await self._channel_provider.send(response_message, contact)
 
             await uow.commit()
 

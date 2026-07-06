@@ -489,7 +489,6 @@ def get_ai_provider() -> AIProvider:
 @lru_cache
 def get_channel_provider() -> ChannelProvider:
     return TelegramChannelProvider(
-        session_factory=AsyncSessionFactory,
         bot_token=settings.telegram_bot_token,
     )
 

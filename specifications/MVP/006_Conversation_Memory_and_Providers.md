@@ -40,8 +40,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from core.entities.contact import Contact
 from core.entities.message import Message
-from core.entities.opportunity import Opportunity
 from core.value_objects.identifiers import AgentId
 
 
@@ -62,7 +62,7 @@ class CompletionRequest:
 
 
 class ChannelProvider(Protocol):
-    async def send(self, message: Message, opportunity: Opportunity) -> None: ...
+    async def send(self, message: Message, contact: Contact) -> None: ...
 
     async def health(self) -> bool: ...
 
@@ -86,6 +86,20 @@ el inicio que agregarlo como cambio breaking después.
 un resumen para esta conversación". `ConversationSummarizationService` nunca persiste un resumen
 vacío (ver guard en la sección 8), así que no existe el caso "existe pero está vacío" — no hace
 falta un campo `has_summary` adicional.
+
+**Corrección post end-to-end (encontrada probando con Telegram real, no en el diseño original):**
+`ChannelProvider.send()` originalmente recibía `Message` + `Opportunity`, y el provider resolvía
+`Contact` internamente vía `ContactRepository` a partir de `opportunity.contact_id` (mismo
+criterio que `AIProvider.generate()` con `Agent`, ver sección 13). Eso rompía en el caso real más
+común — un contacto nuevo escribiendo por primera vez — porque el `Contact` se crea en la misma
+transacción del use case que todavía no ha hecho `commit()`, y el provider abre una **sesión
+separada** para buscarlo: esa sesión no ve la fila sin confirmar, lanza `ContactNotFoundError`, y
+la transacción completa hace rollback — se pierde todo, nunca llega respuesta, sin ningún error
+visible más allá de un log. La firma cambió a `send(message: Message, contact: Contact)`: el use
+case ya tiene el `Contact` en memoria, se lo pasa directo, el provider no vuelve a tocar la BD.
+Esto resuelve — para este provider específicamente — el ADR pendiente de la sección "ADR
+pendiente de evaluación durante implementación": la evidencia de que el acoplamiento a
+repositorios complica el código en la práctica ya existe, no es hipotética.
 
 ---
 
@@ -576,10 +590,12 @@ definir explícitamente en la implementación).
 
 ## 13. Nuevo — `infrastructure/channels/telegram.py`
 
-`TelegramChannelProvider` implementa `ChannelProvider`. `send()` hace `POST` a
-`https://api.telegram.org/bot{token}/sendMessage` usando `Contact.external_id` como `chat_id`
-(ya existe en la entidad desde spec 002/004, no requiere cambios). `health()` hace `GET
-.../getMe`.
+`TelegramChannelProvider` implementa `ChannelProvider`. `send()` recibe el `Contact` directo (ver
+corrección en sección 1 — no se resuelve vía repositorio, el use case ya lo tiene en memoria) y
+hace `POST` a `https://api.telegram.org/bot{token}/sendMessage` usando `Contact.external_id` como
+`chat_id` (ya existe en la entidad desde spec 002/004, no requiere cambios ahí). `health()` hace
+`GET .../getMe`. El provider queda completamente stateless — no recibe `session_factory` en su
+constructor, no tiene ninguna razón para tocar la BD.
 
 ---
 
@@ -587,6 +603,13 @@ definir explícitamente en la implementación).
 
 No bloquea el inicio de 006. Se decide **al implementar** `OpenRouterAIProvider` (sección 12),
 no antes — anotado aquí para no perderlo ni re-discutirlo desde cero.
+
+**Actualización (post spec 007, prueba real de punta a punta):** el mismo acoplamiento en
+`TelegramChannelProvider` sí complicó el código en la práctica — ver corrección en la sección 1.
+Queda como evidencia a favor de aplicar el mismo cambio aquí, en `OpenRouterAIProvider`, aunque
+el riesgo es menor: `Agent` nunca se crea en la misma transacción que lo consulta (siempre
+preexiste, sembrado o gestionado por separado), así que no puede darse el mismo bug de
+lectura-antes-de-commit. El ADR de abajo sigue sin resolverse para este provider específicamente.
 
 **Contexto.** `AIProvider.generate(context, agent_id)` obliga al provider a resolver
 `agent_id → Agent` para obtener `model` + `system_prompt`. Eso le da al provider una dependencia
