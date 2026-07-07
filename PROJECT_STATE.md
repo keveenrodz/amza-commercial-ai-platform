@@ -92,7 +92,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 006 Conversation Memory & Providers | ✅ | ✅ | ✅ | ✅ |
 | 007 API Layer | ✅ | ✅ | ✅ | ✅ |
 | 008 Security & Identity | ✅ | ✅ | ✅ | ✅ |
-| 009 (por definir) | ❌ | — | — | — |
+| 009 Advisor Workspace | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -295,30 +295,91 @@ They must NOT be modified unless a formal architecture decision is made.
   desactivación en caliente confirmada — pierde acceso de inmediato en `/auth/me` **y** en el
   endpoint de negocio real, sin esperar a que expire el JWT
 
+**Advisor Workspace (spec 009):**
+
+* Primera interfaz de usuario real del proyecto. No es un CRM: login con Google → lista de
+  oportunidades (3 pestañas: Sin asignar / Mías / Todas) → historial de conversación → Tomar /
+  Devolver a IA. Nada de reportes, configuración, ni gestión de usuarios (sigue siendo
+  `create_user.py`)
+* **Principio arquitectónico**: el navegador se comunica exclusivamente con Next.js — Next.js es
+  el único consumidor HTTP del backend (Backend-for-Frontend). `frontend/next.config.ts` hace
+  proxy puro (`rewrites()`) de `/api/*` hacia FastAPI; el navegador nunca conoce la URL real del
+  backend, cero `CORSMiddleware`
+* Corrección de contrato, no feature nueva: `OpportunityResponse.assigned_advisor_id` y
+  `CurrentUserResponse.organization_slug` — ambos DTOs estaban incompletos, no es que el frontend
+  "necesitara algo extra"
+* **Detalle crítico encontrado durante implementación**: `GOOGLE_REDIRECT_URI` debe apuntar al
+  proxy de Next.js (`:3000/api/auth/google/callback`), nunca directo al backend (`:8000/...`) — si
+  no, la cookie de sesión queda con el origen equivocado y nunca viaja en los `fetch("/api/...")`
+  reales del frontend. Cambiado también en Google Cloud Console
+  Ver `docs/ops/onboarding_internal_users.md` si hace falta recordar cómo se actualiza esto
+* `POST /auth/logout` agregado — faltaba en el flujo original, un workspace real lo necesita
+* React Query como única fuente de datos del cliente (`useQuery`/`useMutation`, nunca
+  `useEffect`+`fetch` directo); estado derivado siempre `.filter()`, nunca `useState` propio
+* Primer test e2e del proyecto (Playwright, `frontend/tests/e2e/`) — intercepta `/api/*` a nivel
+  de navegador en vez de requerir backend+Google reales; la lógica de auth ya está probada a
+  fondo en `tests/test_security_and_identity.py` (backend), este e2e cubre lo que esos tests no
+  pueden: que el frontend consuma el contrato correctamente
+* **Dos bugs reales encontrados en validación manual, corregidos:**
+  1. `/auth/logout` respondía `200` con body vacío; `apiFetch()` del frontend siempre intenta
+     `.json()` salvo `204` — un `200` vacío rompía ese parseo y la mutación fallaba en silencio
+     antes de llegar a `onSuccess` (el botón "Cerrar sesión" no hacía nada visible). Fix en ambos
+     lados: el backend ahora siempre responde JSON en 200, y `apiFetch()` ya no asume que todo 200
+     trae body
+  2. Al Tomar/Devolver, el botón mostraba por un instante el estado del *otro* lado antes de
+     navegar — causa: `invalidateQueries` sobre una query sin observador activo (la lista, mientras
+     se está en la página de detalle) solo marca la caché como vieja, el refetch de verdad ocurre
+     al volver a montar `/opportunities`, mostrando el dato viejo un instante antes de refrescar.
+     Fix: `removeQueries` en vez de `invalidateQueries` — sin dato viejo que mostrar, solo loading
+     normal
+* Validado manualmente de punta a punta: login real con Google, las tres pestañas, tomar/devolver
+  sin parpadeo, logout funcional
+
+**Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
+preparar un despliegue más robusto):
+
+| Riesgo | Estado |
+|---|---|
+| SQLite (contención de escritura) | Aceptado para MVP — con frontend, Telegram y asesor escriben potencialmente sobre las mismas oportunidades |
+| `_pending_states` en memoria sin expiración activa (spec 008) | Aceptado para MVP |
+| Secretos en `.env` sin rotación ni vault | Aceptado para MVP — adecuado solo para despliegues de una sola máquina |
+| Sin cola de reintentos para fallos de infraestructura | Aceptado para MVP |
+| Sin revocación explícita de JWT | Mitigado — `get_current_user()` valida contra BD en cada request |
+| Protección CSRF pendiente | Mitigación parcial — cookies `HttpOnly` + `SameSite=Lax` |
+
 **What does NOT exist yet:**
 
 * Captura de `username` de Telegram (gap identificado en spec 007, decisión de producto pendiente)
-* Frontend pages con lógica de negocio — ahora sí hay con qué autenticarse (`/auth/google/login`,
-  `/auth/me`)
 * `MicrosoftOAuthProvider` (registrado en Future Evolution de spec 008, sin diseño)
 * Revocación de JWT / lista negra (aceptado para MVP, ver spec 008 sección 4)
+* Instrumentación de métricas del piloto (ver "Next Step" — se acuerdan antes de instrumentar)
 
 ---
 
 # Next Step
 
-**Definir spec 009.**
+**"Pilot Validation" (Operational Validation) — no es una spec técnica, no se numera.**
 
-La plataforma está operable de punta a punta, **validada con mensajes reales de Telegram y login
-real de Google**, y ya no está abierta al público. El candidato natural es el frontend de asesor
-(dashboard de oportunidades + login vía Google) — spec 008 dejó `/auth/google/login` y `/auth/me`
-específicamente para esto.
+La plataforma está operable de punta a punta, protegida, y con una interfaz real para que un
+asesor humano trabaje. No se está construyendo software — se está validando una hipótesis de
+negocio: que alguien de Amza Empaques use el Advisor Workspace durante unos días reales, antes de
+retomar cualquier ítem del roadmap tecnológico.
+
+**Antes de empezar, definir qué significa éxito** (no instrumentarlo todavía, solo acordarlo):
+tiempo promedio para tomar una conversación, porcentaje devuelto a la IA, incidencias reportadas,
+satisfacción cualitativa del asesor. Sin esto, el piloto termina siendo "se sintió bien" — difícil
+de convertir en decisiones.
+
+Sugerencia no bloqueante: con arquitectura, seguridad, tests, y frontend ya funcionando, vale la
+pena escribir ADRs cortos para las decisiones que ya demostraron ser valiosas (candidatas: BFF,
+`ConversationSummary`, `AIProvider.generate()` vs `complete()`, OAuth sin auto-provisioning, JWT
+validado contra BD, proxy de Next.js) — cinco o seis, no todas.
 
 La hoja de ruta de evoluciones futuras (Memory Extraction, Knowledge Base, AI Task Framework,
 Embedding Search, Background Jobs, Model Routing, Prompt Management, Context Optimization,
-`MicrosoftOAuthProvider`) queda registrada en las secciones "Future Evolution" de
+`MicrosoftOAuthProvider`) queda registrada en "Future Evolution" de
 `006_Conversation_Memory_and_Providers.md` y `008_Security_and_Identity.md` — deliberadamente
-fuera de alcance hasta que exista evidencia de negocio, no antes.
+fuera de alcance hasta que el piloto real dé evidencia de qué hace falta, no antes.
 
 Política vigente desde spec 008: toda spec nueva debe incluir tests de lo que introduce; si
 modifica comportamiento existente, actualiza los tests afectados (ver
@@ -460,7 +521,8 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-🟢 Plataforma operable de punta a punta y ya protegida — spec 008 (Security & Identity) completa,
-validada con tests automatizados (primera suite del proyecto) y con Google OAuth real contra dos
-cuentas reales, incluida desactivación en caliente. Committed (a068865). Siguiente: definir
-spec 009 (candidato natural: frontend de asesor).
+🟢 Plataforma completa de punta a punta: dominio, persistencia, memoria conversacional, providers
+reales (Telegram + OpenRouter), API protegida (Google OAuth + JWT), y ahora un frontend real
+(Advisor Workspace) — validado manualmente con login real, las tres pestañas, y tomar/devolver
+sin bugs. Siguiente: no una spec — un piloto operativo con Amza Empaques, con criterios de éxito
+definidos antes de empezar.
