@@ -48,5 +48,15 @@ class Settings(BaseSettings):
     summary_trigger_messages: int = 30
     summarization_model: str = "openai/gpt-4.1-nano"
 
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    # Debe coincidir exactamente con el redirect URI registrado en Google Cloud Console. Cambia
+    # cada vez que cambia la URL pública de desarrollo (ngrok) -- mismo patrón que el webhook de
+    # Telegram, no hay forma de evitarlo sin un dominio fijo.
+    google_redirect_uri: str = ""
+
+    jwt_secret: str = ""
+    jwt_ttl_hours: int = 24
+
 
 settings = Settings()

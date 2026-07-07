@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.routers.auth import router as auth_router
 from app.api.routers.health import router as health_router
 from app.api.routers.opportunities import router as opportunities_router
 from app.api.routers.telegram_webhook import router as telegram_webhook_router
@@ -24,6 +25,7 @@ def create_application() -> FastAPI:
     register_exception_handlers(application)
 
     application.include_router(health_router)
+    application.include_router(auth_router)
     application.include_router(telegram_webhook_router)
     application.include_router(opportunities_router)
 

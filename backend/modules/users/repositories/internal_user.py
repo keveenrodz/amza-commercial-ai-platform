@@ -22,6 +22,19 @@ def _to_entity(model: InternalUserModel) -> InternalUser:
     )
 
 
+def _from_entity(entity: InternalUser) -> InternalUserModel:
+    return InternalUserModel(
+        id=entity.id.value,
+        organization_id=entity.organization_id.value,
+        full_name=entity.full_name,
+        email=entity.email.lower(),
+        role=entity.role.value,
+        status=entity.status.value,
+        created_at=entity.created_at,
+        updated_at=entity.updated_at,
+    )
+
+
 class SQLAlchemyInternalUserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -32,6 +45,16 @@ class SQLAlchemyInternalUserRepository:
         )
         model = result.scalar_one_or_none()
         return _to_entity(model) if model else None
+
+    async def get_by_email(self, email: str) -> InternalUser | None:
+        result = await self._session.execute(
+            select(InternalUserModel).where(InternalUserModel.email == email.lower())
+        )
+        model = result.scalar_one_or_none()
+        return _to_entity(model) if model else None
+
+    async def save(self, internal_user: InternalUser) -> None:
+        await self._session.merge(_from_entity(internal_user))
 
     async def list_advisors_by_organization(
         self,

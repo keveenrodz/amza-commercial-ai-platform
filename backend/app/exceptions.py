@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from core.exceptions.domain import (
+    AccessDeniedError,
     DomainError,
     InternalUserNotFoundError,
     InvalidStatusTransitionError,
@@ -27,6 +28,8 @@ _UNPROCESSABLE_ERRORS = (
     InvalidStatusTransitionError,
     OpportunityAlreadyClosedError,
 )
+
+_FORBIDDEN_ERRORS = (AccessDeniedError,)
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -55,6 +58,8 @@ def register_exception_handlers(app: FastAPI) -> None:
             return JSONResponse(status_code=404, content={"detail": str(exc)})
         if isinstance(exc, _UNPROCESSABLE_ERRORS):
             return JSONResponse(status_code=422, content={"detail": str(exc)})
+        if isinstance(exc, _FORBIDDEN_ERRORS):
+            return JSONResponse(status_code=403, content={"detail": "Access denied"})
         logger.warning(
             "domain.error.unhandled",
             error=str(exc),

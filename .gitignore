@@ -23,6 +23,9 @@ htmlcov/
 # Alembic
 backend/data/
 
+# Test DB (creada y destruida por tests/conftest.py)
+backend/tests/test.db
+
 # Node.js
 node_modules/
 .npm

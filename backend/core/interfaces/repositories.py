@@ -121,10 +121,16 @@ class OrganizationRepository(Protocol):
 class InternalUserRepository(Protocol):
     async def get_by_id(self, id: InternalUserId) -> InternalUser | None: ...
 
+    async def get_by_email(self, email: str) -> InternalUser | None:
+        """email se normaliza a minúsculas antes de comparar."""
+        ...
+
     async def list_advisors_by_organization(
         self,
         organization_id: OrganizationId,
     ) -> list[InternalUser]: ...
+
+    async def save(self, internal_user: InternalUser) -> None: ...
 
 
 class UnitOfWork(Protocol):

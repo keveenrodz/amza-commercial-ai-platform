@@ -73,3 +73,13 @@ class NoActiveAgentError(DomainError):
     def __init__(self, organization_id: OrganizationId) -> None:
         super().__init__(f"No active agent found for organization {organization_id}")
         self.organization_id = organization_id
+
+
+class AccessDeniedError(DomainError):
+    """Alguien probó con éxito ser dueño de un email vía OAuth, pero no existe ningún
+    InternalUser activo para ese email. Distinto de InternalUserNotFoundError -- ese es un lookup
+    por ID dentro de un flujo ya autenticado; este es el resultado de un intento de login."""
+
+    def __init__(self, email: str) -> None:
+        super().__init__(f"No active InternalUser found for email {email!r}")
+        self.email = email

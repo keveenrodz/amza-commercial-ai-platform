@@ -6,12 +6,15 @@ from app.config import settings
 from app.services.conversation_context_assembler import ConversationContextAssembler
 from app.services.conversation_summarization_service import ConversationSummarizationService
 from app.use_cases.assign_to_advisor import AssignToAdvisorUseCase
+from app.use_cases.authenticate_with_provider import AuthenticateUseCase
 from app.use_cases.get_conversation_history import GetConversationHistoryUseCase
 from app.use_cases.list_open_opportunities import ListOpenOpportunitiesUseCase
 from app.use_cases.receive_incoming_message import ReceiveIncomingMessageUseCase
 from app.use_cases.return_to_ai import ReturnToAIUseCase
+from core.interfaces.auth import AuthProvider
 from core.interfaces.providers import AIProvider, ChannelProvider
 from infrastructure.ai.openrouter import OpenRouterAIProvider
+from infrastructure.auth.google import GoogleOAuthProvider
 from infrastructure.channels.telegram import TelegramChannelProvider
 from infrastructure.database.session import AsyncSessionFactory
 
@@ -79,3 +82,19 @@ def get_get_conversation_history_use_case() -> GetConversationHistoryUseCase:
 @lru_cache
 def get_list_open_opportunities_use_case() -> ListOpenOpportunitiesUseCase:
     return ListOpenOpportunitiesUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_google_auth_provider() -> AuthProvider:
+    return GoogleOAuthProvider(
+        client_id=settings.google_client_id,
+        client_secret=settings.google_client_secret,
+    )
+
+
+@lru_cache
+def get_authenticate_use_case() -> AuthenticateUseCase:
+    return AuthenticateUseCase(
+        session_factory=AsyncSessionFactory,
+        auth_provider=get_google_auth_provider(),
+    )

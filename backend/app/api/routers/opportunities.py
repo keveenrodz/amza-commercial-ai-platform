@@ -13,14 +13,21 @@ from app.dependencies import (
     get_list_open_opportunities_use_case,
     get_return_to_ai_use_case,
 )
+from app.security import get_current_user
 from app.use_cases.assign_to_advisor import AssignToAdvisorUseCase
 from app.use_cases.get_conversation_history import GetConversationHistoryUseCase
 from app.use_cases.list_open_opportunities import ListOpenOpportunitiesUseCase
 from app.use_cases.return_to_ai import ReturnToAIUseCase
 from core.value_objects.identifiers import InternalUserId, OpportunityId
 
+# Protegido a nivel de router, no endpoint por endpoint -- los 4 endpoints requieren la misma
+# sesión válida (spec 008 sección 8/3: hoy Advisor y Administrator pueden hacer las cuatro cosas
+# por igual, no hay ninguna restricción de rol real todavía -- ver require_role() en
+# app/security.py para cuando exista un endpoint que sí la necesite).
 router = APIRouter(
-    prefix="/organizations/{organization_slug}/opportunities", tags=["opportunities"]
+    prefix="/organizations/{organization_slug}/opportunities",
+    tags=["opportunities"],
+    dependencies=[Depends(get_current_user)],
 )
 
 
