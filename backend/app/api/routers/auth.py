@@ -13,6 +13,8 @@ from app.security import get_current_user
 from app.use_cases.authenticate_with_provider import AuthenticateUseCase
 from core.entities.internal_user import InternalUser
 from core.interfaces.auth import AuthProvider
+from infrastructure.database.session import AsyncSessionFactory
+from infrastructure.database.unit_of_work import SQLAlchemyUnitOfWork
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -52,16 +54,17 @@ async def google_callback(
     code: str = Query(...),
     state: str = Query(...),
     use_case: AuthenticateUseCase = Depends(get_authenticate_use_case),
-) -> JSONResponse:
+) -> RedirectResponse:
     if not _consume_state(state):
         raise HTTPException(status_code=401, detail="Invalid or expired state")
 
     token = await use_case.execute(code, settings.google_redirect_uri)
 
-    # Sin frontend todavía (spec 009+) -- por ahora responde JSON directo, testeable con curl.
-    # Cuando exista frontend, esto se vuelve un RedirectResponse hacia esa app, con la misma
-    # cookie ya puesta.
-    response = JSONResponse(content={"status": "ok"})
+    # Redirect relativo -- resuelve correcto porque esta respuesta le llega al navegador a través
+    # del proxy de Next.js (GOOGLE_REDIRECT_URI apunta a :3000/api/..., no directo a :8000). Si
+    # apuntara directo al backend, la cookie que se fija abajo quedaría con el origen del
+    # backend, no el del frontend, y nunca viajaría en los fetch("/api/...") reales (spec 009).
+    response = RedirectResponse(url="/opportunities", status_code=302)
     response.set_cookie(
         key="access_token",
         value=token,
@@ -76,4 +79,17 @@ async def google_callback(
 
 @router.get("/me")
 async def get_me(user: InternalUser = Depends(get_current_user)) -> CurrentUserResponse:
-    return CurrentUserResponse.from_domain(user)
+    async with SQLAlchemyUnitOfWork(AsyncSessionFactory) as uow:
+        organization = await uow.organizations.get_by_id(user.organization_id)
+    assert organization is not None  # invariante: no existe InternalUser sin Organization válida
+    return CurrentUserResponse.from_domain(user, organization.slug)
+
+
+@router.post("/logout")
+async def logout() -> JSONResponse:
+    # Nunca un Response(status_code=200) sin body -- apiFetch() del frontend siempre intenta
+    # .json() salvo 204, y un 200 con body vacío rompe ese parseo (encontrado en validación
+    # manual). Todo endpoint 200 en este API responde JSON, sin casos especiales.
+    response = JSONResponse(content={"status": "ok"})
+    response.delete_cookie("access_token")
+    return response

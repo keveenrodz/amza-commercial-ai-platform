@@ -27,7 +27,9 @@ services:
     env_file:
       - .env
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
+      # Server-only: Next.js lo lee para el proxy BFF (rewrites en next.config.ts), nunca llega
+      # al navegador. Apunta al hostname interno de Docker Compose, no a localhost.
+      - BACKEND_URL=http://backend:8000
     depends_on:
       - backend
 

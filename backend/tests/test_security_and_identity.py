@@ -98,7 +98,10 @@ async def _login(client: AsyncClient, email: str) -> None:
         "/auth/google/callback",
         params={"code": "fake-code", "state": state},
     )
-    assert callback_response.status_code == 200, callback_response.text
+    # 302 hacia /opportunities (spec 009) -- relativo, resuelve contra el origen del frontend
+    # porque en producción esta respuesta le llega al navegador a través del proxy de Next.js.
+    assert callback_response.status_code == 302, callback_response.text
+    assert callback_response.headers["location"] == "/opportunities"
 
 
 async def test_scenario_1_create_user_via_bootstrap_script() -> None:
@@ -189,3 +192,77 @@ async def test_scenario_6_deactivated_user_loses_access_immediately(client: Asyn
     # sin esperar a que el JWT expire.
     after_deactivation = await client.get("/auth/me")
     assert after_deactivation.status_code == 401
+
+
+async def test_me_includes_organization_slug(client: AsyncClient) -> None:
+    """Spec 009: el frontend nunca resuelve un UUID a slug -- /auth/me se lo entrega directo."""
+    await _seed_organization()
+    await create_user(_ORG_SLUG, "juan@gmail.com", "Juan Perez", "advisor")
+    await _login(client, "juan@gmail.com")
+
+    me_response = await client.get("/auth/me")
+    assert me_response.status_code == 200
+    assert me_response.json()["organization_slug"] == _ORG_SLUG
+
+
+def test_opportunity_response_exposes_assigned_advisor_id() -> None:
+    """Spec 009: sin este campo el frontend no puede distinguir mías/sin asignar/de otro.
+    Unit test directo del mapeo -- no necesita BD ni HTTP."""
+    from app.api.dto.opportunity import OpportunityResponse
+    from core.entities.opportunity import Opportunity
+    from core.enums.channel import ChannelType
+    from core.enums.opportunity import AttentionMode, OpportunityStatus
+    from core.value_objects.identifiers import (
+        AgentId,
+        ContactId,
+        InternalUserId,
+        OpportunityId,
+        OrganizationId,
+    )
+
+    now = datetime.now(tz=UTC)
+    unassigned = Opportunity(
+        id=OpportunityId.generate(),
+        organization_id=OrganizationId.generate(),
+        contact_id=ContactId.generate(),
+        agent_id=AgentId.generate(),
+        attention_mode=AttentionMode.AI,
+        assigned_advisor_id=None,
+        status=OpportunityStatus.NEW,
+        channel_type=ChannelType.TELEGRAM,
+        started_at=now,
+        last_activity_at=now,
+        closed_at=None,
+    )
+    assert OpportunityResponse.from_domain(unassigned).assigned_advisor_id is None
+
+    advisor_id = InternalUserId.generate()
+    assigned = Opportunity(
+        id=OpportunityId.generate(),
+        organization_id=OrganizationId.generate(),
+        contact_id=ContactId.generate(),
+        agent_id=AgentId.generate(),
+        attention_mode=AttentionMode.HUMAN,
+        assigned_advisor_id=advisor_id,
+        status=OpportunityStatus.WAITING_FOR_ADVISOR,
+        channel_type=ChannelType.TELEGRAM,
+        started_at=now,
+        last_activity_at=now,
+        closed_at=None,
+    )
+    assert OpportunityResponse.from_domain(assigned).assigned_advisor_id == str(advisor_id)
+
+
+async def test_logout_clears_session(client: AsyncClient) -> None:
+    await _seed_organization()
+    await create_user(_ORG_SLUG, "juan@gmail.com", "Juan Perez", "advisor")
+    await _login(client, "juan@gmail.com")
+
+    still_active = await client.get("/auth/me")
+    assert still_active.status_code == 200
+
+    logout_response = await client.post("/auth/logout")
+    assert logout_response.status_code == 200
+
+    after_logout = await client.get("/auth/me")
+    assert after_logout.status_code == 401

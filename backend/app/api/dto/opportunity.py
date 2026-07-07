@@ -17,6 +17,7 @@ class OpportunityResponse(BaseModel):
     id: str
     contact_id: str
     agent_id: str
+    assigned_advisor_id: str | None
     attention_mode: str
     status: str
     channel_type: str
@@ -30,6 +31,11 @@ class OpportunityResponse(BaseModel):
             id=str(opportunity.id),
             contact_id=str(opportunity.contact_id),
             agent_id=str(opportunity.agent_id),
+            assigned_advisor_id=(
+                str(opportunity.assigned_advisor_id)
+                if opportunity.assigned_advisor_id
+                else None
+            ),
             attention_mode=opportunity.attention_mode.value,
             status=opportunity.status.value,
             channel_type=opportunity.channel_type.value,
