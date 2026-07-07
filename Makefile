@@ -42,7 +42,7 @@ test-e2e:
 lint: lint-backend lint-frontend
 
 lint-backend:
-	cd backend && ruff check . && mypy app
+	cd backend && ruff check . && mypy app core infrastructure modules
 
 lint-frontend:
 	cd frontend && npm run lint

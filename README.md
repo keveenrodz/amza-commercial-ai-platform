@@ -70,9 +70,11 @@ cp .env.example .env
 The `.env` file is required by both the backend (Pydantic Settings reads it on startup)
 and Docker Compose (`env_file: .env`). Without it, both will fail to start.
 
-The file contains empty keys for `OPENROUTER_API_KEY` and `TELEGRAM_BOT_TOKEN`.
-These are not needed for project setup — they will be required when AI and Telegram
-integrations are implemented in later specifications.
+See `.env.example` for the full, current list of keys (OpenRouter, Telegram, Google OAuth,
+JWT, and `BACKEND_URL` for the frontend proxy) — kept up to date as each integration lands,
+this README doesn't duplicate it to avoid it going stale. For step-by-step instructions on
+obtaining real Telegram/OpenRouter/Google credentials, see
+`docs/ops/running_the_advisor_workspace.md`.
 
 ### Step 3 — Backend dependencies
 
@@ -147,8 +149,10 @@ cd frontend
 npm run dev
 ```
 
-Open `http://localhost:3000`. You will see the default Next.js starter page — this is
-correct. No business pages exist yet; they will be added in later specifications.
+Requires `frontend/.env.local` with `BACKEND_URL=http://localhost:8000` (server-only, read by
+`next.config.ts` for the BFF proxy — never exposed to the browser). Open `http://localhost:3000`
+— it redirects to `/login`. For the full flow (Google login, the Advisor Workspace, running
+the automated tests), see `docs/ops/running_the_advisor_workspace.md`.
 
 Note: if you see a React hydration warning in the browser console, check whether a
 browser extension (e.g. Scribe, Grammarly, LastPass) is modifying the HTML before
@@ -224,19 +228,22 @@ class of errors that Ruff cannot.
 ## Tests
 
 ```bash
-# Backend
+# Backend (pytest) -- 9 tests as of spec 009, covers auth/identity end to end
 make test-backend
 
-# Frontend (unit tests with Vitest)
+# Frontend unit tests (Vitest) -- none written yet, exits 0 with "No test files found"
 make test-frontend
 
-# Frontend end-to-end (Playwright, requires the app running)
+# Frontend end-to-end (Playwright) -- 3 tests as of spec 009, covers the Advisor Workspace.
+# Starts its own dev server automatically (see frontend/playwright.config.ts), no need to
+# have `npm run dev` already running.
 make test-e2e
 ```
 
-At this stage `pytest` will report `collected 0 items` and Vitest will report
-`No test files found` — both exit with code 0. This is correct: the test frameworks
-are configured and ready; functional tests will be added as each feature is implemented.
+Policy since spec 008 (`docs/engineering/03_Engineering_Principles.md`): every spec that
+introduces new behavior must include automated tests for it before being considered complete.
+Specs 002-007 predate this rule and have no test coverage — known, tracked debt, not silently
+ignored.
 
 ---
 

@@ -1,5 +1,10 @@
 # PROJECT_STATE.md
 
+**Para correr y probar todo lo construido (Telegram + Advisor Workspace), ver
+`docs/ops/running_the_advisor_workspace.md`. Para dar/quitar acceso a un `InternalUser`, ver
+`docs/ops/onboarding_internal_users.md`.** Este archivo (`PROJECT_STATE.md`) es "qué existe y qué
+sigue", no un manual operativo — no dupliques instrucciones de esos dos documentos aquí.
+
 # Project State
 
 **Project Name**
