@@ -91,7 +91,8 @@ They must NOT be modified unless a formal architecture decision is made.
 | 005 Application Services | ✅ | ✅ | ✅ | ✅ |
 | 006 Conversation Memory & Providers | ✅ | ✅ | ✅ | ✅ |
 | 007 API Layer | ✅ | ✅ | ✅ | ✅ |
-| 008 (por definir) | ❌ | — | — | — |
+| 008 Security & Identity | ✅ | ✅ | ✅ | ✅ |
+| 009 (por definir) | ❌ | — | — | — |
 
 ---
 
@@ -243,25 +244,85 @@ They must NOT be modified unless a formal architecture decision is made.
   recibe en el DTO del webhook pero se descarta — nunca se guarda en `Contact`. Hoy solo se
   persiste `first_name` (como `display_name`) y `chat_id` (como `external_id`)
 
-**What does NOT exist yet:**
+**What does NOT exist yet (previo a spec 008):**
 
 * Captura de `username` de Telegram (gap identificado arriba, decisión de producto pendiente)
 * Frontend pages con lógica de negocio
+* Autenticación/autorización — `/organizations/*` estaba completamente abierto
+
+**Security & Identity (spec 008):**
+
+* Hallazgo que motivó el spec: auditoría real confirmó cero autenticación en toda la API, cero
+  tests en 7 specs previos, sin forma de crear `Organization`/`InternalUser` vía la aplicación
+  (solo scripts de ops), y el producto ya describe al Advisor como actor central sin que el
+  software tuviera manera de representarlo
+* Principio arquitectónico: *"Authentication never creates identities"* — autenticarse con
+  Google prueba que controlas un email, no otorga acceso. Solo un `InternalUser` **activo
+  preexistente** lo hace. Sin registro público, sin auto-provisioning — es el único control de
+  acceso real del sistema (no hay restricción de dominio posible, el MVP acepta cualquier cuenta
+  de Google)
+* `core/interfaces/auth.py` — `AuthProvider` Protocol + `AuthenticatedIdentity` (incluye
+  `provider` para auditoría). Justificado como Protocol bajo la regla post-spec-006: Google ahora,
+  Microsoft ya es un roadmap comprometido, no especulativo
+* `infrastructure/auth/google.py` — `GoogleOAuthProvider`. Sin `authlib`: `httpx` + `PyJWT`
+  (`PyJWKClient`) bastan para Authorization Code + verificación OIDC (`issuer`/`audience`/
+  `email_verified`). Sin PKCE — cliente confidencial, esa protección es para clientes públicos
+* `app/security.py` — JWT propio (`PyJWT`, no `python-jose`, historial de CVEs), 24h sin refresh
+  token. `get_current_user()` **consulta la BD en cada request** (no solo los claims del JWT) —
+  decisión revisada explícitamente: el costo es insignificante a esta escala, y evita hasta 24h
+  de acceso con privilegios viejos tras desactivar o cambiar el rol de alguien. `require_role()`
+  construido, sin uso real todavía (ningún endpoint hoy distingue Advisor de Administrator)
+  cookie `HttpOnly; SameSite=Lax; Secure` (deshabilitado solo si `settings.debug`)
+* `app/use_cases/authenticate_with_provider.py` — `AuthenticateUseCase`, genérico sobre
+  `AuthProvider` (misma clase sirve para Google y, más adelante, Microsoft). Loguea
+  `auth.access_denied` y `auth.login_success` como eventos de auditoría, no logs técnicos
+* `core/interfaces/repositories.py` — `InternalUserRepository` gana `get_by_email()`/`save()`.
+  Email único **global** (no por org, ya existía `UniqueConstraint` desde spec 001) y
+  case-insensitive (normalizado a minúsculas en el repositorio, sin migración nueva)
+* `app/api/routers/auth.py` — `GET /auth/google/login`, `GET /auth/google/callback` (con `state`
+  de un solo uso, en memoria, consumido al validar), `GET /auth/me`
+* `/organizations/*` (spec 007) protegido con `Depends(get_current_user)` a nivel de router;
+  `/webhooks/*` y `/health*` siguen públicos
+* `scripts/create_user.py` — bootstrap genérico (Advisor o Administrator, mismo comando, sin
+  contraseña que gestionar)
+* **Primera suite de tests del proyecto** (`tests/test_security_and_identity.py` +
+  `tests/conftest.py`) — cubre los 6 escenarios de validación con un `AuthProvider` fake (nunca
+  llama a Google real). Nueva regla formal en `03_Engineering_Principles.md`: toda spec nueva
+  debe incluir tests de lo que introduce
+* **Validado también manualmente con Google OAuth real**, dos cuentas reales
+  (`keveenrodriguez@gmail.com` administrator, `krodriguez@stratio.com` advisor): login completo,
+  `/auth/me` correcto, `/organizations/*` 401 sin sesión y funcional con sesión válida,
+  desactivación en caliente confirmada — pierde acceso de inmediato en `/auth/me` **y** en el
+  endpoint de negocio real, sin esperar a que expire el JWT
+
+**What does NOT exist yet:**
+
+* Captura de `username` de Telegram (gap identificado en spec 007, decisión de producto pendiente)
+* Frontend pages con lógica de negocio — ahora sí hay con qué autenticarse (`/auth/google/login`,
+  `/auth/me`)
+* `MicrosoftOAuthProvider` (registrado en Future Evolution de spec 008, sin diseño)
+* Revocación de JWT / lista negra (aceptado para MVP, ver spec 008 sección 4)
 
 ---
 
 # Next Step
 
-**Definir spec 008.**
+**Definir spec 009.**
 
-La plataforma está operable de punta a punta y **validada con mensajes reales**: Telegram →
-webhook → use cases → OpenRouter/Telegram providers → respuesta al cliente, más endpoints de
-gestión para que un asesor humano tome/devuelva oportunidades.
+La plataforma está operable de punta a punta, **validada con mensajes reales de Telegram y login
+real de Google**, y ya no está abierta al público. El candidato natural es el frontend de asesor
+(dashboard de oportunidades + login vía Google) — spec 008 dejó `/auth/google/login` y `/auth/me`
+específicamente para esto.
 
 La hoja de ruta de evoluciones futuras (Memory Extraction, Knowledge Base, AI Task Framework,
-Embedding Search, Background Jobs, Model Routing, Prompt Management, Context Optimization) queda
-registrada en la sección "Future Evolution" de `006_Conversation_Memory_and_Providers.md` —
-deliberadamente fuera de alcance hasta que exista evidencia de negocio, no antes.
+Embedding Search, Background Jobs, Model Routing, Prompt Management, Context Optimization,
+`MicrosoftOAuthProvider`) queda registrada en las secciones "Future Evolution" de
+`006_Conversation_Memory_and_Providers.md` y `008_Security_and_Identity.md` — deliberadamente
+fuera de alcance hasta que exista evidencia de negocio, no antes.
+
+Política vigente desde spec 008: toda spec nueva debe incluir tests de lo que introduce; si
+modifica comportamiento existente, actualiza los tests afectados (ver
+`03_Engineering_Principles.md`).
 
 ---
 
@@ -399,7 +460,7 @@ If documentation conflicts, the following priority applies:
 
 # Project Status
 
-🟢 Plataforma operable de punta a punta, validada con mensajes reales de Telegram (dos contactos
-distintos, respuestas coherentes del agente, todo persistido correctamente). Un bug real
-encontrado y corregido en el proceso (`ChannelProvider.send()`, ver detalle arriba) — committed
-(52a5359). Siguiente: definir spec 008.
+🟢 Plataforma operable de punta a punta y ya protegida — spec 008 (Security & Identity) completa,
+validada con tests automatizados (primera suite del proyecto) y con Google OAuth real contra dos
+cuentas reales, incluida desactivación en caliente. Committed (a068865). Siguiente: definir
+spec 009 (candidato natural: frontend de asesor).
