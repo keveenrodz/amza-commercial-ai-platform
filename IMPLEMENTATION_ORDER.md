@@ -30,9 +30,26 @@ Orden de implementación:
 | 003 Persistence Model | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (aa2614b) |
 | 004 Repository Implementations | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (9cc20cf) |
 | 005 Application Services | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (ace5e30) |
-| 006 Provider Implementations + API Layer | ❌ spec no escrito aún |
+| 006 Conversation Memory & Providers | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
+| 007 API Layer | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
+| 008 Security & Identity | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
+| 009 Advisor Workspace | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (4f7a183) |
+| 010 Advisor Reply | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (b181d1e) |
 
-**Siguiente acción:** confirmar con el usuario el alcance exacto de spec 006, luego escribirlo e implementarlo.
+La propuesta original de spec 006 (más abajo, tachada) se dividió en la práctica: la memoria
+conversacional y los providers quedaron en 006, la capa HTTP pasó a un spec 007 separado. Detalle
+completo de cada spec en `PROJECT_STATE.md`, no aquí — este documento es el orden, no el estado.
+
+**Siguiente acción: ninguna spec nueva todavía.** Con las 10 specs del MVP implementadas,
+validadas y con el Advisor Workspace ya permitiendo tomar/responder/devolver una conversación
+real, el siguiente paso es **"Pilot Validation"** — validar con Amza Empaques, no seguir
+escribiendo specs técnicas. Ver "Next Step" en `PROJECT_STATE.md` para los criterios de éxito a
+acordar antes de empezar. No retomar el roadmap especulativo (Knowledge Base, Embeddings,
+Background Jobs, etc. — ver "Future Evolution" en specs 006/008) hasta tener retroalimentación
+real de ese piloto.
+
+<details>
+<summary>Propuesta original de spec 006 (histórica, no lo que terminó pasando — ver arriba)</summary>
 
 Propuesta para spec 006 (dos partes en un mismo spec o dos specs separados — confirmar):
 
@@ -46,6 +63,8 @@ Propuesta para spec 006 (dos partes en un mismo spec o dos specs separados — c
 - `app/routers/opportunities.py` → endpoints de gestión (asignar asesor, devolver a AI, historial)
 - `app/dependencies.py` → wiring completo de inyección de dependencias
 - Configuración de seguridad básica (token de webhook)
+
+</details>
 
 No avanzar hasta que la implementación haya sido validada.
 

@@ -228,13 +228,13 @@ class of errors that Ruff cannot.
 ## Tests
 
 ```bash
-# Backend (pytest) -- 9 tests as of spec 009, covers auth/identity end to end
+# Backend (pytest) -- 13 tests as of spec 010, covers auth/identity + advisor reply end to end
 make test-backend
 
 # Frontend unit tests (Vitest) -- none written yet, exits 0 with "No test files found"
 make test-frontend
 
-# Frontend end-to-end (Playwright) -- 3 tests as of spec 009, covers the Advisor Workspace.
+# Frontend end-to-end (Playwright) -- 4 tests as of spec 010, covers the Advisor Workspace.
 # Starts its own dev server automatically (see frontend/playwright.config.ts), no need to
 # have `npm run dev` already running.
 make test-e2e

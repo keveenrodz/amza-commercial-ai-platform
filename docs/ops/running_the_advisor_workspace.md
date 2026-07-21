@@ -163,8 +163,11 @@ puede llegar directo a `localhost:3000`:
    ninguna está asignada, todas aparecen en "Sin asignar" y "Todas", "Mías" vacía)
 4. Entra a una conversación → **Tomar conversación** → confirma que regresa a la lista y ahora
    aparece en "Mías"
-5. Vuelve a entrar → **Devolver a IA** → confirma que regresa a "Sin asignar"
-6. **Cerrar sesión** → confirma que vuelve a pedir login
+5. Entra de nuevo a esa conversación (ya asignada a ti) → escribe un mensaje en el campo de texto
+   y **Enviar** (spec 010) → confirma en Telegram, desde el lado del cliente, que el mensaje
+   llega. El input se limpia solo al terminar — esa es la confirmación de que funcionó
+6. Vuelve a entrar → **Devolver a IA** → confirma que regresa a "Sin asignar"
+7. **Cerrar sesión** → confirma que vuelve a pedir login
 
 Si algo no funciona como se describe arriba, es una regresión real, no un comportamiento
 esperado — ver la sección de diagnóstico abajo.
@@ -190,6 +193,20 @@ aislar si el problema es de configuración/credenciales (fallaría solo lo manua
 ---
 
 ## 7. Diagnóstico — problemas ya vistos, cómo reconocerlos
+
+**Cambiaste código del backend (por ejemplo, al implementar una spec nueva) y el frontend actúa
+como si esa ruta/campo no existiera (404, o el botón "no hace nada").** El backend **no recarga
+solo** salvo que `DEBUG=true` en `.env` (`main.py`: `reload=settings.debug`). Si tu terminal de
+`python main.py` lleva rato corriendo desde antes del cambio, sigue sirviendo el código viejo.
+Confirmarlo sin adivinar:
+```bash
+curl -s http://localhost:8000/openapi.json | python3 -c \
+  "import json,sys; print('/ruta/nueva' in json.load(sys.stdin)['paths'])"
+```
+Si da `False` (o la ruta ni aparece), mata ese proceso (`lsof -i :8000`, `kill <PID>`) y vuelve a
+arrancar `python main.py` en su terminal. Encontrado en la validación manual de spec 010: el
+proceso llevaba corriendo desde antes de implementar `POST .../messages`, así que el botón
+"Enviar" no hacía nada visible (404 silencioso, sin manejo de error en la UI en ese momento).
 
 **"Address already in use" al arrancar el backend, pero `/health` responde igual.** Hay un
 proceso viejo escuchando en el puerto 8000 desde antes — tu intento nuevo falló a bindear en
