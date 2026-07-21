@@ -5,13 +5,21 @@ from typing import Any
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from core.enums.message import MessageRole
 from core.exceptions.domain import AgentNotFoundError
 from core.interfaces.providers import CompletionRequest, ConversationContext
 from core.value_objects.identifiers import AgentId
 from modules.agents.repositories.agent import SQLAlchemyAgentRepository
 
-# MessageRole.value ("user"/"assistant"/"system") ya coincide con los roles OpenAI-compatibles
-# que espera OpenRouter — no hace falta mapeo.
+# La API de OpenRouter/OpenAI solo reconoce "system"/"user"/"assistant". MessageRole tiene un
+# cuarto valor, ADVISOR (spec 010) -- desde el punto de vista del modelo, el turno de un asesor
+# humano es funcionalmente el turno del "assistant" (todo lo que no es el cliente).
+_TO_OPENAI_ROLE = {
+    MessageRole.USER: "user",
+    MessageRole.ASSISTANT: "assistant",
+    MessageRole.ADVISOR: "assistant",
+    MessageRole.SYSTEM: "system",
+}
 
 
 class OpenRouterAIProvider:
@@ -48,7 +56,7 @@ class OpenRouterAIProvider:
 
         messages: list[dict[str, str]] = [{"role": "system", "content": system_content}]
         messages.extend(
-            {"role": m.sender_role.value, "content": m.content}
+            {"role": _TO_OPENAI_ROLE[m.sender_role], "content": m.content}
             for m in context.recent_messages
         )
 

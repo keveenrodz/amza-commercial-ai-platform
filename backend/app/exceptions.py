@@ -9,6 +9,7 @@ from core.exceptions.domain import (
     InvalidStatusTransitionError,
     NoActiveAgentError,
     OpportunityAlreadyClosedError,
+    OpportunityNotAssignedToAdvisorError,
     OpportunityNotFoundError,
     OrganizationNotFoundError,
     OrganizationSlugNotFoundError,
@@ -27,6 +28,7 @@ _NOT_FOUND_ERRORS = (
 _UNPROCESSABLE_ERRORS = (
     InvalidStatusTransitionError,
     OpportunityAlreadyClosedError,
+    OpportunityNotAssignedToAdvisorError,
 )
 
 _FORBIDDEN_ERRORS = (AccessDeniedError,)

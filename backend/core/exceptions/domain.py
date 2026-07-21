@@ -75,6 +75,18 @@ class NoActiveAgentError(DomainError):
         self.organization_id = organization_id
 
 
+class OpportunityNotAssignedToAdvisorError(DomainError):
+    """Un solo chequeo (assigned_advisor_id != advisor_id) cubre dos casos: la oportunidad sigue
+    en modo AI (assigned_advisor_id es None, nunca igual a un advisor_id real), o está asignada a
+    otro asesor. Opportunity.assign_to_advisor()/return_to_ai() siempre fijan/limpian
+    attention_mode y assigned_advisor_id juntos, así que este único campo basta."""
+
+    def __init__(self, opportunity_id: OpportunityId, advisor_id: InternalUserId) -> None:
+        super().__init__(f"Opportunity {opportunity_id} is not assigned to advisor {advisor_id}")
+        self.opportunity_id = opportunity_id
+        self.advisor_id = advisor_id
+
+
 class AccessDeniedError(DomainError):
     """Alguien probó con éxito ser dueño de un email vía OAuth, pero no existe ningún
     InternalUser activo para ese email. Distinto de InternalUserNotFoundError -- ese es un lookup

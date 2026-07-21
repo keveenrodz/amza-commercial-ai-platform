@@ -11,6 +11,7 @@ from app.use_cases.get_conversation_history import GetConversationHistoryUseCase
 from app.use_cases.list_open_opportunities import ListOpenOpportunitiesUseCase
 from app.use_cases.receive_incoming_message import ReceiveIncomingMessageUseCase
 from app.use_cases.return_to_ai import ReturnToAIUseCase
+from app.use_cases.send_advisor_reply import SendAdvisorReplyUseCase
 from core.interfaces.auth import AuthProvider
 from core.interfaces.providers import AIProvider, ChannelProvider
 from infrastructure.ai.openrouter import OpenRouterAIProvider
@@ -71,6 +72,14 @@ def get_return_to_ai_use_case() -> ReturnToAIUseCase:
     return ReturnToAIUseCase(
         session_factory=AsyncSessionFactory,
         summarization_service=get_summarization_service(),
+    )
+
+
+@lru_cache
+def get_send_advisor_reply_use_case() -> SendAdvisorReplyUseCase:
+    return SendAdvisorReplyUseCase(
+        session_factory=AsyncSessionFactory,
+        channel_provider=get_channel_provider(),
     )
 
 

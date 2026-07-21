@@ -13,6 +13,11 @@ class AssignAdvisorRequest(BaseModel):
     advisor_id: str
 
 
+class SendMessageRequest(BaseModel):
+    advisor_id: str
+    content: str
+
+
 class OpportunityResponse(BaseModel):
     id: str
     contact_id: str

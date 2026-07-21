@@ -26,7 +26,7 @@ export interface Opportunity {
 
 export interface Message {
   id: string;
-  sender_role: "user" | "assistant" | "system";
+  sender_role: "user" | "assistant" | "advisor" | "system";
   content: string;
   content_type: string;
   sent_at: string;

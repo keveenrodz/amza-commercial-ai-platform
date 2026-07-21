@@ -5,19 +5,23 @@ from fastapi import APIRouter, Depends
 from app.api.dto.opportunity import (
     AssignAdvisorRequest,
     ConversationHistoryResponse,
+    MessageResponse,
     OpportunityResponse,
+    SendMessageRequest,
 )
 from app.dependencies import (
     get_assign_to_advisor_use_case,
     get_get_conversation_history_use_case,
     get_list_open_opportunities_use_case,
     get_return_to_ai_use_case,
+    get_send_advisor_reply_use_case,
 )
 from app.security import get_current_user
 from app.use_cases.assign_to_advisor import AssignToAdvisorUseCase
 from app.use_cases.get_conversation_history import GetConversationHistoryUseCase
 from app.use_cases.list_open_opportunities import ListOpenOpportunitiesUseCase
 from app.use_cases.return_to_ai import ReturnToAIUseCase
+from app.use_cases.send_advisor_reply import SendAdvisorReplyUseCase
 from core.value_objects.identifiers import InternalUserId, OpportunityId
 
 # Protegido a nivel de router, no endpoint por endpoint -- los 4 endpoints requieren la misma
@@ -72,3 +76,18 @@ async def return_to_ai(
 ) -> OpportunityResponse:
     opportunity = await use_case.execute(OpportunityId.from_string(opportunity_id))
     return OpportunityResponse.from_domain(opportunity)
+
+
+@router.post("/{opportunity_id}/messages")
+async def send_advisor_reply(
+    organization_slug: str,  # ignorado intencionalmente, ver nota de alcance en spec 007
+    opportunity_id: str,
+    body: SendMessageRequest,
+    use_case: SendAdvisorReplyUseCase = Depends(get_send_advisor_reply_use_case),
+) -> MessageResponse:
+    message = await use_case.execute(
+        OpportunityId.from_string(opportunity_id),
+        InternalUserId.from_string(body.advisor_id),
+        body.content,
+    )
+    return MessageResponse.from_domain(message)

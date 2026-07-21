@@ -87,6 +87,52 @@ test("tomar una conversación sin asignar llama al endpoint correcto", async ({ 
   await expect(page).toHaveURL(/\/opportunities$/);
 });
 
+test("enviar un mensaje en una conversación propia llama al endpoint correcto", async ({
+  page,
+}) => {
+  const initialMessages = [
+    {
+      id: "msg-1",
+      sender_role: "user",
+      content: "Busco cajas de arroz",
+      content_type: "text",
+      sent_at: "2026-01-01T00:00:00Z",
+    },
+  ];
+
+  await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
+    route.fulfill({
+      json: { opportunity: MY_OPPORTUNITY, messages: initialMessages },
+    }),
+  );
+
+  let sendRequestBody: unknown;
+  await page.route("**/api/organizations/*/opportunities/opp-mine/messages", (route) => {
+    sendRequestBody = route.request().postDataJSON();
+    route.fulfill({
+      json: {
+        id: "msg-2",
+        sender_role: "advisor",
+        content: "Claro, ¿cuántas unidades necesitas?",
+        content_type: "text",
+        sent_at: "2026-01-01T00:01:00Z",
+      },
+    });
+  });
+
+  await page.goto("/opportunities/opp-mine");
+  await page.getByPlaceholder("Escribe tu respuesta...").fill("Claro, ¿cuántas unidades necesitas?");
+  await page.getByRole("button", { name: "Enviar" }).click();
+
+  await expect.poll(() => sendRequestBody).toEqual({
+    advisor_id: CURRENT_USER.id,
+    content: "Claro, ¿cuántas unidades necesitas?",
+  });
+
+  // El input se limpia al terminar -- confirmación visual de que el envío funcionó.
+  await expect(page.getByPlaceholder("Escribe tu respuesta...")).toHaveValue("");
+});
+
 test("sin sesión redirige a /login", async ({ page }) => {
   await page.unroute("**/api/auth/me");
   await page.route("**/api/auth/me", (route) =>

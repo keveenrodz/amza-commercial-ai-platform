@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { useConversationHistory } from "@/hooks/use-conversation-history";
 import { useAssignToAdvisor, useReturnToAI } from "@/hooks/use-opportunity-actions";
 import { useRequireAuth } from "@/hooks/use-require-auth";
+import { useSendMessage } from "@/hooks/use-send-message";
 
 export default function OpportunityDetailPage() {
   const params = useParams<{ id: string }>();
@@ -17,6 +19,8 @@ export default function OpportunityDetailPage() {
   );
   const assignToAdvisor = useAssignToAdvisor();
   const returnToAI = useReturnToAI();
+  const sendMessage = useSendMessage();
+  const [draft, setDraft] = useState("");
 
   if (!currentUser || isLoading || !history) {
     return <p className="p-8">Cargando...</p>;
@@ -49,41 +53,95 @@ export default function OpportunityDetailPage() {
         ))}
       </div>
 
-      {!isMine ? (
-        <button
-          onClick={() =>
-            assignToAdvisor.mutate(
+      {isMine && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!draft.trim()) return;
+            sendMessage.mutate(
               {
                 organizationSlug: currentUser.organization_slug,
                 opportunityId: opportunity.id,
                 advisorId: currentUser.id,
+                content: draft,
               },
-              // Vuelve a la lista al terminar -- es la confirmación de que la acción
-              // funcionó (la oportunidad aparece en "Mías"), sin necesitar un popup aparte.
-              { onSuccess: () => router.push("/opportunities") },
-            )
-          }
-          disabled={assignToAdvisor.isPending}
-          className="rounded bg-foreground px-4 py-2 text-background disabled:opacity-50"
+              { onSuccess: () => setDraft("") },
+            );
+          }}
+          className="mb-6 flex gap-2"
         >
-          {assignToAdvisor.isPending ? "Tomando..." : "Tomar conversación"}
-        </button>
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Escribe tu respuesta..."
+            className="flex-1 rounded border px-3 py-2"
+            disabled={sendMessage.isPending}
+          />
+          <button
+            type="submit"
+            disabled={sendMessage.isPending || !draft.trim()}
+            className="rounded bg-foreground px-4 py-2 text-background disabled:opacity-50"
+          >
+            {sendMessage.isPending ? "Enviando..." : "Enviar"}
+          </button>
+        </form>
+      )}
+
+      {sendMessage.isError && (
+        <p className="mb-4 text-sm text-red-600">
+          No se pudo enviar el mensaje: {sendMessage.error.message}
+        </p>
+      )}
+
+      {!isMine ? (
+        <>
+          <button
+            onClick={() =>
+              assignToAdvisor.mutate(
+                {
+                  organizationSlug: currentUser.organization_slug,
+                  opportunityId: opportunity.id,
+                  advisorId: currentUser.id,
+                },
+                // Vuelve a la lista al terminar -- es la confirmación de que la acción
+                // funcionó (la oportunidad aparece en "Mías"), sin necesitar un popup aparte.
+                { onSuccess: () => router.push("/opportunities") },
+              )
+            }
+            disabled={assignToAdvisor.isPending}
+            className="rounded bg-foreground px-4 py-2 text-background disabled:opacity-50"
+          >
+            {assignToAdvisor.isPending ? "Tomando..." : "Tomar conversación"}
+          </button>
+          {assignToAdvisor.isError && (
+            <p className="mt-2 text-sm text-red-600">
+              No se pudo tomar la conversación: {assignToAdvisor.error.message}
+            </p>
+          )}
+        </>
       ) : (
-        <button
-          onClick={() =>
-            returnToAI.mutate(
-              {
-                organizationSlug: currentUser.organization_slug,
-                opportunityId: opportunity.id,
-              },
-              { onSuccess: () => router.push("/opportunities") },
-            )
-          }
-          disabled={returnToAI.isPending}
-          className="rounded border px-4 py-2 disabled:opacity-50"
-        >
-          {returnToAI.isPending ? "Devolviendo..." : "Devolver a IA"}
-        </button>
+        <>
+          <button
+            onClick={() =>
+              returnToAI.mutate(
+                {
+                  organizationSlug: currentUser.organization_slug,
+                  opportunityId: opportunity.id,
+                },
+                { onSuccess: () => router.push("/opportunities") },
+              )
+            }
+            disabled={returnToAI.isPending}
+            className="rounded border px-4 py-2 disabled:opacity-50"
+          >
+            {returnToAI.isPending ? "Devolviendo..." : "Devolver a IA"}
+          </button>
+          {returnToAI.isError && (
+            <p className="mt-2 text-sm text-red-600">
+              No se pudo devolver la conversación: {returnToAI.error.message}
+            </p>
+          )}
+        </>
       )}
     </main>
   );
