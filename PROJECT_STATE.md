@@ -98,6 +98,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 007 API Layer | ✅ | ✅ | ✅ | ✅ |
 | 008 Security & Identity | ✅ | ✅ | ✅ | ✅ |
 | 009 Advisor Workspace | ✅ | ✅ | ✅ | ✅ |
+| 010 Advisor Reply | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -340,6 +341,44 @@ They must NOT be modified unless a formal architecture decision is made.
 * Validado manualmente de punta a punta: login real con Google, las tres pestañas, tomar/devolver
   sin parpadeo, logout funcional
 
+**Advisor Reply (spec 010):**
+
+* Gap encontrado *antes* de arrancar el piloto con Amza Empaques (no una feature planeada desde
+  009): el Advisor Workspace dejaba tomar y devolver una conversación, pero un asesor no tenía
+  ninguna forma de escribirle al cliente — el workspace era de solo lectura para el humano
+* Regla de negocio: un asesor solo puede enviar un mensaje manual si la oportunidad está en modo
+  `HUMAN` **y** asignada a ese asesor específico. Un solo chequeo de dominio cubre los dos casos
+  (`opportunity.assigned_advisor_id != advisor_id`) — `Opportunity.assign_to_advisor()`/
+  `return_to_ai()` siempre fijan/limpian `attention_mode` y `assigned_advisor_id` juntos, así que
+  ese único campo basta sin necesitar dos excepciones
+* `core/enums/message.py` — nuevo `MessageRole.ADVISOR`; `SendAdvisorReplyUseCase`
+  (`app/use_cases/send_advisor_reply.py`) — persiste el mensaje y lo entrega por
+  `ChannelProvider.send()` en la misma transacción (mismo patrón que
+  `ReceiveIncomingMessageUseCase`, spec 006); nuevo endpoint
+  `POST /organizations/{slug}/opportunities/{id}/messages`
+* Sin resumen incondicional en este caso de uso — a diferencia de tomar/devolver, un mensaje
+  individual no cambia quién atiende; `ReturnToAIUseCase` ya genera un resumen que cubre todo lo
+  ocurrido desde el último, incluyendo los mensajes de asesor
+* **Bug real encontrado y corregido antes de que ocurriera en producción**:
+  `OpenRouterAIProvider.generate()` (`infrastructure/ai/openrouter.py`) armaba el payload de
+  OpenRouter usando `sender_role.value` directo como rol de la API — válido mientras
+  `MessageRole` solo tenía `user`/`assistant`/`system`. Con `ADVISOR` nuevo, un mensaje de asesor
+  dentro de la ventana de `working_memory_size` al volver a modo IA habría mandado
+  `{"role": "advisor", ...}`, un rol que OpenRouter/OpenAI no reconoce. Fix: mapeo explícito
+  `ADVISOR → "assistant"` (el turno de un asesor humano es funcionalmente el turno del
+  "assistant" desde el punto de vista del modelo). Cubierto con test de regresión
+  (`tests/test_openrouter_provider.py`) que verifica el payload real enviado
+* Frontend: textarea + botón "Enviar" en `/opportunities/[id]`, visible solo cuando `isMine`;
+  `useSendMessage` usa `invalidateQueries` (no `removeQueries`) porque, a diferencia de
+  tomar/devolver, esta página sigue montada con un observador activo sobre `conversationHistory`
+  cuando la mutación resuelve — sin la ventana de dato viejo que sí existía en spec 009
+* **Encontrado en validación manual, ya corregido**: ni "Tomar"/"Devolver"/"Enviar" mostraban
+  ningún error visible si el backend fallaba — un fallo real se sentía igual que "no hace nada".
+  Se agregó manejo de error visible a las tres acciones
+* Validado manualmente de punta a punta con Telegram real: tomar una conversación, responder
+  desde el Advisor Workspace, confirmar que el mensaje llega al cliente por Telegram con
+  `sender_role="advisor"` persistido correctamente
+
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
 
@@ -366,9 +405,10 @@ preparar un despliegue más robusto):
 **"Pilot Validation" (Operational Validation) — no es una spec técnica, no se numera.**
 
 La plataforma está operable de punta a punta, protegida, y con una interfaz real para que un
-asesor humano trabaje. No se está construyendo software — se está validando una hipótesis de
-negocio: que alguien de Amza Empaques use el Advisor Workspace durante unos días reales, antes de
-retomar cualquier ítem del roadmap tecnológico.
+asesor humano trabaje — incluyendo responderle al cliente, que era el gap real que faltaba
+cerrar antes de esto (spec 010). No se está construyendo software — se está validando una
+hipótesis de negocio: que alguien de Amza Empaques use el Advisor Workspace durante unos días
+reales, antes de retomar cualquier ítem del roadmap tecnológico.
 
 **Antes de empezar, definir qué significa éxito** (no instrumentarlo todavía, solo acordarlo):
 tiempo promedio para tomar una conversación, porcentaje devuelto a la IA, incidencias reportadas,
@@ -527,7 +567,8 @@ If documentation conflicts, the following priority applies:
 # Project Status
 
 🟢 Plataforma completa de punta a punta: dominio, persistencia, memoria conversacional, providers
-reales (Telegram + OpenRouter), API protegida (Google OAuth + JWT), y ahora un frontend real
-(Advisor Workspace) — validado manualmente con login real, las tres pestañas, y tomar/devolver
-sin bugs. Siguiente: no una spec — un piloto operativo con Amza Empaques, con criterios de éxito
-definidos antes de empezar.
+reales (Telegram + OpenRouter), API protegida (Google OAuth + JWT), y un frontend real (Advisor
+Workspace) donde un asesor humano puede tomar una conversación, **responderle al cliente**, y
+devolverla a IA — validado manualmente con login real y Telegram real, sin bugs conocidos.
+Siguiente: no una spec — un piloto operativo con Amza Empaques, con criterios de éxito definidos
+antes de empezar.
