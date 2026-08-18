@@ -584,7 +584,7 @@
       <p>Empaques &amp; Soluciones — Atención comercial</p>
       <div class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input type="text" placeholder="Buscar contacto o mensaje" />
+        <input type="text" id="contactSearchInput" placeholder="Buscar contacto o mensaje" />
       </div>
       <div class="tabs" role="tablist">
         <button class="tab active" data-tab="ai" role="tab">IA <span class="n">2</span></button>
@@ -815,6 +815,7 @@
   var selectedId = null;
   var clientPanelOpen = false;
   var pendingAttachments = [];
+  var searchQuery = '';
 
   var SORT_MODES = ['default', 'recent', 'unread', 'followup'];
   var SORT_LABELS = { default: '', recent: 'Recientes', unread: 'No leídos', followup: 'Seguimiento' };
@@ -891,8 +892,18 @@
     return true;
   }
 
+  function matchesSearch(c) {
+    if (!searchQuery) return true;
+    var q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    if (c.name.toLowerCase().indexOf(q) !== -1) return true;
+    if ((c.phone || '').toLowerCase().indexOf(q) !== -1) return true;
+    if ((c.company || '').toLowerCase().indexOf(q) !== -1) return true;
+    return c.messages.some(function (m) { return m.text && m.text.toLowerCase().indexOf(q) !== -1; });
+  }
+
   function getFilteredSorted() {
-    var items = DATA.filter(matchesTab);
+    var items = DATA.filter(matchesTab).filter(matchesSearch);
     if (currentTab === 'all') {
       if (assigneeFilter === 'ai') items = items.filter(function (c) { return c.mode === 'ai'; });
       else if (assigneeFilter !== 'all') items = items.filter(function (c) { return c.assignedTo === assigneeFilter; });
@@ -929,10 +940,10 @@
           '<div class="convo-body">' +
             '<div class="convo-top">' +
               (c.favorite ? '<span class="convo-star">' + starIcon(true) + '</span>' : '') +
-              '<span class="convo-name">' + c.name + '</span>' +
+              '<span class="convo-name">' + highlightText(c.name, searchQuery) + '</span>' +
               '<span class="convo-time">' + c.lastTime + '</span>' +
             '</div>' +
-            '<div class="convo-preview"><span class="convo-snippet">' + c.preview + '</span>' +
+            '<div class="convo-preview"><span class="convo-snippet">' + highlightText(c.preview, searchQuery) + '</span>' +
               (c.unread ? '<span class="unread-badge">' + c.unread + '</span>' : '') +
             '</div>' +
             '<div class="convo-tags">' + chipFor(c.channel) + statusChip(c) + followupChip(c, false) + noteBadge(c) + '</div>' +
@@ -941,7 +952,9 @@
       );
     }).join('');
     if (!items.length) {
-      convoListEl.innerHTML = '<div style="padding:28px 20px;color:var(--ink-faint);font-size:12.5px;text-align:center">Ningún contacto coincide con estos filtros.</div>';
+      convoListEl.innerHTML = '<div style="padding:28px 20px;color:var(--ink-faint);font-size:12.5px;text-align:center">' +
+        (searchQuery ? 'Sin resultados para "' + searchQuery + '" en esta sección.' : 'Ningún contacto coincide con estos filtros.') +
+        '</div>';
     }
     Array.prototype.forEach.call(convoListEl.querySelectorAll('.convo'), function (btn) {
       btn.addEventListener('click', function () {
@@ -1420,6 +1433,11 @@
       pop.remove();
     });
   }
+
+  document.getElementById('contactSearchInput').addEventListener('input', function (e) {
+    searchQuery = e.target.value;
+    renderList();
+  });
 
   var sortBtn = document.getElementById('sortBtn');
   sortBtn.addEventListener('click', function () {
