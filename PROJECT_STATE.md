@@ -102,6 +102,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 011 Navigation Shell & Theming | ✅ | ⬜ | ⬜ | ⬜ |
 | 012 Chat Panel Redesign | ✅ | ⬜ | ⬜ | ⬜ |
 | 013 Contact Enrichment & Follow-ups | ✅ | ⬜ | ⬜ | ⬜ |
+| 014 Admin Governance & Access Control | ✅ | ⬜ | ⬜ | ⬜ |
 
 ---
 
@@ -417,12 +418,13 @@ El rediseño de interfaz se validó primero como **mockup interactivo sin backen
 (`docs/design/amza_workspace_mockup/` — HTML/CSS/JS autocontenido, iterado varias veces con
 retroalimentación directa) antes de comprometer nada a una spec o a código real de `frontend/`.
 
-**Specs 011 (Navigation Shell & Theming), 012 (Chat Panel Redesign) y 013 (Contact Enrichment &
-Follow-ups) ya están escritas**, pendientes de revisión/implementación — ver
-`specifications/MVP/011_Navigation_Shell_and_Theming.md`,
-`specifications/MVP/012_Chat_Panel_Redesign.md` y
-`specifications/MVP/013_Contact_Enrichment_and_Follow_ups.md`. Al escribir 012 se dividió en dos:
-el rediseño visual del chat no necesita dominio nuevo (quedó en 012), pero etiquetas/notas/
+**Specs 011 (Navigation Shell & Theming), 012 (Chat Panel Redesign), 013 (Contact Enrichment &
+Follow-ups) y 014 (Admin Governance & Access Control) ya están escritas**, pendientes de
+revisión/implementación — ver `specifications/MVP/011_Navigation_Shell_and_Theming.md`,
+`specifications/MVP/012_Chat_Panel_Redesign.md`,
+`specifications/MVP/013_Contact_Enrichment_and_Follow_ups.md` y
+`specifications/MVP/014_Admin_Governance_and_Access_Control.md`. Al escribir 012 se dividió en
+dos: el rediseño visual del chat no necesita dominio nuevo (quedó en 012), pero etiquetas/notas/
 favoritos/seguimientos/reasignación/búsqueda entre conversaciones sí (spec 013, ya escrita) —
 mismo criterio que ya partió la propuesta original de spec 006 en su momento. Orden vigente para
 el resto de esta tanda (no implementar más de una a la vez, misma regla de siempre):
@@ -452,6 +454,12 @@ necesitaba mostrar nombres reales, así que spec 013 solo agrega el endpoint que
 otro **ya funcionaba** en el backend desde spec 009 (`Opportunity.assign_to_advisor()` sobreescribe
 sin comprobar el valor anterior) — spec 013 no agregó lógica de reasignación, solo el selector de
 nombres que le faltaba al frontend.
+
+Otro más al escribir spec 014: `app/security.py::require_role()` existe desde spec 008 pero
+**nunca se conectó a ningún endpoint** — spec 014 es su primer uso real (protege
+`/organizations/{slug}/users`). Antes de asumir que un permiso "no existe todavía", revisar si ya
+hay una pieza construida y solo sin cablear — viene pasando seguido en esta tanda
+(`Contact.display_name`, `list_advisors_by_organization`, ahora `require_role`).
 
 Recomendaciones ya dadas durante el diseño de esta tanda (resumen aquí para no perderlas):
 - **Gobernanza de administradores (spec 014):** un admin "principal" (el primer `InternalUser` con
