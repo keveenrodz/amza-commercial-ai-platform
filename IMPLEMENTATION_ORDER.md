@@ -37,6 +37,7 @@ Orden de implementación:
 | 010 Advisor Reply | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (b181d1e) |
 | 011 Navigation Shell & Theming | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 | 012 Chat Panel Redesign | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
+| 013 Contact Enrichment & Follow-ups | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 
 La propuesta original de spec 006 (más abajo, tachada) se dividió en la práctica: la memoria
 conversacional y los providers quedaron en 006, la capa HTTP pasó a un spec 007 separado. Detalle
@@ -60,7 +61,7 @@ partió la propuesta original de spec 006 (ver más abajo). Orden vigente:
 (subida de archivos) → 019 Media Library (almacenamiento e inbound media). No implementar más de
 una a la vez, misma regla de siempre.
 
-**Siguiente acción: specs 011 y 012 escritas, pendientes de revisión antes de implementar.**
+**Siguiente acción: specs 011, 012 y 013 escritas, pendientes de revisión antes de implementar.**
 
 <details>
 <summary>Propuesta original de spec 006 (histórica, no lo que terminó pasando — ver arriba)</summary>

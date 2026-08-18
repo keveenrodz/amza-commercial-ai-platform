@@ -101,6 +101,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 010 Advisor Reply | ✅ | ✅ | ✅ | ✅ |
 | 011 Navigation Shell & Theming | ✅ | ⬜ | ⬜ | ⬜ |
 | 012 Chat Panel Redesign | ✅ | ⬜ | ⬜ | ⬜ |
+| 013 Contact Enrichment & Follow-ups | ✅ | ⬜ | ⬜ | ⬜ |
 
 ---
 
@@ -416,13 +417,15 @@ El rediseño de interfaz se validó primero como **mockup interactivo sin backen
 (`docs/design/amza_workspace_mockup/` — HTML/CSS/JS autocontenido, iterado varias veces con
 retroalimentación directa) antes de comprometer nada a una spec o a código real de `frontend/`.
 
-**Specs 011 (Navigation Shell & Theming) y 012 (Chat Panel Redesign) ya están escritas**,
-pendientes de revisión/implementación — ver `specifications/MVP/011_Navigation_Shell_and_Theming.md`
-y `specifications/MVP/012_Chat_Panel_Redesign.md`. Al escribir 012 se dividió en dos: el rediseño
-visual del chat no necesita dominio nuevo (queda en 012), pero etiquetas/notas/favoritos/
-seguimientos/reasignación/búsqueda entre conversaciones sí (nueva spec 013) — mismo criterio que ya
-partió la propuesta original de spec 006 en su momento. Orden vigente para el resto de esta tanda
-(no implementar más de una a la vez, misma regla de siempre):
+**Specs 011 (Navigation Shell & Theming), 012 (Chat Panel Redesign) y 013 (Contact Enrichment &
+Follow-ups) ya están escritas**, pendientes de revisión/implementación — ver
+`specifications/MVP/011_Navigation_Shell_and_Theming.md`,
+`specifications/MVP/012_Chat_Panel_Redesign.md` y
+`specifications/MVP/013_Contact_Enrichment_and_Follow_ups.md`. Al escribir 012 se dividió en dos:
+el rediseño visual del chat no necesita dominio nuevo (quedó en 012), pero etiquetas/notas/
+favoritos/seguimientos/reasignación/búsqueda entre conversaciones sí (spec 013, ya escrita) —
+mismo criterio que ya partió la propuesta original de spec 006 en su momento. Orden vigente para
+el resto de esta tanda (no implementar más de una a la vez, misma regla de siempre):
 
 | Spec | Contenido |
 |---|---|
@@ -441,6 +444,14 @@ spec, pero bloqueaba construirla): ninguna pantalla mostraba nunca el nombre del
 `OpportunityResponse` nunca expuso `Contact.display_name`, aunque existe desde spec 002. Corregido
 como "corrección de contrato" (mismo criterio que `assigned_advisor_id` en spec 009), sin tocar
 `AssignToAdvisorUseCase`/`ReturnToAIUseCase`/`SendAdvisorReplyUseCase`.
+
+Gap real encontrado al escribir spec 013: `InternalUserRepository.list_advisors_by_organization()`
+ya existía desde spec 008, pero nunca se conectó a ningún endpoint — la reasignación entre asesores
+necesitaba mostrar nombres reales, así que spec 013 solo agrega el endpoint que faltaba
+(`GET /organizations/{slug}/advisors`), sin tocar el repositorio. También: reasignar de un asesor a
+otro **ya funcionaba** en el backend desde spec 009 (`Opportunity.assign_to_advisor()` sobreescribe
+sin comprobar el valor anterior) — spec 013 no agregó lógica de reasignación, solo el selector de
+nombres que le faltaba al frontend.
 
 Recomendaciones ya dadas durante el diseño de esta tanda (resumen aquí para no perderlas):
 - **Gobernanza de administradores (spec 014):** un admin "principal" (el primer `InternalUser` con
