@@ -36,6 +36,7 @@ Orden de implementación:
 | 009 Advisor Workspace | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (4f7a183) |
 | 010 Advisor Reply | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (b181d1e) |
 | 011 Navigation Shell & Theming | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
+| 012 Chat Panel Redesign | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 
 La propuesta original de spec 006 (más abajo, tachada) se dividió en la práctica: la memoria
 conversacional y los providers quedaron en 006, la capa HTTP pasó a un spec 007 separado. Detalle
@@ -49,13 +50,17 @@ El rediseño de interfaz se validó primero como mockup interactivo sin backend
 (`docs/design/amza_workspace_mockup/`) antes de comprometerlo a una spec.
 
 **Orden acordado para esta nueva tanda de specs** (011 en adelante, continúan la numeración del
-MVP): 011 Navigation Shell & Theming → 012 Chat Panel Redesign → 013 Admin Governance & Access
-Control → 014 Contact Channel Tagging → 015 WhatsApp Integration (Evolution API) → 016 Admin Panel
-(prompts, números, conexión WhatsApp) → 017 Knowledge Base (subida de archivos) → 018 Media
-Library (almacenamiento e inbound media). No implementar más de una a la vez, misma regla de
-siempre.
+MVP). Spec 012 se dividió en dos al escribirla: el rediseño visual del chat no necesita dominio
+nuevo, pero etiquetas/notas/favoritos/seguimientos/reasignación/búsqueda sí — mismo criterio que ya
+partió la propuesta original de spec 006 (ver más abajo). Orden vigente:
 
-**Siguiente acción: spec 011 escrita, pendiente de revisión antes de implementar.**
+011 Navigation Shell & Theming → 012 Chat Panel Redesign → 013 Contact Enrichment & Follow-ups →
+014 Admin Governance & Access Control → 015 Contact Channel Tagging → 016 WhatsApp Integration
+(Evolution API) → 017 Admin Panel (prompts, números, conexión WhatsApp) → 018 Knowledge Base
+(subida de archivos) → 019 Media Library (almacenamiento e inbound media). No implementar más de
+una a la vez, misma regla de siempre.
+
+**Siguiente acción: specs 011 y 012 escritas, pendientes de revisión antes de implementar.**
 
 <details>
 <summary>Propuesta original de spec 006 (histórica, no lo que terminó pasando — ver arriba)</summary>

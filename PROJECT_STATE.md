@@ -100,6 +100,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 009 Advisor Workspace | ✅ | ✅ | ✅ | ✅ |
 | 010 Advisor Reply | ✅ | ✅ | ✅ | ✅ |
 | 011 Navigation Shell & Theming | ✅ | ⬜ | ⬜ | ⬜ |
+| 012 Chat Panel Redesign | ✅ | ⬜ | ⬜ | ⬜ |
 
 ---
 
@@ -415,29 +416,40 @@ El rediseño de interfaz se validó primero como **mockup interactivo sin backen
 (`docs/design/amza_workspace_mockup/` — HTML/CSS/JS autocontenido, iterado varias veces con
 retroalimentación directa) antes de comprometer nada a una spec o a código real de `frontend/`.
 
-**Spec 011 (Navigation Shell & Theming) ya está escrita**, pendiente de revisión/implementación —
-ver `specifications/MVP/011_Navigation_Shell_and_Theming.md`. Orden acordado para el resto de esta
-tanda (no implementar más de una a la vez, misma regla de siempre):
+**Specs 011 (Navigation Shell & Theming) y 012 (Chat Panel Redesign) ya están escritas**,
+pendientes de revisión/implementación — ver `specifications/MVP/011_Navigation_Shell_and_Theming.md`
+y `specifications/MVP/012_Chat_Panel_Redesign.md`. Al escribir 012 se dividió en dos: el rediseño
+visual del chat no necesita dominio nuevo (queda en 012), pero etiquetas/notas/favoritos/
+seguimientos/reasignación/búsqueda entre conversaciones sí (nueva spec 013) — mismo criterio que ya
+partió la propuesta original de spec 006 en su momento. Orden vigente para el resto de esta tanda
+(no implementar más de una a la vez, misma regla de siempre):
 
 | Spec | Contenido |
 |---|---|
 | 011 Navigation Shell & Theming | Barra lateral, logo, tema claro/oscuro — el contenedor, sin tocar el chat |
-| 012 Chat Panel Redesign | Panel de chat estilo WhatsApp Web, panel de cliente (etiquetas/notas/seguimiento), emojis, adjuntos |
-| 013 Admin Governance & Access Control | Un admin principal + administradores, reglas de quién puede agregar/eliminar a quién |
-| 014 Contact Channel Tagging | Etiqueta de canal (Telegram/WhatsApp) en `Contact` — prerrequisito de 015 |
-| 015 WhatsApp Integration (Evolution API) | Provider de WhatsApp, rate limiting/retrasos anti-baneo, ventana de 24h, conexión por QR |
-| 016 Admin Panel | Prompts (principal + reglas de escalamiento), números de Telegram/WhatsApp, conectar/desconectar WhatsApp |
-| 017 Knowledge Base | Subida de archivos (listas de precios, etc.) como insumo de contexto para la IA |
-| 018 Media Library | Almacenamiento de multimedia entrante/saliente, con limpieza automática periódica |
+| 012 Chat Panel Redesign | Burbujas estilo WhatsApp Web, nombre real del contacto, emojis, búsqueda dentro/por nombre — sin dominio nuevo |
+| 013 Contact Enrichment & Follow-ups | `Contact.tags`/`notes`/`is_favorite`, entidad `FollowUp`, reasignación entre asesores, búsqueda de mensajes, "no leído" |
+| 014 Admin Governance & Access Control | Un admin principal + administradores, reglas de quién puede agregar/eliminar a quién |
+| 015 Contact Channel Tagging | Etiqueta de canal (Telegram/WhatsApp) en `Contact` — prerrequisito de 016 |
+| 016 WhatsApp Integration (Evolution API) | Provider de WhatsApp, rate limiting/retrasos anti-baneo, ventana de 24h, conexión por QR |
+| 017 Admin Panel | Prompts (principal + reglas de escalamiento), números de Telegram/WhatsApp, conectar/desconectar WhatsApp |
+| 018 Knowledge Base | Subida de archivos (listas de precios, etc.) como insumo de contexto para la IA |
+| 019 Media Library | Almacenamiento de multimedia entrante/saliente, con limpieza automática periódica |
+
+Gap real encontrado al escribir spec 012, corregido ahí mismo (no era del alcance original de esta
+spec, pero bloqueaba construirla): ninguna pantalla mostraba nunca el nombre del contacto —
+`OpportunityResponse` nunca expuso `Contact.display_name`, aunque existe desde spec 002. Corregido
+como "corrección de contrato" (mismo criterio que `assigned_advisor_id` en spec 009), sin tocar
+`AssignToAdvisorUseCase`/`ReturnToAIUseCase`/`SendAdvisorReplyUseCase`.
 
 Recomendaciones ya dadas durante el diseño de esta tanda (resumen aquí para no perderlas):
-- **Gobernanza de administradores (spec 013):** un admin "principal" (el primer `InternalUser` con
+- **Gobernanza de administradores (spec 014):** un admin "principal" (el primer `InternalUser` con
   rol Administrator creado); cualquier admin puede agregar administradores o asesores; **solo** el
   admin principal puede eliminar/desactivar administradores; nadie puede eliminarse a sí mismo.
-- **Ventana de 24h de WhatsApp (spec 015):** como se usa Evolution API (no oficial), la restricción
+- **Ventana de 24h de WhatsApp (spec 016):** como se usa Evolution API (no oficial), la restricción
   no la impone la API — se modela como regla de producto/UI (advertencia visible), no como candado
   técnico duro, dejando la decisión de retomar contacto a criterio humano informado.
-- **Reconexión por QR (spec 015/016):** mostrar el QR solo cuando Evolution API reporte la sesión
+- **Reconexión por QR (spec 016/017):** mostrar el QR solo cuando Evolution API reporte la sesión
   caída, nunca forzar reconexión mientras siga viva — investigar si expone webhooks de estado de
   conexión para detectarlo automáticamente.
 
