@@ -35,7 +35,7 @@ Orden de implementación:
 | 008 Security & Identity | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
 | 009 Advisor Workspace | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (4f7a183) |
 | 010 Advisor Reply | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (b181d1e) |
-| 011 Navigation Shell & Theming | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
+| 011 Navigation Shell & Theming | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (eb6071e) |
 | 012 Chat Panel Redesign | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 | 013 Contact Enrichment & Follow-ups | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 | 014 Admin Governance & Access Control | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
@@ -65,9 +65,8 @@ partió la propuesta original de spec 006 (ver más abajo). Orden vigente:
 (subida de archivos) → 019 Media Library (almacenamiento e inbound media). No implementar más de
 una a la vez, misma regla de siempre.
 
-**Siguiente acción: specs 011-017 escritas. El usuario pidió empezar a implementar — se procede
-en orden, empezando por 011, una a la vez, validando y ajustando antes de seguir con la
-siguiente.**
+**Siguiente acción: spec 011 implementada, validada (tsc/eslint/vitest/next build/Playwright
+6-6) y committed (eb6071e). Sigue spec 012 (Chat Panel Redesign).**
 
 <details>
 <summary>Propuesta original de spec 006 (histórica, no lo que terminó pasando — ver arriba)</summary>

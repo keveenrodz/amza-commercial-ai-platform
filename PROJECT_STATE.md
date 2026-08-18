@@ -99,7 +99,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 008 Security & Identity | ✅ | ✅ | ✅ | ✅ |
 | 009 Advisor Workspace | ✅ | ✅ | ✅ | ✅ |
 | 010 Advisor Reply | ✅ | ✅ | ✅ | ✅ |
-| 011 Navigation Shell & Theming | ✅ | ⬜ | ⬜ | ⬜ |
+| 011 Navigation Shell & Theming | ✅ | ✅ | ✅ | ✅ |
 | 012 Chat Panel Redesign | ✅ | ⬜ | ⬜ | ⬜ |
 | 013 Contact Enrichment & Follow-ups | ✅ | ⬜ | ⬜ | ⬜ |
 | 014 Admin Governance & Access Control | ✅ | ⬜ | ⬜ | ⬜ |
@@ -385,6 +385,34 @@ They must NOT be modified unless a formal architecture decision is made.
 * Validado manualmente de punta a punta con Telegram real: tomar una conversación, responder
   desde el Advisor Workspace, confirmar que el mensaje llega al cliente por Telegram con
   `sender_role="advisor"` persistido correctamente
+
+**Navigation Shell & Theming (spec 011) — primera del rediseño post-010 ya implementada:**
+
+* `frontend/app/(workspace)/` — route group con `layout.tsx` que centraliza `useRequireAuth()` y
+  envuelve todo en `WorkspaceShell` (`frontend/components/workspace-shell.tsx`): logo, 4 ítems de
+  navegación (`/opportunities`, `/knowledge-base`, `/media`, `/admin` — rutas reales, no estado de
+  React), nombre + rol + "Cerrar sesión", toggle de tema. `opportunities/` y `opportunities/[id]/`
+  se movieron con `git mv` (misma URL, spec 011 lo explica); ya no llaman `useRequireAuth()` por su
+  cuenta, usan `useCurrentUser()` (misma query cacheada)
+* Tema claro/oscuro con `data-theme` en `<html>` + script anti-parpadeo antes de hidratar
+  (`app/layout.tsx`, `suppressHydrationWarning` necesario ahí); `globals.css` con el patrón de tres
+  estados (sistema por defecto, override explícito gana en ambas direcciones)
+* `/knowledge-base`, `/media`, `/admin` — placeholders reales ("Próxima spec"), listos para que
+  las specs 013/017/018 les pongan contenido sin tocar el shell
+* **Dos bugs reales encontrados corriendo el e2e existente, no solo por inspección:**
+  1. El contenedor de contenido del shell era un segundo `<main>` anidado dentro del `<main>` de
+     cada página — HTML inválido, y hacía que `getByRole("link")` sin acotar en los tests contara
+     también los enlaces de la barra lateral. Fix: el contenedor del shell es un `<div>`, cada
+     página sigue siendo la única fuente de `<main>`
+  2. El indicador de desarrollo de Next.js se dibuja en la esquina inferior izquierda — el mismo
+     lugar donde quedó el toggle de tema — e interceptaba los clics reales ahí, no solo en
+     Playwright. Fix: `devIndicators: false` en `next.config.ts`
+* Gap de tooling encontrado de paso: `vitest run` recolectaba también `tests/e2e/**` (usan el
+  runner de Playwright, no vitest) y fallaba con "did not expect test.beforeEach() to be called
+  here" — nadie había corrido `vitest run` desde que existe el primer e2e. Fix: `exclude:
+  ["tests/e2e/**"]` en `vitest.config.ts`
+* Validado: `tsc --noEmit`, `eslint`, `vitest run`, `next build`, y el suite completo de Playwright
+  (6/6, incluyendo dos tests nuevos: persistencia de tema tras recargar, rutas placeholder)
 
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
