@@ -35,18 +35,27 @@ Orden de implementación:
 | 008 Security & Identity | ✅ spec + ✅ implementado + ✅ validado + ✅ committed |
 | 009 Advisor Workspace | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (4f7a183) |
 | 010 Advisor Reply | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (b181d1e) |
+| 011 Navigation Shell & Theming | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 
 La propuesta original de spec 006 (más abajo, tachada) se dividió en la práctica: la memoria
 conversacional y los providers quedaron en 006, la capa HTTP pasó a un spec 007 separado. Detalle
 completo de cada spec en `PROJECT_STATE.md`, no aquí — este documento es el orden, no el estado.
 
-**Siguiente acción: ninguna spec nueva todavía.** Con las 10 specs del MVP implementadas,
-validadas y con el Advisor Workspace ya permitiendo tomar/responder/devolver una conversación
-real, el siguiente paso es **"Pilot Validation"** — validar con Amza Empaques, no seguir
-escribiendo specs técnicas. Ver "Next Step" en `PROJECT_STATE.md` para los criterios de éxito a
-acordar antes de empezar. No retomar el roadmap especulativo (Knowledge Base, Embeddings,
-Background Jobs, etc. — ver "Future Evolution" en specs 006/008) hasta tener retroalimentación
-real de ese piloto.
+**Cambio de rumbo tras las 10 specs del MVP:** en vez de arrancar el piloto operativo con Amza
+Empaques directamente, se decidió completar más la plataforma primero (UI/UX rediseñada,
+integración de WhatsApp vía Evolution API, panel de administración, base de conocimiento,
+multimedia) — ver `PROJECT_STATE.md`, sección "Next Step", para el detalle completo y las razones.
+El rediseño de interfaz se validó primero como mockup interactivo sin backend
+(`docs/design/amza_workspace_mockup/`) antes de comprometerlo a una spec.
+
+**Orden acordado para esta nueva tanda de specs** (011 en adelante, continúan la numeración del
+MVP): 011 Navigation Shell & Theming → 012 Chat Panel Redesign → 013 Admin Governance & Access
+Control → 014 Contact Channel Tagging → 015 WhatsApp Integration (Evolution API) → 016 Admin Panel
+(prompts, números, conexión WhatsApp) → 017 Knowledge Base (subida de archivos) → 018 Media
+Library (almacenamiento e inbound media). No implementar más de una a la vez, misma regla de
+siempre.
+
+**Siguiente acción: spec 011 escrita, pendiente de revisión antes de implementar.**
 
 <details>
 <summary>Propuesta original de spec 006 (histórica, no lo que terminó pasando — ver arriba)</summary>

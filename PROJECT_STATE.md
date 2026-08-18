@@ -99,6 +99,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 008 Security & Identity | ✅ | ✅ | ✅ | ✅ |
 | 009 Advisor Workspace | ✅ | ✅ | ✅ | ✅ |
 | 010 Advisor Reply | ✅ | ✅ | ✅ | ✅ |
+| 011 Navigation Shell & Theming | ✅ | ⬜ | ⬜ | ⬜ |
 
 ---
 
@@ -402,29 +403,48 @@ preparar un despliegue más robusto):
 
 # Next Step
 
-**"Pilot Validation" (Operational Validation) — no es una spec técnica, no se numera.**
+**Cambio de rumbo (post spec 010, antes de arrancar cualquier piloto):** en vez de validar el
+Advisor Workspace actual con Amza Empaques, se decidió completar más la plataforma primero —
+rediseño de interfaz (panel de chat estilo WhatsApp Web), integración de WhatsApp vía Evolution
+API, gobernanza de administradores, base de conocimiento, y almacenamiento de multimedia. El
+piloto operativo (`docs/pilot/success_criteria_template.md`, ya completado con Amza) queda
+pospuesto hasta que esta nueva tanda de specs esté implementada — no se descarta, se pospone
+deliberadamente.
 
-La plataforma está operable de punta a punta, protegida, y con una interfaz real para que un
-asesor humano trabaje — incluyendo responderle al cliente, que era el gap real que faltaba
-cerrar antes de esto (spec 010). No se está construyendo software — se está validando una
-hipótesis de negocio: que alguien de Amza Empaques use el Advisor Workspace durante unos días
-reales, antes de retomar cualquier ítem del roadmap tecnológico.
+El rediseño de interfaz se validó primero como **mockup interactivo sin backend**
+(`docs/design/amza_workspace_mockup/` — HTML/CSS/JS autocontenido, iterado varias veces con
+retroalimentación directa) antes de comprometer nada a una spec o a código real de `frontend/`.
 
-**Antes de empezar, definir qué significa éxito** (no instrumentarlo todavía, solo acordarlo):
-tiempo promedio para tomar una conversación, porcentaje devuelto a la IA, incidencias reportadas,
-satisfacción cualitativa del asesor. Sin esto, el piloto termina siendo "se sintió bien" — difícil
-de convertir en decisiones.
+**Spec 011 (Navigation Shell & Theming) ya está escrita**, pendiente de revisión/implementación —
+ver `specifications/MVP/011_Navigation_Shell_and_Theming.md`. Orden acordado para el resto de esta
+tanda (no implementar más de una a la vez, misma regla de siempre):
 
-Sugerencia no bloqueante: con arquitectura, seguridad, tests, y frontend ya funcionando, vale la
-pena escribir ADRs cortos para las decisiones que ya demostraron ser valiosas (candidatas: BFF,
-`ConversationSummary`, `AIProvider.generate()` vs `complete()`, OAuth sin auto-provisioning, JWT
-validado contra BD, proxy de Next.js) — cinco o seis, no todas.
+| Spec | Contenido |
+|---|---|
+| 011 Navigation Shell & Theming | Barra lateral, logo, tema claro/oscuro — el contenedor, sin tocar el chat |
+| 012 Chat Panel Redesign | Panel de chat estilo WhatsApp Web, panel de cliente (etiquetas/notas/seguimiento), emojis, adjuntos |
+| 013 Admin Governance & Access Control | Un admin principal + administradores, reglas de quién puede agregar/eliminar a quién |
+| 014 Contact Channel Tagging | Etiqueta de canal (Telegram/WhatsApp) en `Contact` — prerrequisito de 015 |
+| 015 WhatsApp Integration (Evolution API) | Provider de WhatsApp, rate limiting/retrasos anti-baneo, ventana de 24h, conexión por QR |
+| 016 Admin Panel | Prompts (principal + reglas de escalamiento), números de Telegram/WhatsApp, conectar/desconectar WhatsApp |
+| 017 Knowledge Base | Subida de archivos (listas de precios, etc.) como insumo de contexto para la IA |
+| 018 Media Library | Almacenamiento de multimedia entrante/saliente, con limpieza automática periódica |
 
-La hoja de ruta de evoluciones futuras (Memory Extraction, Knowledge Base, AI Task Framework,
-Embedding Search, Background Jobs, Model Routing, Prompt Management, Context Optimization,
-`MicrosoftOAuthProvider`) queda registrada en "Future Evolution" de
-`006_Conversation_Memory_and_Providers.md` y `008_Security_and_Identity.md` — deliberadamente
-fuera de alcance hasta que el piloto real dé evidencia de qué hace falta, no antes.
+Recomendaciones ya dadas durante el diseño de esta tanda (resumen aquí para no perderlas):
+- **Gobernanza de administradores (spec 013):** un admin "principal" (el primer `InternalUser` con
+  rol Administrator creado); cualquier admin puede agregar administradores o asesores; **solo** el
+  admin principal puede eliminar/desactivar administradores; nadie puede eliminarse a sí mismo.
+- **Ventana de 24h de WhatsApp (spec 015):** como se usa Evolution API (no oficial), la restricción
+  no la impone la API — se modela como regla de producto/UI (advertencia visible), no como candado
+  técnico duro, dejando la decisión de retomar contacto a criterio humano informado.
+- **Reconexión por QR (spec 015/016):** mostrar el QR solo cuando Evolution API reporte la sesión
+  caída, nunca forzar reconexión mientras siga viva — investigar si expone webhooks de estado de
+  conexión para detectarlo automáticamente.
+
+No retomar el roadmap tecnológico especulativo previo (Memory Extraction, AI Task Framework,
+Embedding Search, Background Jobs, Model Routing, Prompt Management genérico, Context
+Optimization, `MicrosoftOAuthProvider` — "Future Evolution" de specs 006/008) hasta que esta nueva
+tanda esté implementada y el piloto pospuesto dé evidencia real de qué más hace falta.
 
 Política vigente desde spec 008: toda spec nueva debe incluir tests de lo que introduce; si
 modifica comportamiento existente, actualiza los tests afectados (ver
@@ -570,5 +590,7 @@ If documentation conflicts, the following priority applies:
 reales (Telegram + OpenRouter), API protegida (Google OAuth + JWT), y un frontend real (Advisor
 Workspace) donde un asesor humano puede tomar una conversación, **responderle al cliente**, y
 devolverla a IA — validado manualmente con login real y Telegram real, sin bugs conocidos.
-Siguiente: no una spec — un piloto operativo con Amza Empaques, con criterios de éxito definidos
-antes de empezar.
+Siguiente: se pospuso el piloto operativo para completar más la plataforma primero (UI rediseñada,
+WhatsApp, panel de administración, base de conocimiento, multimedia) — spec 011 (Navigation Shell &
+Theming) ya escrita, pendiente de implementar. Ver sección "Next Step" arriba para el orden
+completo de la nueva tanda de specs.
