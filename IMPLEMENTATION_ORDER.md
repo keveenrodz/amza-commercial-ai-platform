@@ -41,6 +41,7 @@ Orden de implementación:
 | 014 Admin Governance & Access Control | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 | 015 Channel Provider Routing | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 | 016 WhatsApp Integration (Evolution API) | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
+| 017 Admin Panel | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 
 La propuesta original de spec 006 (más abajo, tachada) se dividió en la práctica: la memoria
 conversacional y los providers quedaron en 006, la capa HTTP pasó a un spec 007 separado. Detalle
@@ -64,7 +65,9 @@ partió la propuesta original de spec 006 (ver más abajo). Orden vigente:
 (subida de archivos) → 019 Media Library (almacenamiento e inbound media). No implementar más de
 una a la vez, misma regla de siempre.
 
-**Siguiente acción: specs 011-016 escritas, pendientes de revisión antes de implementar.**
+**Siguiente acción: specs 011-017 escritas. El usuario pidió empezar a implementar — se procede
+en orden, empezando por 011, una a la vez, validando y ajustando antes de seguir con la
+siguiente.**
 
 <details>
 <summary>Propuesta original de spec 006 (histórica, no lo que terminó pasando — ver arriba)</summary>

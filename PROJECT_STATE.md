@@ -105,6 +105,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 014 Admin Governance & Access Control | ✅ | ⬜ | ⬜ | ⬜ |
 | 015 Channel Provider Routing | ✅ | ⬜ | ⬜ | ⬜ |
 | 016 WhatsApp Integration (Evolution API) | ✅ | ⬜ | ⬜ | ⬜ |
+| 017 Admin Panel | ✅ | ⬜ | ⬜ | ⬜ |
 
 ---
 
@@ -420,15 +421,13 @@ El rediseño de interfaz se validó primero como **mockup interactivo sin backen
 (`docs/design/amza_workspace_mockup/` — HTML/CSS/JS autocontenido, iterado varias veces con
 retroalimentación directa) antes de comprometer nada a una spec o a código real de `frontend/`.
 
-**Specs 011 (Navigation Shell & Theming), 012 (Chat Panel Redesign), 013 (Contact Enrichment &
-Follow-ups), 014 (Admin Governance & Access Control), 015 (Channel Provider Routing) y 016
-(WhatsApp Integration) ya están escritas**, pendientes de revisión/implementación — ver
-`specifications/MVP/011_Navigation_Shell_and_Theming.md`,
-`specifications/MVP/012_Chat_Panel_Redesign.md`,
-`specifications/MVP/013_Contact_Enrichment_and_Follow_ups.md`,
-`specifications/MVP/014_Admin_Governance_and_Access_Control.md`,
-`specifications/MVP/015_Channel_Provider_Routing.md` y
-`specifications/MVP/016_WhatsApp_Integration.md`. Al escribir 012 se dividió en dos: el
+**Specs 011 a 017 ya están escritas** (Navigation Shell & Theming, Chat Panel Redesign, Contact
+Enrichment & Follow-ups, Admin Governance & Access Control, Channel Provider Routing, WhatsApp
+Integration, Admin Panel) — ver `specifications/MVP/011_Navigation_Shell_and_Theming.md` hasta
+`specifications/MVP/017_Admin_Panel.md`. **El usuario ya pidió empezar a implementar** — se
+procede en orden desde 011, una spec a la vez, validando antes de seguir (misma regla de siempre,
+ahora aplicada de verdad en vez de solo en la fase de escritura). Al escribir 012 se dividió en
+dos: el
 rediseño visual del chat no necesita dominio nuevo (quedó en 012), pero etiquetas/notas/
 favoritos/seguimientos/reasignación/búsqueda entre conversaciones sí (spec 013, ya escrita) —
 mismo criterio que ya partió la propuesta original de spec 006 en su momento. **015 se renombró**
@@ -445,7 +444,7 @@ de esta tanda (no implementar más de una a la vez, misma regla de siempre):
 | 014 Admin Governance & Access Control | Un admin principal + administradores, reglas de quién puede agregar/eliminar a quién |
 | 015 Channel Provider Routing | `ChannelProviderRegistry` — selecciona el `ChannelProvider` correcto por canal, prerrequisito real de 016 |
 | 016 WhatsApp Integration (Evolution API) | `WhatsAppChannelProvider` con cola/worker anti-baneo (retrasos simulados, ritmo entre envíos), webhook, script de aprovisionamiento — sin UI de QR (spec 017) ni descarga de multimedia (Media Library) |
-| 017 Admin Panel | Prompts (principal + reglas de escalamiento), números de Telegram/WhatsApp, conectar/desconectar WhatsApp |
+| 017 Admin Panel | `Agent.escalation_rules` nuevo, edición de prompt vía UI, conectar/desconectar WhatsApp (QR) usando `WhatsAppChannelProvider.health()`/nuevos métodos — Telegram sigue sin editable por UI, a propósito |
 | 018 Knowledge Base | Subida de archivos (listas de precios, etc.) como insumo de contexto para la IA |
 | 019 Media Library | Almacenamiento de multimedia entrante/saliente, con limpieza automática periódica |
 
