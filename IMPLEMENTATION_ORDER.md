@@ -39,6 +39,7 @@ Orden de implementación:
 | 012 Chat Panel Redesign | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 | 013 Contact Enrichment & Follow-ups | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 | 014 Admin Governance & Access Control | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
+| 015 Channel Provider Routing | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 
 La propuesta original de spec 006 (más abajo, tachada) se dividió en la práctica: la memoria
 conversacional y los providers quedaron en 006, la capa HTTP pasó a un spec 007 separado. Detalle
@@ -57,12 +58,12 @@ nuevo, pero etiquetas/notas/favoritos/seguimientos/reasignación/búsqueda sí �
 partió la propuesta original de spec 006 (ver más abajo). Orden vigente:
 
 011 Navigation Shell & Theming → 012 Chat Panel Redesign → 013 Contact Enrichment & Follow-ups →
-014 Admin Governance & Access Control → 015 Contact Channel Tagging → 016 WhatsApp Integration
+014 Admin Governance & Access Control → 015 Channel Provider Routing → 016 WhatsApp Integration
 (Evolution API) → 017 Admin Panel (prompts, números, conexión WhatsApp) → 018 Knowledge Base
 (subida de archivos) → 019 Media Library (almacenamiento e inbound media). No implementar más de
 una a la vez, misma regla de siempre.
 
-**Siguiente acción: specs 011, 012, 013 y 014 escritas, pendientes de revisión antes de implementar.**
+**Siguiente acción: specs 011-015 escritas, pendientes de revisión antes de implementar.**
 
 <details>
 <summary>Propuesta original de spec 006 (histórica, no lo que terminó pasando — ver arriba)</summary>

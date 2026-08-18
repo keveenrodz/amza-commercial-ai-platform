@@ -103,6 +103,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 012 Chat Panel Redesign | ✅ | ⬜ | ⬜ | ⬜ |
 | 013 Contact Enrichment & Follow-ups | ✅ | ⬜ | ⬜ | ⬜ |
 | 014 Admin Governance & Access Control | ✅ | ⬜ | ⬜ | ⬜ |
+| 015 Channel Provider Routing | ✅ | ⬜ | ⬜ | ⬜ |
 
 ---
 
@@ -419,15 +420,19 @@ El rediseño de interfaz se validó primero como **mockup interactivo sin backen
 retroalimentación directa) antes de comprometer nada a una spec o a código real de `frontend/`.
 
 **Specs 011 (Navigation Shell & Theming), 012 (Chat Panel Redesign), 013 (Contact Enrichment &
-Follow-ups) y 014 (Admin Governance & Access Control) ya están escritas**, pendientes de
-revisión/implementación — ver `specifications/MVP/011_Navigation_Shell_and_Theming.md`,
+Follow-ups), 014 (Admin Governance & Access Control) y 015 (Channel Provider Routing) ya están
+escritas**, pendientes de revisión/implementación — ver `specifications/MVP/011_Navigation_Shell_and_Theming.md`,
 `specifications/MVP/012_Chat_Panel_Redesign.md`,
-`specifications/MVP/013_Contact_Enrichment_and_Follow_ups.md` y
-`specifications/MVP/014_Admin_Governance_and_Access_Control.md`. Al escribir 012 se dividió en
-dos: el rediseño visual del chat no necesita dominio nuevo (quedó en 012), pero etiquetas/notas/
+`specifications/MVP/013_Contact_Enrichment_and_Follow_ups.md`,
+`specifications/MVP/014_Admin_Governance_and_Access_Control.md` y
+`specifications/MVP/015_Channel_Provider_Routing.md`. Al escribir 012 se dividió en dos: el
+rediseño visual del chat no necesita dominio nuevo (quedó en 012), pero etiquetas/notas/
 favoritos/seguimientos/reasignación/búsqueda entre conversaciones sí (spec 013, ya escrita) —
-mismo criterio que ya partió la propuesta original de spec 006 en su momento. Orden vigente para
-el resto de esta tanda (no implementar más de una a la vez, misma regla de siempre):
+mismo criterio que ya partió la propuesta original de spec 006 en su momento. **015 se renombró**
+de "Contact Channel Tagging" a "Channel Provider Routing" al escribirla: la etiqueta de canal que
+se planeó agregar ya existía (`Contact.channel_type` desde spec 002, ya usado por el chip de spec
+012) — el prerrequisito real de WhatsApp era otro (ver nota más abajo). Orden vigente para el resto
+de esta tanda (no implementar más de una a la vez, misma regla de siempre):
 
 | Spec | Contenido |
 |---|---|
@@ -435,7 +440,7 @@ el resto de esta tanda (no implementar más de una a la vez, misma regla de siem
 | 012 Chat Panel Redesign | Burbujas estilo WhatsApp Web, nombre real del contacto, emojis, búsqueda dentro/por nombre — sin dominio nuevo |
 | 013 Contact Enrichment & Follow-ups | `Contact.tags`/`notes`/`is_favorite`, entidad `FollowUp`, reasignación entre asesores, búsqueda de mensajes, "no leído" |
 | 014 Admin Governance & Access Control | Un admin principal + administradores, reglas de quién puede agregar/eliminar a quién |
-| 015 Contact Channel Tagging | Etiqueta de canal (Telegram/WhatsApp) en `Contact` — prerrequisito de 016 |
+| 015 Channel Provider Routing | `ChannelProviderRegistry` — selecciona el `ChannelProvider` correcto por canal, prerrequisito real de 016 |
 | 016 WhatsApp Integration (Evolution API) | Provider de WhatsApp, rate limiting/retrasos anti-baneo, ventana de 24h, conexión por QR |
 | 017 Admin Panel | Prompts (principal + reglas de escalamiento), números de Telegram/WhatsApp, conectar/desconectar WhatsApp |
 | 018 Knowledge Base | Subida de archivos (listas de precios, etc.) como insumo de contexto para la IA |
@@ -459,7 +464,17 @@ Otro más al escribir spec 014: `app/security.py::require_role()` existe desde s
 **nunca se conectó a ningún endpoint** — spec 014 es su primer uso real (protege
 `/organizations/{slug}/users`). Antes de asumir que un permiso "no existe todavía", revisar si ya
 hay una pieza construida y solo sin cablear — viene pasando seguido en esta tanda
-(`Contact.display_name`, `list_advisors_by_organization`, ahora `require_role`).
+(`Contact.display_name`, `list_advisors_by_organization`, `require_role`, y ahora el hallazgo de
+spec 015 abajo).
+
+Gap real encontrado al escribir spec 015 (de un sabor distinto a los anteriores — no es una
+capacidad sin cablear, es código de un solo canal que hay que generalizar antes de que llegue el
+segundo): `app/dependencies.py::get_channel_provider()` construye un único `ChannelProvider`
+(siempre Telegram) y ese mismo objeto se inyecta tanto en `ReceiveIncomingMessageUseCase` como en
+`SendAdvisorReplyUseCase`. En el momento en que existiera un `Contact` de WhatsApp, responderle
+por `POST .../messages` habría intentado enviar por la API de Telegram, sin ningún error visible.
+Spec 015 agrega `ChannelProviderRegistry` (selecciona el provider por `channel_type`) antes de que
+spec 016 agregue el segundo provider — así esa spec no toca ninguno de los dos casos de uso.
 
 Recomendaciones ya dadas durante el diseño de esta tanda (resumen aquí para no perderlas):
 - **Gobernanza de administradores (spec 014):** un admin "principal" (el primer `InternalUser` con
