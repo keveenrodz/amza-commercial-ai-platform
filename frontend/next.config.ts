@@ -4,6 +4,11 @@ import type { NextConfig } from "next";
 // del backend (spec 009, principio arquitectónico). Este rewrite es el único lugar donde el
 // frontend "conoce" la URL real de FastAPI; ningún componente cliente debería referenciarla.
 const nextConfig: NextConfig = {
+  // El indicador de desarrollo de Next.js se renderiza en la esquina inferior izquierda -- el
+  // mismo lugar donde spec 011 puso el toggle de tema en la barra lateral. En modo dev, ese
+  // overlay intercepta los clics reales (encontrado corriendo los e2e de spec 011), no solo en
+  // Playwright -- cualquiera probando manualmente tendría el mismo problema.
+  devIndicators: false,
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL;
     if (!backendUrl) {

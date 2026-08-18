@@ -6,13 +6,13 @@ import { useState } from "react";
 
 import { useConversationHistory } from "@/hooks/use-conversation-history";
 import { useAssignToAdvisor, useReturnToAI } from "@/hooks/use-opportunity-actions";
-import { useRequireAuth } from "@/hooks/use-require-auth";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useSendMessage } from "@/hooks/use-send-message";
 
 export default function OpportunityDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { data: currentUser } = useRequireAuth();
+  const { data: currentUser } = useCurrentUser();
   const { data: history, isLoading } = useConversationHistory(
     currentUser?.organization_slug,
     params.id,

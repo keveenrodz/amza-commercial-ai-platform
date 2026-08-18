@@ -57,7 +57,10 @@ test("las tres pestañas filtran correctamente", async ({ page }) => {
   await expect(page.getByRole("link", { name: /waiting_for_advisor/i })).toHaveCount(1);
 
   await page.getByRole("button", { name: "Todas" }).click();
-  await expect(page.getByRole("link")).toHaveCount(2);
+  // Acotado a <main> -- la barra lateral del shell (spec 011) también tiene enlaces reales
+  // (Conversaciones/Base de conocimiento/Multimedia/Administración), un getByRole("link") sin
+  // acotar los cuenta también.
+  await expect(page.locator("main").getByRole("link")).toHaveCount(2);
 });
 
 test("tomar una conversación sin asignar llama al endpoint correcto", async ({ page }) => {

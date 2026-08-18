@@ -3,21 +3,19 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { useLogout } from "@/hooks/use-logout";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useOpportunities } from "@/hooks/use-opportunities";
-import { useRequireAuth } from "@/hooks/use-require-auth";
 
 type Tab = "unassigned" | "mine" | "all";
 
 export default function OpportunitiesPage() {
-  const { data: currentUser, isLoading: userLoading } = useRequireAuth();
+  const { data: currentUser } = useCurrentUser();
   const { data: opportunities, isLoading: oppsLoading } = useOpportunities(
     currentUser?.organization_slug,
   );
   const [tab, setTab] = useState<Tab>("unassigned");
-  const logout = useLogout();
 
-  if (userLoading || !currentUser) {
+  if (!currentUser) {
     return <p className="p-8">Cargando...</p>;
   }
 
@@ -30,17 +28,7 @@ export default function OpportunitiesPage() {
 
   return (
     <main className="p-8">
-      <header className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">Oportunidades</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">
-            {currentUser.full_name} ({currentUser.role})
-          </span>
-          <button onClick={() => logout.mutate()} className="text-sm underline">
-            Cerrar sesión
-          </button>
-        </div>
-      </header>
+      <h1 className="text-xl font-semibold mb-6">Oportunidades</h1>
 
       <nav className="flex gap-4 mb-4">
         <button
