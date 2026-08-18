@@ -501,8 +501,36 @@
   .followup-card button, .schedule-btn { font-size: 11.5px; font-weight: 700; border-radius: 7px; padding: 5px 9px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
   .schedule-btn { width: 100%; text-align: center; color: var(--ink-muted); border-style: dashed; }
   .fu-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
-  .fu-form input { border: 1px solid var(--line); background: var(--paper); border-radius: 7px; padding: 6px 8px; font-size: 12px; }
-  .fu-form button { background: var(--accent); color: #fff; border: none; font-weight: 700; border-radius: 7px; padding: 7px; font-size: 12px; cursor: pointer; }
+  .fu-form input { border: 1px solid var(--line); background: var(--paper); border-radius: 7px; padding: 6px 8px; font-size: 12px; width: 100%; }
+  .fu-form input[readonly] { cursor: pointer; }
+  .fu-form > button { background: var(--accent); color: #fff; border: none; font-weight: 700; border-radius: 7px; padding: 7px; font-size: 12px; cursor: pointer; }
+
+  .dt-pop {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 40;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+    padding: 10px; width: 218px;
+  }
+  .dt-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .dt-cal-head button { border: none; background: transparent; color: var(--ink-muted); cursor: pointer; width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }
+  .dt-cal-head button:hover { background: var(--surface-2); }
+  .dt-cal-head span { font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 12px; }
+  .dt-cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 9.5px; color: var(--ink-faint); margin-bottom: 3px; }
+  .dt-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .dt-day { border: none; background: transparent; border-radius: 7px; font-size: 11.5px; padding: 6px 0; cursor: pointer; }
+  .dt-day:hover:not(.disabled) { background: var(--surface-2); }
+  .dt-day.today { font-weight: 800; color: var(--accent-deep); }
+  :root[data-theme="dark"] .dt-day.today { color: var(--accent); }
+  .dt-day.disabled { color: var(--ink-faint); cursor: default; opacity: 0.45; }
+  .dt-day.empty { cursor: default; }
+  .dt-time-date { font-size: 12.5px; font-weight: 700; margin-bottom: 10px; text-align: center; }
+  .dt-time-row { display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 10px; }
+  .dt-time-row select { border: 1px solid var(--line); background: var(--paper); border-radius: 7px; padding: 5px 4px; font-size: 12px; }
+  .dt-ampm { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; margin-left: 3px; }
+  .dt-ampm button { border: none; background: var(--surface); color: var(--ink-muted); font-size: 11px; font-weight: 700; padding: 5px 7px; cursor: pointer; }
+  .dt-ampm button.active { background: var(--accent); color: #fff; }
+  .dt-time-actions { display: flex; gap: 6px; }
+  .dt-time-actions button { flex: 1; border-radius: 7px; padding: 7px; font-size: 12px; font-weight: 700; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink-muted); }
+  .dt-time-actions #dtConfirm { background: var(--accent); border-color: var(--accent); color: #fff; }
 
   .notes-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
   .note-item { background: var(--surface-2); border-radius: 9px; padding: 8px 10px; font-size: 12px; }
@@ -1284,17 +1312,112 @@
       if (document.getElementById('fuForm')) return;
       var form = document.createElement('div');
       form.className = 'fu-form'; form.id = 'fuForm';
-      form.innerHTML = '<input type="text" id="fuWhen" placeholder="Cuándo — ej. Mañana 10:00" />' +
+      form.innerHTML = '<div class="fu-when-wrap" style="position:relative">' +
+          '<input type="text" id="fuWhen" placeholder="Elige fecha y hora" readonly />' +
+        '</div>' +
         '<input type="text" id="fuReason" placeholder="Motivo del seguimiento" />' +
         '<button id="fuSaveBtn">Guardar seguimiento</button>';
       section.appendChild(form);
+      var fuWhen = document.getElementById('fuWhen');
+      fuWhen.addEventListener('click', function () { openDateTimePicker(fuWhen); });
       document.getElementById('fuSaveBtn').addEventListener('click', function () {
-        var when = document.getElementById('fuWhen').value.trim();
+        var when = fuWhen.value.trim();
         var reason = document.getElementById('fuReason').value.trim();
-        if (!when) return;
+        if (!when) { fuWhen.focus(); return; }
         c.followUp = { due: when, reason: reason || 'Sin motivo especificado', overdue: false };
         renderClientPanel(); renderList(); renderChat();
       });
+    });
+  }
+
+  var MONTH_NAMES_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  var MONTH_SHORT_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+  function openDateTimePicker(inputEl) {
+    var existing = document.getElementById('dtPop');
+    if (existing) { existing.remove(); return; }
+
+    var today = new Date();
+    var todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    var state = { year: today.getFullYear(), month: today.getMonth(), date: null };
+
+    var pop = document.createElement('div');
+    pop.className = 'dt-pop'; pop.id = 'dtPop';
+    pop.innerHTML =
+      '<div id="dtCalView">' +
+        '<div class="dt-cal-head"><button type="button" id="dtPrevMonth" aria-label="Mes anterior">‹</button><span id="dtMonthLabel"></span><button type="button" id="dtNextMonth" aria-label="Mes siguiente">›</button></div>' +
+        '<div class="dt-cal-dow"><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span></div>' +
+        '<div class="dt-cal-grid" id="dtCalGrid"></div>' +
+      '</div>' +
+      '<div id="dtTimeView" style="display:none">' +
+        '<div class="dt-time-date" id="dtTimeDateLabel"></div>' +
+        '<div class="dt-time-row">' +
+          '<select id="dtHour"></select><span>:</span><select id="dtMinute"></select>' +
+          '<div class="dt-ampm"><button type="button" data-v="AM">AM</button><button type="button" data-v="PM">PM</button></div>' +
+        '</div>' +
+        '<div class="dt-time-actions"><button type="button" id="dtBack">Atrás</button><button type="button" id="dtConfirm">Listo</button></div>' +
+      '</div>';
+    inputEl.parentElement.appendChild(pop);
+
+    var hourSel = pop.querySelector('#dtHour');
+    hourSel.innerHTML = Array.from({ length: 12 }, function (_, i) { return i + 1; }).map(function (h) {
+      return '<option value="' + h + '"' + (h === 9 ? ' selected' : '') + '>' + h + '</option>';
+    }).join('');
+    var minuteSel = pop.querySelector('#dtMinute');
+    minuteSel.innerHTML = ['00', '15', '30', '45'].map(function (m) { return '<option value="' + m + '">' + m + '</option>'; }).join('');
+
+    var ampm = today.getHours() >= 12 ? 'PM' : 'AM';
+    function renderAmpm() {
+      Array.prototype.forEach.call(pop.querySelectorAll('.dt-ampm button'), function (b) {
+        b.classList.toggle('active', b.getAttribute('data-v') === ampm);
+      });
+    }
+    renderAmpm();
+    Array.prototype.forEach.call(pop.querySelectorAll('.dt-ampm button'), function (b) {
+      b.addEventListener('click', function () { ampm = b.getAttribute('data-v'); renderAmpm(); });
+    });
+
+    function renderGrid() {
+      pop.querySelector('#dtMonthLabel').textContent = MONTH_NAMES_ES[state.month] + ' ' + state.year;
+      var first = new Date(state.year, state.month, 1);
+      var offset = (first.getDay() + 6) % 7;
+      var daysInMonth = new Date(state.year, state.month + 1, 0).getDate();
+      var html = '';
+      for (var i = 0; i < offset; i++) html += '<span class="dt-day empty"></span>';
+      for (var d = 1; d <= daysInMonth; d++) {
+        var thisDate = new Date(state.year, state.month, d);
+        var past = thisDate < todayMid;
+        var isToday = thisDate.getTime() === todayMid.getTime();
+        html += '<button type="button" class="dt-day' + (past ? ' disabled' : '') + (isToday ? ' today' : '') + '"' + (past ? ' disabled' : '') + ' data-d="' + d + '">' + d + '</button>';
+      }
+      pop.querySelector('#dtCalGrid').innerHTML = html;
+      Array.prototype.forEach.call(pop.querySelectorAll('.dt-day:not(.disabled):not(.empty)'), function (b) {
+        b.addEventListener('click', function () {
+          state.date = new Date(state.year, state.month, +b.getAttribute('data-d'));
+          pop.querySelector('#dtCalView').style.display = 'none';
+          pop.querySelector('#dtTimeView').style.display = 'block';
+          pop.querySelector('#dtTimeDateLabel').textContent = state.date.getDate() + ' ' + MONTH_SHORT_ES[state.date.getMonth()] + ' ' + state.date.getFullYear();
+        });
+      });
+    }
+    renderGrid();
+
+    pop.querySelector('#dtPrevMonth').addEventListener('click', function () {
+      state.month--; if (state.month < 0) { state.month = 11; state.year--; }
+      renderGrid();
+    });
+    pop.querySelector('#dtNextMonth').addEventListener('click', function () {
+      state.month++; if (state.month > 11) { state.month = 0; state.year++; }
+      renderGrid();
+    });
+    pop.querySelector('#dtBack').addEventListener('click', function () {
+      pop.querySelector('#dtTimeView').style.display = 'none';
+      pop.querySelector('#dtCalView').style.display = 'block';
+    });
+    pop.querySelector('#dtConfirm').addEventListener('click', function () {
+      var hour = hourSel.value, minute = minuteSel.value;
+      inputEl.value = state.date.getDate() + ' ' + MONTH_SHORT_ES[state.date.getMonth()] + ' ' + state.date.getFullYear() + ' · ' + hour + ':' + minute + ' ' + ampm.toLowerCase() + '.';
+      pop.remove();
     });
   }
 
@@ -1369,6 +1492,7 @@
     { id: 'emojiPop', anchor: 'emojiBtn' },
     { id: 'tagForm', anchor: 'addTagBtn' },
     { id: 'fuForm', anchor: 'fuScheduleBtn' },
+    { id: 'dtPop', anchor: 'fuWhen' },
     { id: 'filtersMenu', anchor: 'filtersBtn' }
   ];
   document.addEventListener('click', function (e) {
