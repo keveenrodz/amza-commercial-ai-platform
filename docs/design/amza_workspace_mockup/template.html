@@ -1365,7 +1365,13 @@ __DATA_JSON__
 
   /* Any floating panel (menu/popover/form) auto-closes on an outside click.
      Attached once, persists across re-renders — a per-render {once:true} listener
-     gets silently consumed by the first unrelated click and stops protecting later panels. */
+     gets silently consumed by the first unrelated click and stops protecting later panels.
+     Runs on the CAPTURE phase (the `true` below), i.e. before the click reaches its
+     target's own handler: a nested panel (e.g. the date picker inside the follow-up
+     form) can remove *itself* on confirm, which detaches it from the DOM — if this
+     listener ran afterwards (the default bubble phase), `fuForm.contains(e.target)`
+     would already be false for that detached node, and it would wrongly nuke the
+     still-open outer form a beat after the inner popover closed. */
   var FLOATING_PANELS = [
     { id: 'reassignMenu', anchor: 'reassignBtn' },
     { id: 'chatMenu', anchor: 'chatMenuBtn' },
@@ -1384,7 +1390,7 @@ __DATA_JSON__
       if (anchor && anchor.contains(e.target)) return;
       el.remove();
     });
-  });
+  }, true);
 
   Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
     t.addEventListener('click', function () {
