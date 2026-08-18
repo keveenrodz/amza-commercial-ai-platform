@@ -104,6 +104,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 013 Contact Enrichment & Follow-ups | ✅ | ⬜ | ⬜ | ⬜ |
 | 014 Admin Governance & Access Control | ✅ | ⬜ | ⬜ | ⬜ |
 | 015 Channel Provider Routing | ✅ | ⬜ | ⬜ | ⬜ |
+| 016 WhatsApp Integration (Evolution API) | ✅ | ⬜ | ⬜ | ⬜ |
 
 ---
 
@@ -420,12 +421,14 @@ El rediseño de interfaz se validó primero como **mockup interactivo sin backen
 retroalimentación directa) antes de comprometer nada a una spec o a código real de `frontend/`.
 
 **Specs 011 (Navigation Shell & Theming), 012 (Chat Panel Redesign), 013 (Contact Enrichment &
-Follow-ups), 014 (Admin Governance & Access Control) y 015 (Channel Provider Routing) ya están
-escritas**, pendientes de revisión/implementación — ver `specifications/MVP/011_Navigation_Shell_and_Theming.md`,
+Follow-ups), 014 (Admin Governance & Access Control), 015 (Channel Provider Routing) y 016
+(WhatsApp Integration) ya están escritas**, pendientes de revisión/implementación — ver
+`specifications/MVP/011_Navigation_Shell_and_Theming.md`,
 `specifications/MVP/012_Chat_Panel_Redesign.md`,
 `specifications/MVP/013_Contact_Enrichment_and_Follow_ups.md`,
-`specifications/MVP/014_Admin_Governance_and_Access_Control.md` y
-`specifications/MVP/015_Channel_Provider_Routing.md`. Al escribir 012 se dividió en dos: el
+`specifications/MVP/014_Admin_Governance_and_Access_Control.md`,
+`specifications/MVP/015_Channel_Provider_Routing.md` y
+`specifications/MVP/016_WhatsApp_Integration.md`. Al escribir 012 se dividió en dos: el
 rediseño visual del chat no necesita dominio nuevo (quedó en 012), pero etiquetas/notas/
 favoritos/seguimientos/reasignación/búsqueda entre conversaciones sí (spec 013, ya escrita) —
 mismo criterio que ya partió la propuesta original de spec 006 en su momento. **015 se renombró**
@@ -441,7 +444,7 @@ de esta tanda (no implementar más de una a la vez, misma regla de siempre):
 | 013 Contact Enrichment & Follow-ups | `Contact.tags`/`notes`/`is_favorite`, entidad `FollowUp`, reasignación entre asesores, búsqueda de mensajes, "no leído" |
 | 014 Admin Governance & Access Control | Un admin principal + administradores, reglas de quién puede agregar/eliminar a quién |
 | 015 Channel Provider Routing | `ChannelProviderRegistry` — selecciona el `ChannelProvider` correcto por canal, prerrequisito real de 016 |
-| 016 WhatsApp Integration (Evolution API) | Provider de WhatsApp, rate limiting/retrasos anti-baneo, ventana de 24h, conexión por QR |
+| 016 WhatsApp Integration (Evolution API) | `WhatsAppChannelProvider` con cola/worker anti-baneo (retrasos simulados, ritmo entre envíos), webhook, script de aprovisionamiento — sin UI de QR (spec 017) ni descarga de multimedia (Media Library) |
 | 017 Admin Panel | Prompts (principal + reglas de escalamiento), números de Telegram/WhatsApp, conectar/desconectar WhatsApp |
 | 018 Knowledge Base | Subida de archivos (listas de precios, etc.) como insumo de contexto para la IA |
 | 019 Media Library | Almacenamiento de multimedia entrante/saliente, con limpieza automática periódica |
@@ -476,16 +479,39 @@ por `POST .../messages` habría intentado enviar por la API de Telegram, sin nin
 Spec 015 agrega `ChannelProviderRegistry` (selecciona el provider por `channel_type`) antes de que
 spec 016 agregue el segundo provider — así esa spec no toca ninguno de los dos casos de uso.
 
-Recomendaciones ya dadas durante el diseño de esta tanda (resumen aquí para no perderlas):
-- **Gobernanza de administradores (spec 014):** un admin "principal" (el primer `InternalUser` con
-  rol Administrator creado); cualquier admin puede agregar administradores o asesores; **solo** el
-  admin principal puede eliminar/desactivar administradores; nadie puede eliminarse a sí mismo.
-- **Ventana de 24h de WhatsApp (spec 016):** como se usa Evolution API (no oficial), la restricción
-  no la impone la API — se modela como regla de producto/UI (advertencia visible), no como candado
-  técnico duro, dejando la decisión de retomar contacto a criterio humano informado.
-- **Reconexión por QR (spec 016/017):** mostrar el QR solo cuando Evolution API reporte la sesión
-  caída, nunca forzar reconexión mientras siga viva — investigar si expone webhooks de estado de
-  conexión para detectarlo automáticamente.
+Al escribir spec 016 se consultó la documentación real de Evolution API
+(`docs.evolutionfoundation.com.br`) en vez de asumir endpoints de memoria — confirmó
+`POST /message/sendText/{instance}`, `POST /webhook/set/{instance}`,
+`GET /instance/connectionState/{instance}`, `POST /instance/create` (devuelve el QR en la misma
+respuesta) y `POST /chat/markMessageAsRead/{instance}`. Dos puntos quedaron sin confirmar en la
+documentación (anotados explícitamente en la spec, no asumidos): si el objeto `headers` al
+registrar un webhook realmente se reenvía en cada llamada entrante (se diseñó con eso como
+mecanismo principal de verificación y un plan B si no), y si existe un endpoint de presencia
+("escribiendo...") para "Evolution API" específicamente o solo para el producto hermano
+"Evolution Go".
+
+**Hallazgo arquitectónico real al escribir spec 016**, no solo un gap de cableado: los retrasos
+anti-baneo (hasta 30 segundos) no pueden vivir dentro de la transacción donde
+`ChannelProvider.send()` se llama hoy (spec 006) — SQLite no tolera una transacción abierta ese
+tiempo. Se resolvió con una cola en memoria + un único worker en segundo plano dentro de
+`WhatsAppChannelProvider` (arrancado una vez en `app/lifecycle.py`, no `asyncio.create_task()` por
+request — ese patrón se había descartado explícitamente en spec 006 por "sin cola ni supervisión";
+aquí sí hay cola y un worker supervisado, es la pieza que le faltaba a ese razonamiento). Riesgo
+aceptado: la cola es en memoria, un mensaje ya persistido pero no enviado se pierde si el proceso
+se cae — mismo espíritu que "sin cola de reintentos" ya aceptado en Production Risks.
+
+Recomendaciones dadas antes de escribir spec 016, ya resueltas concretamente ahí (dejo el resumen
+por si hace falta el porqué sin releer la spec completa):
+- **Gobernanza de administradores (spec 014, ya implementado en la spec):** un admin "principal"
+  (el primer `InternalUser` con rol Administrator creado); cualquier admin puede agregar
+  administradores o asesores; **solo** el admin principal puede eliminar/desactivar
+  administradores; nadie puede eliminarse a sí mismo.
+- **Ventana de 24h de WhatsApp:** terminó sin necesitar nada de spec 016 — es aritmética
+  client-side sobre `sent_at` (ya disponible desde spec 012), se implementa cuando exista la UI
+  que lo necesite, no antes.
+- **Reconexión por QR:** spec 016 deja `WhatsAppChannelProvider.health()` (consulta el estado real
+  de conexión) y un script de aprovisionamiento — la pantalla que muestre el QR cuando `health()`
+  falle es spec 017, no 016.
 
 No retomar el roadmap tecnológico especulativo previo (Memory Extraction, AI Task Framework,
 Embedding Search, Background Jobs, Model Routing, Prompt Management genérico, Context
