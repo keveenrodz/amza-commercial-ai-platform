@@ -1,0 +1,1299 @@
+<title>Amza Workspace</title>
+<style>
+  @font-face {
+    font-family: 'Manrope';
+    font-weight: 500 800;
+    font-style: normal;
+    font-display: swap;
+    src: url(data:font/woff2;base64,__FONT_B64__) format('woff2');
+  }
+
+  :root {
+    --paper: #f6f6f4;
+    --surface: #ffffff;
+    --surface-2: #eef0ea;
+    --surface-3: #e3e6dc;
+    --ink: #1b1d16;
+    --ink-muted: #63695a;
+    --ink-faint: #9aa08e;
+    --line: #dfe2d7;
+    --accent: #5f7d55;
+    --accent-deep: #3a5233;
+    --accent-soft: #eef1ea;
+    --warn: #b5722a;
+    --warn-soft: #f4e6d6;
+    --info: #3b6c93;
+    --info-soft: #dde9f0;
+    --whatsapp: #2f8f5b;
+    --whatsapp-soft: #dcf0e4;
+    --gold: #ad8112;
+    --gold-soft: #f6ecd2;
+    --overdue: #b3432f;
+    --overdue-soft: #f5e0da;
+    --bubble-customer: #ffffff;
+    --bubble-agent: #eef2ea;
+    --bubble-advisor: #dfeaf4;
+    --shadow: 0 1px 2px rgba(27, 29, 22, 0.06), 0 8px 24px rgba(27, 29, 22, 0.06);
+    --focus: #3a5233;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14160f;
+      --surface: #1b1e17;
+      --surface-2: #242820;
+      --surface-3: #2d3226;
+      --ink: #edefe7;
+      --ink-muted: #98a08c;
+      --ink-faint: #626b56;
+      --line: #333829;
+      --accent: #74ac5e;
+      --accent-deep: #8fc878;
+      --accent-soft: #24331c;
+      --warn: #d99553;
+      --warn-soft: #3a2c1c;
+      --info: #6fa8d9;
+      --info-soft: #1e2c37;
+      --whatsapp: #4fbf86;
+      --whatsapp-soft: #1a3327;
+      --gold: #e8c158;
+      --gold-soft: #362b13;
+      --overdue: #e0836f;
+      --overdue-soft: #3a231d;
+      --bubble-customer: #242820;
+      --bubble-agent: #22301f;
+      --bubble-advisor: #1d2a35;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+      --focus: #8fc878;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #14160f;
+    --surface: #1b1e17;
+    --surface-2: #242820;
+    --surface-3: #2d3226;
+    --ink: #edefe7;
+    --ink-muted: #98a08c;
+    --ink-faint: #626b56;
+    --line: #333829;
+    --accent: #74ac5e;
+    --accent-deep: #8fc878;
+    --accent-soft: #24331c;
+    --warn: #d99553;
+    --warn-soft: #3a2c1c;
+    --info: #6fa8d9;
+    --info-soft: #1e2c37;
+    --whatsapp: #4fbf86;
+    --whatsapp-soft: #1a3327;
+    --gold: #e8c158;
+    --gold-soft: #362b13;
+    --overdue: #e0836f;
+    --overdue-soft: #3a231d;
+    --bubble-customer: #242820;
+    --bubble-agent: #22301f;
+    --bubble-advisor: #1d2a35;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --focus: #8fc878;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .chrome { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  button, input, textarea, select { font-family: inherit; color: inherit; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .convo:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  svg { display: block; }
+
+  .app {
+    display: flex;
+    height: 100vh;
+    max-width: 1520px;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+
+  /* ---------- Rail ---------- */
+  .rail {
+    width: 72px;
+    flex-shrink: 0;
+    background: var(--accent-deep);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 18px 0 14px;
+    border-right: 1px solid var(--line);
+  }
+
+  .rail-mark {
+    width: 40px; height: 40px; border-radius: 11px;
+    background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px; box-shadow: var(--shadow); margin-bottom: 22px;
+  }
+  .rail-mark img { width: 100%; height: 100%; object-fit: contain; }
+
+  .rail-nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+
+  .rail-btn {
+    width: 44px; height: 44px; border-radius: 12px; border: none;
+    background: transparent; color: #d9e6d3;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; position: relative;
+  }
+  .rail-btn svg { width: 20px; height: 20px; }
+  .rail-btn:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; }
+  .rail-btn.active { background: var(--surface); color: var(--accent-deep); }
+
+  .rail-btn .rail-tip {
+    position: absolute; left: 56px; top: 50%; transform: translateY(-50%);
+    background: var(--ink); color: var(--paper);
+    font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 11.5px;
+    padding: 5px 9px; border-radius: 7px; white-space: nowrap;
+    opacity: 0; pointer-events: none; z-index: 20;
+  }
+  .rail-btn:hover .rail-tip { opacity: 1; }
+
+  .rail-foot { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+  .theme-toggle {
+    width: 44px; height: 44px; border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.07);
+    color: #eef3ea; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .theme-toggle:hover { background: rgba(255, 255, 255, 0.15); }
+  .theme-toggle svg { width: 18px; height: 18px; }
+  .theme-toggle .sun { display: none; }
+  :root[data-theme="dark"] .theme-toggle .moon { display: none; }
+  :root[data-theme="dark"] .theme-toggle .sun { display: block; }
+
+  .rail-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface); color: var(--accent-deep);
+    font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+  }
+
+  /* ---------- List column ---------- */
+  .list-col {
+    width: 320px; flex-shrink: 0;
+    background: var(--surface); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; min-width: 0;
+  }
+
+  .list-head { padding: 18px 16px 10px; border-bottom: 1px solid var(--line); }
+  .list-head h1 { font-family: 'Manrope', sans-serif; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 3px; }
+  .list-head p { margin: 0 0 12px; color: var(--ink-muted); font-size: 12px; }
+
+  .search { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border-radius: 9px; padding: 8px 10px; margin-bottom: 12px; }
+  .search svg { width: 15px; height: 15px; color: var(--ink-faint); flex-shrink: 0; }
+  .search input { border: none; background: transparent; width: 100%; font-size: 13px; }
+  .search input::placeholder { color: var(--ink-faint); }
+  .search input:focus { outline: none; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tab {
+    flex: 1; border: none; background: var(--surface-2); color: var(--ink-muted);
+    font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 11.5px;
+    padding: 7px 6px; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;
+  }
+  .tab .n { font-variant-numeric: tabular-nums; background: rgba(0, 0, 0, 0.08); border-radius: 5px; padding: 0 5px; font-size: 10.5px; }
+  .tab.active { background: var(--accent); color: #fff; }
+  .tab.active .n { background: rgba(255, 255, 255, 0.24); }
+
+  .list-toolbar { display: flex; align-items: center; justify-content: space-between; position: relative; }
+  .tool-icon-btn {
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink-muted);
+    border-radius: 8px; width: 30px; height: 30px; cursor: pointer; position: relative;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .tool-icon-btn:hover { background: var(--surface-2); }
+  .tool-icon-btn svg { width: 15px; height: 15px; }
+  .tool-icon-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-deep); }
+  :root[data-theme="dark"] .tool-icon-btn.active { color: var(--accent); }
+  .tool-left { display: flex; align-items: center; gap: 7px; }
+  .sort-label { font-size: 11px; font-weight: 600; color: var(--ink-muted); }
+  .filter-badge {
+    position: absolute; top: -4px; right: -4px; background: var(--accent); color: #fff;
+    font-size: 9px; font-weight: 700; min-width: 14px; height: 14px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center; padding: 0 3px; font-variant-numeric: tabular-nums;
+  }
+  .filter-badge[hidden] { display: none; }
+
+  .filters-menu {
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+    padding: 10px; width: 230px;
+  }
+  .filters-menu h5 {
+    font-family: 'Manrope', sans-serif; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--ink-faint); margin: 10px 4px 6px;
+  }
+  .filters-menu h5:first-child { margin-top: 2px; }
+  .filters-menu .fm-row {
+    width: 100%; text-align: left; border: none; background: transparent; padding: 6px 6px; border-radius: 7px;
+    cursor: pointer; font-size: 12.5px; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  }
+  .filters-menu .fm-row:hover { background: var(--surface-2); }
+  .filters-menu .fm-row.checked { color: var(--accent-deep); font-weight: 700; }
+  :root[data-theme="dark"] .filters-menu .fm-row.checked { color: var(--accent); }
+  .filters-menu .fm-row .box {
+    width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--line); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .filters-menu .fm-row.checked .box { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .filters-menu .fm-row.checked .box svg { width: 10px; height: 10px; }
+  .filters-menu .fm-tags { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 4px 4px; }
+  .filters-menu .fm-tag {
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink-muted);
+    font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 999px; cursor: pointer;
+  }
+  .filters-menu .fm-tag.checked { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-deep); }
+  :root[data-theme="dark"] .filters-menu .fm-tag.checked { color: var(--accent); }
+  .filters-menu .fm-empty { font-size: 11.5px; color: var(--ink-faint); padding: 2px 6px 6px; }
+  .filters-menu .fm-clear {
+    width: 100%; margin-top: 8px; border: none; background: transparent; color: var(--ink-muted);
+    font-size: 11.5px; font-weight: 700; padding: 6px; cursor: pointer; border-top: 1px solid var(--line);
+  }
+  .filters-menu .fm-clear:hover { color: var(--overdue); }
+
+  .convo-list { flex: 1; overflow-y: auto; }
+
+  .convo {
+    width: 100%; text-align: left; border: none; background: transparent;
+    display: grid; grid-template-columns: 40px 1fr; gap: 10px;
+    padding: 11px 16px; cursor: pointer; border-bottom: 1px solid var(--line); position: relative;
+  }
+  .convo:hover { background: var(--surface-2); }
+  .convo.selected { background: var(--accent-soft); }
+
+  .convo-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--surface-3); color: var(--ink-muted);
+    font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .avatar-lg { width: 56px; height: 56px; font-size: 18px; }
+
+  .convo-body { min-width: 0; }
+  .convo-top { display: flex; align-items: baseline; gap: 5px; }
+  .convo-name { font-weight: 700; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .convo-star { flex-shrink: 0; color: var(--gold); }
+  .convo-star svg { width: 12px; height: 12px; }
+  .convo-time { font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums; margin-left: auto; flex-shrink: 0; }
+
+  .convo-preview { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .convo-snippet { font-size: 12.5px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+
+  .unread-badge {
+    background: var(--accent); color: #fff; font-weight: 700; font-size: 10.5px;
+    min-width: 17px; height: 17px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    padding: 0 4px; flex-shrink: 0; font-variant-numeric: tabular-nums;
+  }
+
+  .chip {
+    font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 9.5px; letter-spacing: 0.02em;
+    padding: 2px 6px; border-radius: 999px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px;
+  }
+  .chip.tg { background: var(--info-soft); color: var(--info); }
+  .chip.wa { background: var(--whatsapp-soft); color: var(--whatsapp); }
+  .chip.info { background: var(--info-soft); color: var(--info); }
+  .chip.assigned { background: var(--surface-2); color: var(--ink); }
+  .chip.assigned::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .chip.followup { background: var(--warn-soft); color: var(--warn); }
+  .chip.followup.overdue { background: var(--overdue-soft); color: var(--overdue); }
+  .chip svg { width: 9px; height: 9px; }
+  .note-badge { color: var(--ink-faint); flex-shrink: 0; display: inline-flex; }
+  .note-badge svg { width: 12px; height: 12px; }
+
+  .convo-tags { display: flex; align-items: center; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+
+  /* ---------- Chat pane ---------- */
+  .chat-col { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--paper); position: relative; }
+
+  .chat-head { display: flex; align-items: center; gap: 12px; padding: 13px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .chat-head .convo-avatar { width: 38px; height: 38px; cursor: pointer; }
+  .chat-head-info { flex: 1; min-width: 0; }
+  .chat-head-name-row { display: flex; align-items: center; gap: 7px; }
+  .chat-head-name { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 14.5px; }
+  .fav-btn { border: none; background: transparent; cursor: pointer; padding: 2px; color: var(--ink-faint); display: flex; }
+  .fav-btn svg { width: 15px; height: 15px; }
+  .fav-btn.active { color: var(--gold); }
+  .fav-btn.active svg { fill: var(--gold); }
+  .chat-head-sub { font-size: 12px; color: var(--ink-muted); display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+  .chat-head-actions { display: flex; align-items: center; gap: 8px; position: relative; }
+
+  .btn {
+    font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 12.5px; border-radius: 9px;
+    padding: 8px 14px; border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-deep); }
+  .btn-ghost { background: transparent; border-color: var(--line); color: var(--ink-muted); }
+  .btn-ghost:hover { background: var(--surface-2); }
+
+  .reassign-menu {
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+    padding: 6px; min-width: 190px;
+  }
+  .reassign-menu p { margin: 4px 6px 6px; font-size: 11px; color: var(--ink-muted); }
+  .reassign-menu button {
+    width: 100%; text-align: left; border: none; background: transparent; padding: 7px 8px; border-radius: 7px;
+    cursor: pointer; font-size: 12.5px; display: flex; justify-content: space-between;
+  }
+  .reassign-menu button:hover { background: var(--surface-2); }
+  .reassign-menu button[disabled] { color: var(--ink-faint); cursor: default; }
+  .reassign-menu button[disabled]:hover { background: transparent; }
+
+  .thread-search {
+    display: flex; align-items: center; gap: 8px; padding: 9px 20px;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+  }
+  .thread-search svg { width: 15px; height: 15px; color: var(--ink-faint); flex-shrink: 0; }
+  .thread-search input { flex: 1; border: none; background: transparent; font-size: 13px; }
+  .thread-search input:focus { outline: none; }
+  .thread-search .ts-count { font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; flex-shrink: 0; }
+  .thread-search button { border: none; background: transparent; color: var(--ink-muted); cursor: pointer; display: flex; padding: 3px; flex-shrink: 0; }
+  .thread-search button svg { width: 13px; height: 13px; color: inherit; }
+  #thread mark { background: var(--gold-soft); color: var(--ink); border-radius: 3px; padding: 0 1px; }
+
+  .thread { flex: 1; overflow-y: auto; padding: 22px 26px; display: flex; flex-direction: column; gap: 3px; }
+  .day-sep { align-self: center; background: var(--surface); border: 1px solid var(--line); color: var(--ink-muted); font-size: 11px; font-weight: 600; padding: 3px 12px; border-radius: 999px; margin: 10px 0 16px; }
+
+  .row { display: flex; margin-bottom: 9px; }
+  .row.in { justify-content: flex-start; }
+  .row.out { justify-content: flex-end; }
+
+  .bubble { max-width: 62%; padding: 9px 12px 8px; border-radius: 13px; box-shadow: var(--shadow); font-size: 13.5px; position: relative; }
+  .row.in .bubble { background: var(--bubble-customer); border-top-left-radius: 3px; }
+  .row.out .bubble.agent { background: var(--bubble-agent); border-top-right-radius: 3px; }
+  .row.out .bubble.advisor { background: var(--bubble-advisor); border-top-right-radius: 3px; }
+
+  .bubble-label { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 3px; display: block; }
+  .row.out .bubble.agent .bubble-label { color: var(--info); }
+  .row.out .bubble.advisor .bubble-label { color: var(--info); }
+
+  .file-card { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.04); border-radius: 9px; padding: 7px 9px; }
+  :root[data-theme="dark"] .file-card { background: rgba(255,255,255,0.06); }
+  .file-card .fic { width: 30px; height: 30px; border-radius: 7px; background: var(--accent-soft); color: var(--accent-deep); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .file-card .fic svg { width: 15px; height: 15px; }
+  .file-card .fin { min-width: 0; }
+  .file-card .fname { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+  .file-card .fsize { font-size: 11px; color: var(--ink-muted); }
+
+  .bubble-meta { display: flex; justify-content: flex-end; gap: 4px; margin-top: 3px; }
+  .bubble-time { font-size: 10.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .system-note { align-self: center; background: var(--surface-2); color: var(--ink-muted); font-size: 11.5px; padding: 6px 12px; border-radius: 9px; margin: 8px 0; max-width: 70%; text-align: center; }
+
+  .attach-preview { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 20px 10px; background: var(--surface); }
+  .attach-preview:empty { display: none; }
+  .attach-chip { display: flex; align-items: center; gap: 6px; background: var(--surface-2); border-radius: 8px; padding: 5px 6px 5px 8px; font-size: 12px; }
+  .attach-chip button { border: none; background: transparent; cursor: pointer; color: var(--ink-faint); display: flex; padding: 2px; }
+  .attach-chip button svg { width: 12px; height: 12px; }
+
+  .composer { display: flex; align-items: flex-end; gap: 8px; padding: 12px 20px; background: var(--surface); border-top: 1px solid var(--line); position: relative; }
+  .icon-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: transparent; color: var(--ink-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .icon-btn:hover { background: var(--surface-2); }
+  .icon-btn svg { width: 19px; height: 19px; }
+
+  .composer textarea { flex: 1; resize: none; border: 1px solid var(--line); background: var(--paper); border-radius: 12px; padding: 10px 13px; font-size: 13.5px; min-height: 20px; max-height: 120px; line-height: 1.4; }
+  .composer textarea:focus { outline: none; border-color: var(--accent); }
+
+  .send-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .send-btn:hover { background: var(--accent-deep); }
+  .send-btn svg { width: 17px; height: 17px; }
+
+  .composer-locked { flex: 1; display: flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 12.5px; padding: 10px 4px; }
+
+  .emoji-pop {
+    position: absolute; bottom: calc(100% + 8px); left: 20px; z-index: 30;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+    padding: 10px; width: 288px;
+  }
+  .emoji-pop .emoji-search {
+    display: flex; align-items: center; gap: 6px; background: var(--surface-2); border-radius: 8px;
+    padding: 6px 9px; margin-bottom: 8px;
+  }
+  .emoji-pop .emoji-search svg { width: 13px; height: 13px; color: var(--ink-faint); flex-shrink: 0; }
+  .emoji-pop .emoji-search input { border: none; background: transparent; width: 100%; font-size: 12.5px; }
+  .emoji-pop .emoji-search input:focus { outline: none; }
+  .emoji-pop h6 {
+    font-family: 'Manrope', sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--ink-faint); margin: 0 2px 4px;
+  }
+  .emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+  .emoji-grid.frequent { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .emoji-grid button { border: none; background: transparent; font-size: 18px; border-radius: 6px; cursor: pointer; padding: 4px; line-height: 1; }
+  .emoji-grid button:hover { background: var(--surface-2); }
+  .emoji-results { max-height: 168px; overflow-y: auto; }
+  .emoji-empty { font-size: 11.5px; color: var(--ink-faint); text-align: center; padding: 14px 0; }
+
+  .drop-overlay {
+    position: absolute; inset: 0; z-index: 40; background: rgba(63, 107, 62, 0.08);
+    border: 2px dashed var(--accent); border-radius: 10px; margin: 10px;
+    display: none; align-items: center; justify-content: center; pointer-events: none;
+  }
+  .chat-col.dragging .drop-overlay { display: flex; }
+  .drop-overlay span {
+    background: var(--surface); color: var(--accent-deep); font-family: 'Manrope', sans-serif; font-weight: 700;
+    font-size: 13px; padding: 8px 16px; border-radius: 999px; box-shadow: var(--shadow);
+  }
+
+  .placeholder-panel { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: var(--ink-muted); text-align: center; padding: 40px; }
+  .placeholder-panel .ic { width: 52px; height: 52px; border-radius: 16px; background: var(--surface); display: flex; align-items: center; justify-content: center; color: var(--accent); box-shadow: var(--shadow); }
+  .placeholder-panel .ic svg { width: 24px; height: 24px; }
+  .placeholder-panel h2 { font-family: 'Manrope', sans-serif; font-size: 16px; color: var(--ink); margin: 4px 0 0; }
+  .placeholder-panel p { max-width: 340px; font-size: 13px; margin: 0; }
+  .placeholder-panel .tag-soon { font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--accent-soft); color: var(--accent-deep); padding: 3px 10px; border-radius: 999px; }
+
+  /* ---------- Client panel ---------- */
+  .client-col {
+    width: 0; flex-shrink: 0; overflow: hidden; background: var(--surface); border-left: 1px solid var(--line);
+    transition: width 0.16s ease;
+  }
+  .client-col.open { width: 300px; overflow-y: auto; }
+  .client-inner { width: 300px; padding: 16px; }
+
+  .client-panel-head { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+  .client-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+  .client-name-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+  .client-name-row h3 { font-family: 'Manrope', sans-serif; font-size: 15px; margin: 0; }
+  .client-hero .chip-row { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+
+  .client-section { margin-bottom: 16px; }
+  .client-section h4 { font-family: 'Manrope', sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); margin: 0 0 8px; }
+
+  .info-grid { display: flex; flex-direction: column; gap: 7px; }
+  .info-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+  .info-row .k { color: var(--ink-muted); }
+  .info-row .v { font-weight: 600; text-align: right; }
+
+  .tag-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .tag-pill { background: var(--accent-soft); color: var(--accent-deep); font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 999px; }
+  :root[data-theme="dark"] .tag-pill { color: var(--accent); }
+  .tag-add-btn { background: var(--surface-2); color: var(--ink-muted); font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px; border: 1px dashed var(--line); cursor: pointer; }
+  .tag-form { display: flex; gap: 6px; margin-top: 8px; }
+  .tag-form input { flex: 1; border: 1px solid var(--line); background: var(--paper); border-radius: 7px; padding: 6px 8px; font-size: 12px; }
+
+  .followup-card { background: var(--warn-soft); border-radius: 10px; padding: 10px 11px; font-size: 12px; }
+  .followup-card.overdue { background: var(--overdue-soft); }
+  .followup-card .fu-due { font-weight: 700; color: var(--warn); display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
+  .followup-card.overdue .fu-due { color: var(--overdue); }
+  .followup-card .fu-reason { color: var(--ink-muted); margin-bottom: 8px; }
+  .followup-card button, .schedule-btn { font-size: 11.5px; font-weight: 700; border-radius: 7px; padding: 5px 9px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
+  .schedule-btn { width: 100%; text-align: center; color: var(--ink-muted); border-style: dashed; }
+  .fu-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .fu-form input { border: 1px solid var(--line); background: var(--paper); border-radius: 7px; padding: 6px 8px; font-size: 12px; }
+  .fu-form button { background: var(--accent); color: #fff; border: none; font-weight: 700; border-radius: 7px; padding: 7px; font-size: 12px; cursor: pointer; }
+
+  .notes-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+  .note-item { background: var(--surface-2); border-radius: 9px; padding: 8px 10px; font-size: 12px; }
+  .note-item .na { display: flex; justify-content: space-between; font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 10.5px; color: var(--ink-muted); margin-bottom: 3px; }
+  .note-item .na .who.ia { color: var(--info); }
+  .note-item .na .who.human { color: var(--accent-deep); }
+  :root[data-theme="dark"] .note-item .na .who.human { color: var(--accent); }
+  .notes-section textarea { width: 100%; border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 7px 9px; font-size: 12px; resize: none; min-height: 44px; margin-bottom: 6px; }
+  .notes-section .btn { width: 100%; justify-content: center; }
+
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app chrome">
+  <nav class="rail" aria-label="Navegación principal">
+    <div class="rail-mark"><img src="data:image/png;base64,__LOGO_B64__" alt="Amza" /></div>
+    <div class="rail-nav">
+      <button class="rail-btn active" data-section="chats" aria-label="Conversaciones">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H8l-4 4V5Z" stroke-linejoin="round"/></svg>
+        <span class="rail-tip">Conversaciones</span>
+      </button>
+      <button class="rail-btn" data-section="kb" aria-label="Base de conocimiento">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 4h9a3 3 0 0 1 3 3v13H8a2 2 0 0 1-2-2V4Z"/><path d="M6 17a2 2 0 0 1 2-2h10"/></svg>
+        <span class="rail-tip">Base de conocimiento</span>
+      </button>
+      <button class="rail-btn" data-section="media" aria-label="Multimedia">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10.5" r="1.7"/><path d="m5 17 4.5-4.5 3 3L18 10l1.5 1.5"/></svg>
+        <span class="rail-tip">Multimedia</span>
+      </button>
+      <button class="rail-btn" data-section="admin" aria-label="Administración">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V19.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H4.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.04 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10.5a1.7 1.7 0 0 0 1.04-1.56V4.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V10.5a1.7 1.7 0 0 0 1.56 1.04h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.56 1.04Z"/></svg>
+        <span class="rail-tip">Administración</span>
+      </button>
+    </div>
+    <div class="rail-foot">
+      <button class="theme-toggle" id="themeToggle" aria-label="Cambiar tema claro u oscuro">
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
+      </button>
+      <div class="rail-avatar" title="Kevin R. — Asesor">KR</div>
+    </div>
+  </nav>
+
+  <section class="list-col">
+    <div class="list-head">
+      <h1>Amza Workspace</h1>
+      <p>Empaques &amp; Soluciones — Atención comercial</p>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="text" placeholder="Buscar contacto o mensaje" />
+      </div>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="ai" role="tab">IA <span class="n">2</span></button>
+        <button class="tab" data-tab="mine" role="tab">Mías <span class="n">1</span></button>
+        <button class="tab" data-tab="all" role="tab">Todas <span class="n">5</span></button>
+      </div>
+      <div class="list-toolbar">
+        <div class="tool-left">
+          <button class="tool-icon-btn" id="sortBtn" title="Ordenar: por defecto" aria-label="Cambiar orden">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 6v12M7 6l-3 3M7 6l3 3M17 18V6M17 18l-3-3M17 18l3-3"/></svg>
+          </button>
+          <span class="sort-label" id="sortLabel"></span>
+        </div>
+        <button class="tool-icon-btn" id="filtersBtn" title="Filtros" aria-label="Filtros">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+          <span class="filter-badge" id="filterBadge" hidden></span>
+        </button>
+      </div>
+    </div>
+    <div class="convo-list" id="convoList"></div>
+  </section>
+
+  <section class="chat-col" id="chatCol">
+    <div class="drop-overlay" id="dropOverlay"><span>Suelta los archivos aquí para adjuntarlos</span></div>
+  </section>
+
+  <aside class="client-col" id="clientCol"><div class="client-inner" id="clientInner"></div></aside>
+</div>
+
+<script id="data" type="application/json">
+__DATA_JSON__
+</script>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var stored = null;
+  try { stored = localStorage.getItem('amza-theme'); } catch (e) {}
+  if (stored === 'light' || stored === 'dark') root.setAttribute('data-theme', stored);
+
+  document.getElementById('themeToggle').addEventListener('click', function () {
+    var current = root.getAttribute('data-theme');
+    var isDark = current ? current === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var next = isDark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('amza-theme', next); } catch (e) {}
+  });
+
+  var ADVISORS = ['Kevin R.', 'Andrea T.', 'Luis M.'];
+  var ME = 'Kevin R.';
+
+  var EMOJI_DATA = [
+    { e: '😀', k: 'feliz sonrisa contento' }, { e: '😊', k: 'sonrisa amable contento' },
+    { e: '🙂', k: 'sonrisa leve' }, { e: '😉', k: 'guiño' }, { e: '😅', k: 'alivio nervioso' },
+    { e: '😂', k: 'risa gracioso' }, { e: '😍', k: 'encantado enamorado' }, { e: '🥳', k: 'fiesta celebracion' },
+    { e: '😴', k: 'sueño cansado' }, { e: '😕', k: 'confundido duda' }, { e: '😬', k: 'incomodo nervioso' },
+    { e: '😢', k: 'triste' }, { e: '😡', k: 'enojado molesto' }, { e: '🤔', k: 'pensando duda' },
+    { e: '🙏', k: 'gracias por favor' }, { e: '👍', k: 'bien ok aprobado' }, { e: '👎', k: 'mal no aprobado' },
+    { e: '👋', k: 'hola saludo adios' }, { e: '🤝', k: 'trato acuerdo negocio' }, { e: '✍️', k: 'firma escribir' },
+    { e: '👏', k: 'aplauso felicidades' }, { e: '💪', k: 'fuerza animo' }, { e: '🖐️', k: 'espera alto mano' },
+    { e: '❤️', k: 'amor corazon' }, { e: '⭐', k: 'estrella favorito' }, { e: '🔥', k: 'fuego genial' },
+    { e: '🎉', k: 'celebracion fiesta' }, { e: '✅', k: 'listo aprobado confirmado' }, { e: '❌', k: 'no cancelado rechazado' },
+    { e: '⚠️', k: 'atencion alerta cuidado' }, { e: '❓', k: 'pregunta duda' }, { e: '❗', k: 'importante atencion' },
+    { e: '⏰', k: 'hora tiempo recordatorio' }, { e: '📅', k: 'fecha calendario cita' }, { e: '⌛', k: 'espera tiempo' },
+    { e: '📦', k: 'caja pedido paquete empaque' }, { e: '🚚', k: 'envio entrega camion' }, { e: '🏭', k: 'fabrica planta' },
+    { e: '💰', k: 'dinero pago precio' }, { e: '💳', k: 'pago tarjeta factura' }, { e: '🧾', k: 'factura recibo cotizacion' },
+    { e: '📄', k: 'documento archivo pdf' }, { e: '📎', k: 'adjunto archivo' }, { e: '🖼️', k: 'imagen foto' },
+    { e: '📸', k: 'foto camara' }, { e: '🎥', k: 'video' }, { e: '📞', k: 'llamada telefono' },
+    { e: '💬', k: 'mensaje chat' }, { e: '📧', k: 'correo email' }, { e: '📍', k: 'ubicacion direccion' },
+    { e: '🚀', k: 'rapido lanzamiento' }, { e: '♻️', k: 'reciclaje' }, { e: '🌱', k: 'planta sostenible' },
+    { e: '💡', k: 'idea sugerencia' }, { e: '🔧', k: 'ajuste soporte tecnico' }, { e: '🛒', k: 'compra pedido' },
+    { e: '🎁', k: 'regalo promocion' }, { e: '💯', k: 'perfecto totalmente' }, { e: '👌', k: 'perfecto ok' },
+    { e: '🙌', k: 'genial celebracion manos' }, { e: '😎', k: 'genial cool' }, { e: '🤗', k: 'abrazo bienvenida' }
+  ];
+  var EMOJI_USAGE_KEY = 'amza-emoji-freq';
+  var DEFAULT_FREQUENT = ['👍', '✅', '🙏'];
+
+  function getEmojiUsage() {
+    try { return JSON.parse(localStorage.getItem(EMOJI_USAGE_KEY)) || {}; } catch (e) { return {}; }
+  }
+  function bumpEmojiUsage(em) {
+    var usage = getEmojiUsage();
+    usage[em] = (usage[em] || 0) + 1;
+    try { localStorage.setItem(EMOJI_USAGE_KEY, JSON.stringify(usage)); } catch (e) {}
+  }
+  function getFrequentEmojis() {
+    var usage = getEmojiUsage();
+    var used = Object.keys(usage).sort(function (a, b) { return usage[b] - usage[a]; });
+    var out = used.slice(0, 3);
+    DEFAULT_FREQUENT.forEach(function (em) { if (out.length < 3 && out.indexOf(em) === -1) out.push(em); });
+    return out;
+  }
+  function insertAtCursor(el, text) {
+    var start = el.selectionStart == null ? el.value.length : el.selectionStart;
+    var end = el.selectionEnd == null ? el.value.length : el.selectionEnd;
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    el.selectionStart = el.selectionEnd = start + text.length;
+    el.focus();
+  }
+
+  var DATA = JSON.parse(document.getElementById('data').textContent);
+  var convoListEl = document.getElementById('convoList');
+  var chatCol = document.getElementById('chatCol');
+  var clientCol = document.getElementById('clientCol');
+  var clientInner = document.getElementById('clientInner');
+
+  var currentTab = 'ai';
+  var selectedId = null;
+  var clientPanelOpen = false;
+  var pendingAttachments = [];
+
+  var SORT_MODES = ['default', 'recent', 'unread', 'followup'];
+  var SORT_LABELS = { default: '', recent: 'Recientes', unread: 'No leídos', followup: 'Seguimiento' };
+  var sortIndex = 0;
+  var assigneeFilter = 'all';
+  var unreadOnly = false;
+  var followupOnly = false;
+  var tagFilters = new Set();
+
+  function parseTimeToMinutes(t) {
+    var m = /^(\d{1,2}):(\d{2})/.exec(t || '');
+    return m ? (+m[1]) * 60 + (+m[2]) : 0;
+  }
+
+  function allTags() {
+    var set = new Set();
+    DATA.forEach(function (c) { (c.tags || []).forEach(function (t) { set.add(t); }); });
+    return Array.from(set).sort();
+  }
+
+  function activeFilterCount() {
+    var n = 0;
+    if (assigneeFilter !== 'all') n++;
+    if (unreadOnly) n++;
+    if (followupOnly) n++;
+    if (tagFilters.size) n++;
+    return n;
+  }
+
+  function updateFilterBadge() {
+    var badge = document.getElementById('filterBadge');
+    var n = activeFilterCount();
+    badge.hidden = n === 0;
+    badge.textContent = n > 0 ? n : '';
+    document.getElementById('filtersBtn').classList.toggle('active', n > 0);
+  }
+
+  function initial(name) {
+    var parts = name.trim().split(/\s+/);
+    return ((parts[0] || '')[0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+  }
+
+  function chipFor(channel) {
+    if (channel === 'telegram') {
+      return '<span class="chip tg"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.6 2.7 12.2c-1.1.4-1.1 1.7 0 2.1l4.7 1.5 1.8 5.5c.2.7 1.1.9 1.6.3l2.6-2.8 4.9 3.6c.8.6 2 .2 2.2-.8l3-16.3c.2-1-.8-1.9-1.6-1.7Z"/></svg> Telegram</span>';
+    }
+    return '<span class="chip wa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2Zm5.8 14.2c-.3.7-1.4 1.3-2 1.4-.5.1-1.2.2-3.7-.8-3.1-1.2-5.1-4.3-5.3-4.5-.1-.2-1.3-1.7-1.3-3.2s.8-2.3 1.1-2.6c.3-.3.6-.4.8-.4h.6c.2 0 .4 0 .6.5.3.6.9 2.1 1 2.3.1.2.1.4 0 .6-.4.8-.8.8-.5 1.3.9 1.6 1.8 2.2 3.2 2.9.2.1.4.1.5-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.9.3.1.5.2.5.3.1.2.1.7-.2 1.4Z"/></svg> WhatsApp</span>';
+  }
+
+  function statusChip(c) {
+    if (c.mode === 'human') return '<span class="chip assigned">' + c.assignedTo + '</span>';
+    return '<span class="chip info">IA</span>';
+  }
+
+  function followupChip(c, withText) {
+    if (!c.followUp) return '';
+    var cls = c.followUp.overdue ? 'chip followup overdue' : 'chip followup';
+    var label = withText ? c.followUp.due : (c.followUp.overdue ? 'Vencido' : 'Seguimiento');
+    return '<span class="' + cls + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg> ' + label + '</span>';
+  }
+
+  function noteBadge(c) {
+    if (!c.notes || !c.notes.length) return '';
+    return '<span class="note-badge" title="Tiene notas (' + c.notes.length + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 4h10a2 2 0 0 1 2 2v14l-4-3H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M8 9h8M8 12.5h5"/></svg></span>';
+  }
+
+  function starIcon(filled) {
+    return '<svg viewBox="0 0 24 24" fill="' + (filled ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"><path d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.9 6.4 20.1l1.4-6.3-4.8-4.3 6.4-.6L12 3Z" stroke-linejoin="round"/></svg>';
+  }
+
+  function matchesTab(c) {
+    if (currentTab === 'ai') return c.mode === 'ai';
+    if (currentTab === 'mine') return c.assignedTo === ME;
+    return true;
+  }
+
+  function getFilteredSorted() {
+    var items = DATA.filter(matchesTab);
+    if (currentTab === 'all') {
+      if (assigneeFilter === 'ai') items = items.filter(function (c) { return c.mode === 'ai'; });
+      else if (assigneeFilter !== 'all') items = items.filter(function (c) { return c.assignedTo === assigneeFilter; });
+    }
+    if (unreadOnly) items = items.filter(function (c) { return c.unread > 0; });
+    if (followupOnly) items = items.filter(function (c) { return !!c.followUp; });
+    if (tagFilters.size) items = items.filter(function (c) { return (c.tags || []).some(function (t) { return tagFilters.has(t); }); });
+
+    items = items.slice();
+    var sortMode = SORT_MODES[sortIndex];
+    if (sortMode === 'recent') {
+      items.sort(function (a, b) { return parseTimeToMinutes(b.lastTime) - parseTimeToMinutes(a.lastTime); });
+    } else if (sortMode === 'unread') {
+      items.sort(function (a, b) { return (b.unread || 0) - (a.unread || 0); });
+    } else if (sortMode === 'followup') {
+      items.sort(function (a, b) {
+        if (!!a.followUp === !!b.followUp) {
+          if (a.followUp && b.followUp) return (b.followUp.overdue ? 1 : 0) - (a.followUp.overdue ? 1 : 0);
+          return 0;
+        }
+        return a.followUp ? -1 : 1;
+      });
+    }
+    return items;
+  }
+
+  function renderList() {
+    var items = getFilteredSorted();
+    convoListEl.innerHTML = items.map(function (c) {
+      var sel = c.id === selectedId ? ' selected' : '';
+      return (
+        '<button class="convo' + sel + '" data-id="' + c.id + '">' +
+          '<div class="convo-avatar">' + initial(c.name) + '</div>' +
+          '<div class="convo-body">' +
+            '<div class="convo-top">' +
+              (c.favorite ? '<span class="convo-star">' + starIcon(true) + '</span>' : '') +
+              '<span class="convo-name">' + c.name + '</span>' +
+              '<span class="convo-time">' + c.lastTime + '</span>' +
+            '</div>' +
+            '<div class="convo-preview"><span class="convo-snippet">' + c.preview + '</span>' +
+              (c.unread ? '<span class="unread-badge">' + c.unread + '</span>' : '') +
+            '</div>' +
+            '<div class="convo-tags">' + chipFor(c.channel) + statusChip(c) + followupChip(c, false) + noteBadge(c) + '</div>' +
+          '</div>' +
+        '</button>'
+      );
+    }).join('');
+    if (!items.length) {
+      convoListEl.innerHTML = '<div style="padding:28px 20px;color:var(--ink-faint);font-size:12.5px;text-align:center">Ningún contacto coincide con estos filtros.</div>';
+    }
+    Array.prototype.forEach.call(convoListEl.querySelectorAll('.convo'), function (btn) {
+      btn.addEventListener('click', function () {
+        selectedId = btn.getAttribute('data-id');
+        var c = DATA.find(function (x) { return x.id === selectedId; });
+        if (c) c.unread = 0;
+        renderList();
+        renderChat();
+        if (clientPanelOpen) renderClientPanel();
+      });
+    });
+    if (!items.some(function (i) { return i.id === selectedId; })) {
+      selectedId = items[0] ? items[0].id : null;
+      renderChat();
+    }
+  }
+
+  function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function highlightText(text, query) {
+    if (!query) return text;
+    var re = new RegExp('(' + escapeRegExp(query) + ')', 'ig');
+    return text.replace(re, '<mark>$1</mark>');
+  }
+
+  function bubble(m, query) {
+    if (m.role === 'system') return '<div class="system-note">' + m.text + '</div>';
+    var side = m.role === 'customer' ? 'in' : 'out';
+    var kind = m.role === 'advisor' ? 'advisor' : (m.role === 'ai' ? 'agent' : '');
+    var label = m.role === 'advisor' ? '<span class="bubble-label">Asesor · ' + (m.author || ME) + '</span>' : (m.role === 'ai' ? '<span class="bubble-label">IA · Asistente comercial</span>' : '');
+    var body = m.file
+      ? '<div class="file-card"><div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3v5a1 1 0 0 0 1 1h5"/><path d="M6 3h8l6 6v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg></div><div class="fin"><div class="fname">' + m.file.name + '</div><div class="fsize">' + m.file.size + '</div></div></div>'
+      : '<div>' + highlightText(m.text, query) + '</div>';
+    return (
+      '<div class="row ' + side + '">' +
+        '<div class="bubble ' + kind + '">' + label + body +
+          '<div class="bubble-meta"><span class="bubble-time">' + m.time + '</span></div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderThreadMessages(c, query) {
+    var thread = document.getElementById('thread');
+    if (!thread) return;
+    thread.innerHTML = '<div class="day-sep">Hoy</div>' + c.messages.map(function (m) { return bubble(m, query); }).join('');
+    var countEl = document.getElementById('threadSearchCount');
+    if (query) {
+      var matches = thread.querySelectorAll('mark');
+      if (countEl) countEl.textContent = matches.length ? (matches.length + (matches.length === 1 ? ' coincidencia' : ' coincidencias')) : 'Sin coincidencias';
+      if (matches.length) matches[0].scrollIntoView({ block: 'center' });
+    } else {
+      if (countEl) countEl.textContent = '';
+      thread.scrollTop = thread.scrollHeight;
+    }
+  }
+
+  function nowTime() {
+    var d = new Date(2026, 7, 17, 15, 42);
+    return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+  }
+
+  function fmtSize(bytes) {
+    if (bytes > 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+  }
+
+  function renderChat() {
+    var c = DATA.find(function (x) { return x.id === selectedId; });
+    if (!c) {
+      chatCol.innerHTML = '<div class="drop-overlay" id="dropOverlay"><span>Suelta los archivos aquí para adjuntarlos</span></div><div class="placeholder-panel"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H8l-4 4V5Z"/></svg></div><h2>Selecciona una conversación</h2><p>Elige un contacto de la lista para ver el historial completo.</p></div>';
+      return;
+    }
+    var canReply = c.mode === 'human' && c.assignedTo === ME;
+    var takeOrReassign = c.mode === 'human'
+      ? '<button class="btn btn-ghost" id="reassignBtn">Reasignar</button>' + (c.assignedTo === ME ? '<button class="btn btn-ghost" id="returnBtn">Devolver a IA</button>' : '')
+      : '<button class="btn btn-primary" id="takeBtn">Tomar conversación</button>';
+    var extraTools = canReply
+      ? '<button class="icon-btn" id="threadSearchBtn" aria-label="Buscar en la conversación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>' +
+        '<button class="icon-btn" id="chatMenuBtn" aria-label="Más opciones"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></button>'
+      : '';
+
+    pendingAttachments = [];
+
+    chatCol.innerHTML =
+      '<div class="drop-overlay" id="dropOverlay"><span>Suelta los archivos aquí para adjuntarlos</span></div>' +
+      '<div class="chat-head">' +
+        '<div class="convo-avatar" id="chatAvatar" title="Ver información del cliente">' + initial(c.name) + '</div>' +
+        '<div class="chat-head-info">' +
+          '<div class="chat-head-name-row"><span class="chat-head-name">' + c.name + '</span>' +
+            '<button class="fav-btn' + (c.favorite ? ' active' : '') + '" id="favToggleHead" aria-label="Marcar como preferido">' + starIcon(c.favorite) + '</button></div>' +
+          '<div class="chat-head-sub">' + chipFor(c.channel) + statusChip(c) + followupChip(c, true) + '</div>' +
+        '</div>' +
+        '<div class="chat-head-actions" id="chatActions">' + takeOrReassign + extraTools + '</div>' +
+      '</div>' +
+      '<div class="thread" id="thread"><div class="day-sep">Hoy</div>' + c.messages.map(function (m) { return bubble(m); }).join('') + '</div>' +
+      '<div class="attach-preview" id="attachPreview"></div>' +
+      (canReply
+        ? '<div class="composer" id="composerWrap">' +
+            '<button class="icon-btn" id="emojiBtn" aria-label="Insertar emoticón"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5h.01M15.5 10.5h.01M8 14.5c1 1.2 2.3 1.8 4 1.8s3-.6 4-1.8"/></svg></button>' +
+            '<button class="icon-btn" id="attachBtn" aria-label="Adjuntar archivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8.5 12.7 16.8a4 4 0 0 1-5.6-5.6l8-8a2.7 2.7 0 0 1 3.8 3.8l-7.9 7.9a1.3 1.3 0 0 1-1.9-1.9l7.1-7.1"/></svg></button>' +
+            '<input type="file" id="fileInput" multiple style="display:none" />' +
+            '<textarea id="composerInput" rows="1" placeholder="Escribe una respuesta para ' + c.name.split(' ')[0] + '…"></textarea>' +
+            '<button class="send-btn" id="sendBtn" aria-label="Enviar"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.6 21 12 3.4 3.4 3 10l13 2-13 2 .4 6.6Z"/></svg></button>' +
+          '</div>'
+        : '<div class="composer"><div class="composer-locked"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex-shrink:0"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>' +
+            (c.mode === 'human' ? 'Asignada a ' + c.assignedTo + ' — solo esa persona puede responder.' : 'La IA está respondiendo. Toma la conversación para responder tú mismo.') +
+          '</div></div>');
+
+    var thread = document.getElementById('thread');
+    thread.scrollTop = thread.scrollHeight;
+
+    document.getElementById('chatAvatar').addEventListener('click', function () {
+      clientPanelOpen = true;
+      clientCol.classList.add('open');
+      renderClientPanel();
+    });
+    document.getElementById('favToggleHead').addEventListener('click', function () {
+      c.favorite = !c.favorite;
+      renderChat(); renderList();
+      if (clientPanelOpen) renderClientPanel();
+    });
+
+    var takeBtn = document.getElementById('takeBtn');
+    if (takeBtn) takeBtn.addEventListener('click', function () {
+      c.mode = 'human'; c.assignedTo = ME;
+      c.messages.push({ role: 'system', text: ME + ' tomó esta conversación.', time: nowTime() });
+      renderList(); renderChat();
+    });
+    var returnBtn = document.getElementById('returnBtn');
+    if (returnBtn) returnBtn.addEventListener('click', function () {
+      c.mode = 'ai'; c.assignedTo = null;
+      c.messages.push({ role: 'system', text: ME + ' devolvió la conversación a la IA.', time: nowTime() });
+      renderList(); renderChat();
+    });
+    var reassignBtn = document.getElementById('reassignBtn');
+    if (reassignBtn) reassignBtn.addEventListener('click', function () {
+      var existing = document.getElementById('reassignMenu');
+      if (existing) { existing.remove(); return; }
+      var menu = document.createElement('div');
+      menu.className = 'reassign-menu';
+      menu.id = 'reassignMenu';
+      menu.innerHTML = '<p>Reasignar a</p>' + ADVISORS.map(function (a) {
+        return '<button data-name="' + a + '"' + (a === c.assignedTo ? ' disabled' : '') + '>' + a + (a === c.assignedTo ? ' <span>· actual</span>' : '') + '</button>';
+      }).join('');
+      document.getElementById('chatActions').appendChild(menu);
+      Array.prototype.forEach.call(menu.querySelectorAll('button:not([disabled])'), function (b) {
+        b.addEventListener('click', function () {
+          var from = c.assignedTo;
+          c.assignedTo = b.getAttribute('data-name');
+          c.messages.push({ role: 'system', text: from + ' reasignó esta conversación a ' + c.assignedTo + '.', time: nowTime() });
+          menu.remove();
+          renderList(); renderChat();
+        });
+      });
+    });
+
+    var chatMenuBtn = document.getElementById('chatMenuBtn');
+    if (chatMenuBtn) chatMenuBtn.addEventListener('click', function () {
+      var existing = document.getElementById('chatMenu');
+      if (existing) { existing.remove(); return; }
+      var menu = document.createElement('div');
+      menu.className = 'reassign-menu'; menu.id = 'chatMenu';
+      menu.innerHTML = '<button id="markUnreadBtn">' + (c.unread ? 'Marcar como leída' : 'Marcar como no leída') + '</button>';
+      document.getElementById('chatActions').appendChild(menu);
+      document.getElementById('markUnreadBtn').addEventListener('click', function () {
+        c.unread = c.unread ? 0 : 1;
+        menu.remove();
+        renderList(); renderChat();
+      });
+    });
+
+    var threadSearchBtn = document.getElementById('threadSearchBtn');
+    if (threadSearchBtn) threadSearchBtn.addEventListener('click', function () {
+      var existing = document.getElementById('threadSearchBar');
+      if (existing) { existing.remove(); renderThreadMessages(c, ''); return; }
+      var bar = document.createElement('div');
+      bar.className = 'thread-search'; bar.id = 'threadSearchBar';
+      bar.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+        '<input type="text" id="threadSearchInput" placeholder="Buscar en esta conversación" />' +
+        '<span class="ts-count" id="threadSearchCount"></span>' +
+        '<button id="threadSearchClose" aria-label="Cerrar búsqueda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>';
+      document.querySelector('.chat-head').insertAdjacentElement('afterend', bar);
+      document.getElementById('threadSearchClose').addEventListener('click', function () { bar.remove(); renderThreadMessages(c, ''); });
+      document.getElementById('threadSearchInput').addEventListener('input', function (e) { renderThreadMessages(c, e.target.value); });
+      document.getElementById('threadSearchInput').focus();
+    });
+
+    var attachPreview = document.getElementById('attachPreview');
+    function renderAttachPreview() {
+      attachPreview.innerHTML = pendingAttachments.map(function (f, i) {
+        return '<span class="attach-chip">📎 ' + f.name + ' <button data-i="' + i + '" aria-label="Quitar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></span>';
+      }).join('');
+      Array.prototype.forEach.call(attachPreview.querySelectorAll('button'), function (b) {
+        b.addEventListener('click', function () { pendingAttachments.splice(+b.getAttribute('data-i'), 1); renderAttachPreview(); });
+      });
+    }
+
+    var emojiBtn = document.getElementById('emojiBtn');
+    var input = document.getElementById('composerInput');
+    if (emojiBtn) emojiBtn.addEventListener('click', function () {
+      var existing = document.getElementById('emojiPop');
+      if (existing) { existing.remove(); return; }
+      var pop = document.createElement('div');
+      pop.className = 'emoji-pop'; pop.id = 'emojiPop';
+      pop.innerHTML =
+        '<div class="emoji-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+        '<input type="text" id="emojiSearchInput" placeholder="Buscar emoji" /></div>' +
+        '<div id="emojiFrequentWrap"><h6>Frecuentes</h6><div class="emoji-grid frequent" id="emojiFrequent"></div></div>' +
+        '<div class="emoji-results" id="emojiResults"></div>';
+      document.getElementById('composerWrap').appendChild(pop);
+
+      function pick(em) {
+        insertAtCursor(input, em);
+        bumpEmojiUsage(em);
+        renderFrequent();
+      }
+      function renderFrequent() {
+        document.getElementById('emojiFrequent').innerHTML = getFrequentEmojis().map(function (em) {
+          return '<button type="button">' + em + '</button>';
+        }).join('');
+        Array.prototype.forEach.call(document.getElementById('emojiFrequent').querySelectorAll('button'), function (b) {
+          b.addEventListener('click', function () { pick(b.textContent); });
+        });
+      }
+      function renderResults(query) {
+        var q = query.trim().toLowerCase();
+        var list = q ? EMOJI_DATA.filter(function (d) { return d.k.indexOf(q) !== -1; }) : EMOJI_DATA;
+        var results = document.getElementById('emojiResults');
+        var frequentWrap = document.getElementById('emojiFrequentWrap');
+        frequentWrap.style.display = q ? 'none' : 'block';
+        if (!list.length) { results.innerHTML = '<div class="emoji-empty">Sin resultados para "' + query + '"</div>'; return; }
+        results.innerHTML = '<div class="emoji-grid">' + list.map(function (d) {
+          return '<button type="button" title="' + d.k.split(' ')[0] + '">' + d.e + '</button>';
+        }).join('') + '</div>';
+        Array.prototype.forEach.call(results.querySelectorAll('button'), function (b) {
+          b.addEventListener('click', function () { pick(b.textContent); });
+        });
+      }
+
+      renderFrequent();
+      renderResults('');
+      document.getElementById('emojiSearchInput').addEventListener('input', function (e) { renderResults(e.target.value); });
+    });
+
+    var attachBtn = document.getElementById('attachBtn');
+    var fileInput = document.getElementById('fileInput');
+    if (attachBtn) attachBtn.addEventListener('click', function () { fileInput.click(); });
+    if (fileInput) fileInput.addEventListener('change', function () {
+      Array.prototype.forEach.call(fileInput.files, function (f) { pendingAttachments.push({ name: f.name, size: fmtSize(f.size) }); });
+      fileInput.value = '';
+      renderAttachPreview();
+    });
+
+    ['dragenter', 'dragover'].forEach(function (evt) {
+      chatCol.addEventListener(evt, function (e) { if (canReply) { e.preventDefault(); chatCol.classList.add('dragging'); } });
+    });
+    ['dragleave', 'drop'].forEach(function (evt) {
+      chatCol.addEventListener(evt, function (e) {
+        if (evt === 'dragleave' && e.target !== chatCol) return;
+        chatCol.classList.remove('dragging');
+      });
+    });
+    chatCol.addEventListener('drop', function (e) {
+      if (!canReply) return;
+      e.preventDefault();
+      var files = e.dataTransfer ? e.dataTransfer.files : [];
+      Array.prototype.forEach.call(files, function (f) { pendingAttachments.push({ name: f.name, size: fmtSize(f.size) }); });
+      renderAttachPreview();
+    });
+
+    var sendBtn = document.getElementById('sendBtn');
+    if (sendBtn && input) {
+      var doSend = function () {
+        var val = input.value.trim();
+        if (!val && !pendingAttachments.length) return;
+        if (val) { c.messages.push({ role: 'advisor', text: val, time: nowTime() }); c.preview = val; }
+        pendingAttachments.forEach(function (f) {
+          c.messages.push({ role: 'advisor', file: f, time: nowTime() });
+          c.preview = '📎 ' + f.name;
+        });
+        c.lastTime = nowTime();
+        input.value = '';
+        pendingAttachments = [];
+        renderChat();
+        renderList();
+      };
+      sendBtn.addEventListener('click', doSend);
+      input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); } });
+    }
+  }
+
+  function renderClientPanel() {
+    var c = DATA.find(function (x) { return x.id === selectedId; });
+    if (!c) { clientCol.classList.remove('open'); clientPanelOpen = false; return; }
+    clientInner.innerHTML =
+      '<div class="client-panel-head"><button class="icon-btn" id="closeClientPanel" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>' +
+      '<div class="client-hero"><div class="convo-avatar avatar-lg">' + initial(c.name) + '</div>' +
+        '<div class="client-name-row"><h3>' + c.name + '</h3><button class="fav-btn' + (c.favorite ? ' active' : '') + '" id="favToggleClient">' + starIcon(c.favorite) + '</button></div>' +
+        '<div class="chip-row">' + chipFor(c.channel) + statusChip(c) + '</div>' +
+      '</div>' +
+      '<div class="client-section"><h4>Información</h4><div class="info-grid">' +
+        '<div class="info-row"><span class="k">Teléfono</span><span class="v">' + c.phone + '</span></div>' +
+        '<div class="info-row"><span class="k">Empresa</span><span class="v">' + c.company + '</span></div>' +
+        '<div class="info-row"><span class="k">Cliente desde</span><span class="v">' + c.since + '</span></div>' +
+        '<div class="info-row"><span class="k">Asesor</span><span class="v">' + (c.assignedTo || 'IA') + '</span></div>' +
+      '</div></div>' +
+      '<div class="client-section"><h4>Etiquetas</h4><div class="tag-row" id="tagRow">' +
+        c.tags.map(function (t) { return '<span class="tag-pill">' + t + '</span>'; }).join('') +
+        '<button class="tag-add-btn" id="addTagBtn">+ Etiqueta</button></div></div>' +
+      '<div class="client-section" id="fuSection">' + renderFollowupBlock(c) + '</div>' +
+      '<div class="client-section notes-section"><h4>Notas</h4><div class="notes-list">' +
+        (c.notes.length ? c.notes.map(function (n) {
+          return '<div class="note-item"><div class="na"><span class="who ' + (n.author === 'IA' ? 'ia' : 'human') + '">' + n.author + '</span><span>' + n.time + '</span></div>' + n.text + '</div>';
+        }).join('') : '<p style="color:var(--ink-faint);font-size:12px;margin:0 0 8px">Sin notas todavía.</p>') +
+      '</div><textarea id="newNoteInput" placeholder="Agregar una nota sobre este cliente…"></textarea><button class="btn btn-primary" id="addNoteBtn">Guardar nota</button></div>';
+
+    document.getElementById('closeClientPanel').addEventListener('click', function () {
+      clientCol.classList.remove('open'); clientPanelOpen = false;
+    });
+    document.getElementById('favToggleClient').addEventListener('click', function () {
+      c.favorite = !c.favorite; renderClientPanel(); renderChat(); renderList();
+    });
+    document.getElementById('addTagBtn').addEventListener('click', function () {
+      var row = document.getElementById('tagRow');
+      if (document.getElementById('tagForm')) return;
+      var form = document.createElement('div');
+      form.className = 'tag-form'; form.id = 'tagForm';
+      form.innerHTML = '<input type="text" placeholder="Ej. Pago anticipado" id="tagInput" /><button class="btn btn-ghost" id="tagSave">Añadir</button>';
+      row.parentElement.appendChild(form);
+      document.getElementById('tagSave').addEventListener('click', function () {
+        var val = document.getElementById('tagInput').value.trim();
+        if (val) { c.tags.push(val); renderClientPanel(); }
+      });
+    });
+    wireFollowupHandlers(c);
+    document.getElementById('addNoteBtn').addEventListener('click', function () {
+      var val = document.getElementById('newNoteInput').value.trim();
+      if (!val) return;
+      c.notes.push({ author: ME, time: nowTime(), text: val });
+      renderClientPanel(); renderList();
+    });
+  }
+
+  function renderFollowupBlock(c) {
+    var html = '<h4>Seguimiento</h4>';
+    if (c.followUp) {
+      html += '<div class="followup-card' + (c.followUp.overdue ? ' overdue' : '') + '">' +
+        '<div class="fu-due">⏰ ' + c.followUp.due + '</div>' +
+        '<div class="fu-reason">' + c.followUp.reason + '</div>' +
+        '<button id="fuDoneBtn">Marcar como resuelto</button></div>';
+    } else {
+      html += '<button class="schedule-btn" id="fuScheduleBtn">+ Programar seguimiento</button>';
+    }
+    return html;
+  }
+
+  function wireFollowupHandlers(c) {
+    var doneBtn = document.getElementById('fuDoneBtn');
+    if (doneBtn) doneBtn.addEventListener('click', function () {
+      c.followUp = null;
+      c.messages.push({ role: 'system', text: ME + ' marcó el seguimiento de este cliente como resuelto.', time: nowTime() });
+      renderClientPanel(); renderList(); renderChat();
+    });
+    var scheduleBtn = document.getElementById('fuScheduleBtn');
+    if (scheduleBtn) scheduleBtn.addEventListener('click', function () {
+      var section = document.getElementById('fuSection');
+      if (document.getElementById('fuForm')) return;
+      var form = document.createElement('div');
+      form.className = 'fu-form'; form.id = 'fuForm';
+      form.innerHTML = '<input type="text" id="fuWhen" placeholder="Cuándo — ej. Mañana 10:00" />' +
+        '<input type="text" id="fuReason" placeholder="Motivo del seguimiento" />' +
+        '<button id="fuSaveBtn">Guardar seguimiento</button>';
+      section.appendChild(form);
+      document.getElementById('fuSaveBtn').addEventListener('click', function () {
+        var when = document.getElementById('fuWhen').value.trim();
+        var reason = document.getElementById('fuReason').value.trim();
+        if (!when) return;
+        c.followUp = { due: when, reason: reason || 'Sin motivo especificado', overdue: false };
+        renderClientPanel(); renderList(); renderChat();
+      });
+    });
+  }
+
+  var sortBtn = document.getElementById('sortBtn');
+  sortBtn.addEventListener('click', function () {
+    sortIndex = (sortIndex + 1) % SORT_MODES.length;
+    var mode = SORT_MODES[sortIndex];
+    document.getElementById('sortLabel').textContent = SORT_LABELS[mode];
+    sortBtn.classList.toggle('active', mode !== 'default');
+    sortBtn.title = 'Ordenar: ' + (mode === 'default' ? 'por defecto' : SORT_LABELS[mode].toLowerCase());
+    renderList();
+  });
+
+  function renderFiltersMenu() {
+    var old = document.getElementById('filtersMenu');
+    if (old) old.remove();
+    var menu = document.createElement('div');
+    menu.className = 'filters-menu'; menu.id = 'filtersMenu';
+    var html = '';
+    if (currentTab === 'all') {
+      html += '<h5>Asignado a</h5>';
+      var options = [['all', 'Todos'], ['ai', 'IA (sin asignar)']].concat(ADVISORS.map(function (a) { return [a, a]; }));
+      html += options.map(function (o) {
+        var checked = assigneeFilter === o[0];
+        return '<button class="fm-row' + (checked ? ' checked' : '') + '" data-assignee="' + o[0] + '"><span>' + o[1] + '</span><span class="box">' + (checked ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>' : '') + '</span></button>';
+      }).join('');
+    }
+    html += '<h5>Estado</h5>';
+    html += '<button class="fm-row' + (unreadOnly ? ' checked' : '') + '" id="fmUnread"><span>No leídos</span><span class="box">' + (unreadOnly ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>' : '') + '</span></button>';
+    html += '<button class="fm-row' + (followupOnly ? ' checked' : '') + '" id="fmFollowup"><span>Seguimiento pendiente</span><span class="box">' + (followupOnly ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>' : '') + '</span></button>';
+    var tags = allTags();
+    html += '<h5>Etiquetas</h5>';
+    html += tags.length
+      ? '<div class="fm-tags">' + tags.map(function (t) {
+          return '<button class="fm-tag' + (tagFilters.has(t) ? ' checked' : '') + '" data-tag="' + t + '">' + t + '</button>';
+        }).join('') + '</div>'
+      : '<div class="fm-empty">Todavía no hay etiquetas creadas.</div>';
+    html += '<button class="fm-clear" id="fmClear">Limpiar filtros</button>';
+    menu.innerHTML = html;
+    document.querySelector('.list-toolbar').appendChild(menu);
+
+    Array.prototype.forEach.call(menu.querySelectorAll('[data-assignee]'), function (b) {
+      b.addEventListener('click', function () { assigneeFilter = b.getAttribute('data-assignee'); renderList(); updateFilterBadge(); renderFiltersMenu(); });
+    });
+    Array.prototype.forEach.call(menu.querySelectorAll('[data-tag]'), function (b) {
+      b.addEventListener('click', function () {
+        var tag = b.getAttribute('data-tag');
+        if (tagFilters.has(tag)) tagFilters.delete(tag); else tagFilters.add(tag);
+        renderList(); updateFilterBadge(); renderFiltersMenu();
+      });
+    });
+    document.getElementById('fmUnread').addEventListener('click', function () { unreadOnly = !unreadOnly; renderList(); updateFilterBadge(); renderFiltersMenu(); });
+    document.getElementById('fmFollowup').addEventListener('click', function () { followupOnly = !followupOnly; renderList(); updateFilterBadge(); renderFiltersMenu(); });
+    document.getElementById('fmClear').addEventListener('click', function () {
+      assigneeFilter = 'all'; unreadOnly = false; followupOnly = false; tagFilters.clear();
+      renderList(); updateFilterBadge(); renderFiltersMenu();
+    });
+  }
+
+  document.getElementById('filtersBtn').addEventListener('click', function () {
+    var existing = document.getElementById('filtersMenu');
+    if (existing) { existing.remove(); return; }
+    renderFiltersMenu();
+  });
+
+  /* Any floating panel (menu/popover/form) auto-closes on an outside click.
+     Attached once, persists across re-renders — a per-render {once:true} listener
+     gets silently consumed by the first unrelated click and stops protecting later panels. */
+  var FLOATING_PANELS = [
+    { id: 'reassignMenu', anchor: 'reassignBtn' },
+    { id: 'chatMenu', anchor: 'chatMenuBtn' },
+    { id: 'emojiPop', anchor: 'emojiBtn' },
+    { id: 'tagForm', anchor: 'addTagBtn' },
+    { id: 'fuForm', anchor: 'fuScheduleBtn' },
+    { id: 'filtersMenu', anchor: 'filtersBtn' }
+  ];
+  document.addEventListener('click', function (e) {
+    FLOATING_PANELS.forEach(function (p) {
+      var el = document.getElementById(p.id);
+      if (!el) return;
+      if (el.contains(e.target)) return;
+      var anchor = document.getElementById(p.anchor);
+      if (anchor && anchor.contains(e.target)) return;
+      el.remove();
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
+    t.addEventListener('click', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (x) { x.classList.remove('active'); });
+      t.classList.add('active');
+      currentTab = t.getAttribute('data-tab');
+      if (currentTab !== 'all') assigneeFilter = 'all';
+      selectedId = null;
+      renderList();
+      updateFilterBadge();
+    });
+  });
+
+  var sectionPanels = {
+    kb: { title: 'Base de conocimiento', text: 'Sube listas de precios, fichas técnicas y catálogos (Excel, PDF) para que la IA los use como fuente al responder. Parte de la propuesta de specs — aún no implementado.', icon: '<path d="M6 4h9a3 3 0 0 1 3 3v13H8a2 2 0 0 1-2-2V4Z"/><path d="M6 17a2 2 0 0 1 2-2h10"/>' },
+    media: { title: 'Multimedia', text: 'Archivos que envían los clientes (fotos, audios, PDF) y material propio para compartir (fotos de producto, catálogos en video). Con limpieza automática programada.', icon: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10.5" r="1.7"/><path d="m5 17 4.5-4.5 3 3L18 10l1.5 1.5"/>' },
+    admin: { title: 'Administración', text: 'Usuarios autorizados, conexión de WhatsApp (Evolution API) por código QR, número de Telegram/WhatsApp en uso, y edición del prompt del agente y sus reglas de escalamiento.', icon: '<path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/>' }
+  };
+
+  Array.prototype.forEach.call(document.querySelectorAll('.rail-btn'), function (btn) {
+    btn.addEventListener('click', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.rail-btn'), function (x) { x.classList.remove('active'); });
+      btn.classList.add('active');
+      var section = btn.getAttribute('data-section');
+      clientCol.classList.remove('open'); clientPanelOpen = false;
+      if (section === 'chats') { renderList(); renderChat(); return; }
+      var p = sectionPanels[section];
+      chatCol.innerHTML = '<div class="placeholder-panel"><span class="tag-soon">Próxima spec</span><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' + p.icon + '</svg></div><h2>' + p.title + '</h2><p>' + p.text + '</p></div>';
+    });
+  });
+
+  renderList();
+  renderChat();
+  updateFilterBadge();
+})();
+</script>

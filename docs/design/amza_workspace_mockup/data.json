@@ -1,0 +1,121 @@
+[
+  {
+    "id": "c1",
+    "name": "Distribuidora El Roble",
+    "channel": "whatsapp",
+    "mode": "ai",
+    "assignedTo": null,
+    "lastTime": "15:41",
+    "preview": "¿Manejan facturación a 30 días para pedidos grandes?",
+    "unread": 2,
+    "favorite": false,
+    "phone": "+57 315 402 8871",
+    "company": "Distribuidora El Roble S.A.S.",
+    "since": "Mar. 2025",
+    "tags": ["Pago a 30 días", "Exportación"],
+    "notes": [
+      { "author": "IA", "time": "15:22", "text": "Cliente pregunta reiteradamente por crédito a 30 días — validar con cartera antes de confirmar el cupo." }
+    ],
+    "followUp": { "due": "Hoy 17:00", "reason": "Confirmar con cartera si aplica crédito a 30 días", "overdue": false },
+    "messages": [
+      { "role": "customer", "text": "Buenas tarde, necesito 500 cajas corrugadas ref. C-30 para exportación", "time": "15:20" },
+      { "role": "ai", "text": "¡Con gusto! Para 500 unidades de la caja C-30 el precio es de $4.200 c/u + IVA, con entrega en 5 días hábiles. ¿Le genero la cotización formal?", "time": "15:22" },
+      { "role": "customer", "text": "Sí por favor. Otra cosa, ¿manejan facturación a 30 días para pedidos grandes?", "time": "15:41" },
+      { "role": "system", "text": "La IA marcó esta consulta como \"requiere validación de crédito/facturación\".", "time": "15:41" }
+    ]
+  },
+  {
+    "id": "c2",
+    "name": "Litoempaques S.A.S.",
+    "channel": "telegram",
+    "mode": "ai",
+    "assignedTo": null,
+    "lastTime": "14:58",
+    "preview": "El sistema no me deja adjuntar el logo para el sello, ayuda",
+    "unread": 1,
+    "favorite": true,
+    "phone": "—",
+    "company": "Litoempaques S.A.S.",
+    "since": "Nov. 2024",
+    "tags": ["Impresión personalizada"],
+    "notes": [],
+    "followUp": null,
+    "messages": [
+      { "role": "customer", "text": "Hola, quiero sacos de polipropileno con logo impreso", "time": "14:40" },
+      { "role": "ai", "text": "Perfecto, manejamos impresión flexográfica hasta 3 tintas. ¿Me comparte el logo en PDF o AI para cotizar el sello?", "time": "14:42" },
+      { "role": "customer", "text": "El sistema no me deja adjuntar el logo para el sello, ayuda", "time": "14:58" }
+    ]
+  },
+  {
+    "id": "c3",
+    "name": "Juan Pérez — Comercial Andina",
+    "channel": "whatsapp",
+    "mode": "human",
+    "assignedTo": "Kevin R.",
+    "lastTime": "13:10",
+    "preview": "Kevin R.: Ya quedó ajustada la cotización con el descuento por volumen",
+    "unread": 0,
+    "favorite": true,
+    "phone": "+57 300 118 4402",
+    "company": "Comercial Andina Ltda.",
+    "since": "Ene. 2023",
+    "tags": ["Cliente frecuente", "Descuento por volumen"],
+    "notes": [
+      { "author": "Kevin R.", "time": "13:05", "text": "Aplica descuento de cliente frecuente por historial de compra mensual sostenido." }
+    ],
+    "followUp": null,
+    "messages": [
+      { "role": "customer", "text": "El precio de la cotización anterior quedó muy alto para el volumen que manejamos habitualmente", "time": "12:40" },
+      { "role": "system", "text": "Kevin R. tomó esta conversación.", "time": "12:44" },
+      { "role": "advisor", "author": "Kevin R.", "text": "Hola Juan, reviso contigo. Manejando el volumen mensual que venías comprando sí aplica el descuento por cliente frecuente, dame un segundo", "time": "12:46" },
+      { "role": "customer", "text": "Perfecto, quedo atento", "time": "12:50" },
+      { "role": "advisor", "author": "Kevin R.", "text": "Ya quedó ajustada la cotización con el descuento por volumen, te la envío al correo", "time": "13:10" }
+    ]
+  },
+  {
+    "id": "c4",
+    "name": "Empaques del Valle",
+    "channel": "whatsapp",
+    "mode": "ai",
+    "assignedTo": null,
+    "lastTime": "11:05",
+    "preview": "Perfecto, entonces confirmo el pedido de 200 cajas ref. C-12",
+    "unread": 0,
+    "favorite": false,
+    "phone": "+57 312 774 0093",
+    "company": "Empaques del Valle S.A.S.",
+    "since": "Jun. 2025",
+    "tags": [],
+    "notes": [],
+    "followUp": { "due": "Ayer 16:00", "reason": "Confirmar recibido del pedido — el cliente no respondió al último mensaje", "overdue": true },
+    "messages": [
+      { "role": "customer", "text": "Buenos días, ¿tienen disponibilidad de cajas ref. C-12?", "time": "10:50" },
+      { "role": "ai", "text": "Buenos días. Sí, tenemos disponibilidad inmediata de la ref. C-12, precio $2.850 c/u. ¿Cuántas unidades necesita?", "time": "10:52" },
+      { "role": "customer", "text": "Perfecto, entonces confirmo el pedido de 200 cajas ref. C-12", "time": "11:05" }
+    ]
+  },
+  {
+    "id": "c5",
+    "name": "María Gómez — Reciclajes Bogotá",
+    "channel": "telegram",
+    "mode": "human",
+    "assignedTo": "Andrea T.",
+    "lastTime": "09:32",
+    "preview": "Andrea T.: Con gusto, te confirmo la ruta de recolección para mañana",
+    "unread": 3,
+    "favorite": false,
+    "phone": "—",
+    "company": "Reciclajes Bogotá S.A.S.",
+    "since": "Ago. 2024",
+    "tags": ["Reciclaje industrial"],
+    "notes": [
+      { "author": "Andrea T.", "time": "09:20", "text": "Solicita recolección semanal fija los días viernes en la tarde." }
+    ],
+    "followUp": null,
+    "messages": [
+      { "role": "customer", "text": "¿Pueden recoger el material reciclado en nuestra bodega esta semana?", "time": "09:15" },
+      { "role": "system", "text": "Andrea T. tomó esta conversación.", "time": "09:18" },
+      { "role": "advisor", "author": "Andrea T.", "text": "Con gusto, te confirmo la ruta de recolección para mañana", "time": "09:32" }
+    ]
+  }
+]
