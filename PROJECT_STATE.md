@@ -101,7 +101,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 010 Advisor Reply | ✅ | ✅ | ✅ | ✅ |
 | 011 Navigation Shell & Theming | ✅ | ✅ | ✅ | ✅ |
 | 012 Chat Panel Redesign | ✅ | ✅ | ✅ | ✅ |
-| 013 Contact Enrichment & Follow-ups | ✅ | ⬜ | ⬜ | ⬜ |
+| 013 Contact Enrichment & Follow-ups | ✅ | ✅ | ✅ | ✅ |
 | 014 Admin Governance & Access Control | ✅ | ⬜ | ⬜ | ⬜ |
 | 015 Channel Provider Routing | ✅ | ⬜ | ⬜ | ⬜ |
 | 016 WhatsApp Integration (Evolution API) | ✅ | ⬜ | ⬜ | ⬜ |
@@ -431,6 +431,52 @@ They must NOT be modified unless a formal architecture decision is made.
   nuevos del selector de emojis), `next build`, y Playwright (8/8, dos tests nuevos: búsqueda por
   nombre y búsqueda dentro de la conversación) en frontend
 
+**Contact Enrichment & Follow-ups (spec 013) ya implementado:**
+
+* Domino nuevo de esta tanda (a diferencia de 011/012, solo frontend): 2 entidades (`ContactNote`
+  append-only, `FollowUp` mutable con `.resolve()`), 2 tablas nuevas (migración
+  `0004_add_contact_enrichment_and_follow_ups`), ~10 casos de uso, 2 routers nuevos
+  (`contacts.py`, `advisors.py`)
+* `Contact.tags`/`is_favorite` — columna `JSON`, no tabla N:M (mismo criterio que
+  `MessageModel.extra_metadata`, revisar solo si el volumen real lo justifica);
+  `AddContactTagUseCase`/`RemoveContactTagUseCase` idempotentes, `ToggleContactFavoriteUseCase`
+  invierte el valor
+* `ContactNote` — siempre autoría humana (`author_id` obligatorio, no `advisor_id`: si algún día
+  la IA genera notas, el tipo no debería mentir sobre quién escribió); `save()` usa `add()`, nunca
+  `merge()` (append-only, mismo patrón que `ConversationSummary`); `ListContactNotesUseCase`
+  resuelve nombres de autor con `get_by_id()` en loop — aceptado a esta escala, sin agregar
+  `list_by_ids()` a `InternalUserRepository` solo para esto
+* `FollowUp` — ligado a `Opportunity`, no a `Contact` (la asignación vive ahí); regla de negocio:
+  un solo seguimiento activo por oportunidad (`FollowUpAlreadyScheduledError` → 422);
+  `list_active_by_opportunity_ids` evita N+1 en el listado; "Vencido" se calcula en el frontend
+  comparando `due_at` contra la hora actual, no se guarda en BD
+* `Opportunity.has_unread_messages` — automático en `ReceiveIncomingMessageUseCase` (mensaje
+  entrante) y en `GetConversationHistoryUseCase` (excepción deliberada a "los casos de uso de
+  lectura no escriben": abrir la conversación *es* la señal de "ya lo vi"); manual vía
+  `SetOpportunityUnreadUseCase` (recibe `unread: bool` explícito, no invierte, para que
+  marcar-leída/no-leída sea la misma llamada con distinto valor)
+* Reasignación entre asesores — **no hizo falta backend nuevo**: `AssignToAdvisorUseCase` (spec
+  009) ya sobreescribía `assigned_advisor_id` sin comprobar el valor anterior. Lo que faltaba era
+  el selector de nombres (`InternalUserRepository.list_advisors_by_organization`, desde spec 008,
+  nunca conectado a un endpoint) — `GET /organizations/{slug}/advisors` es la única pieza nueva
+* Búsqueda — `OpportunityRepository.search_open_by_organization` agrega contenido de mensajes
+  (`MessageModel.content ILIKE`) a la búsqueda por nombre/teléfono de spec 012; limitación aceptada:
+  `ILIKE` en SQLite es case-insensitive solo ASCII
+* Frontend: panel de información del cliente (`contact-panel.tsx`, abre al hacer clic en el
+  avatar) con etiquetas, notas, y seguimiento (selector de fecha/hora `date-time-picker.tsx`,
+  portado del mockup ya validado); barra de herramientas de la lista (orden cíclico, menú de
+  filtros de tres puntos); estrella de favorito no-clicable en la fila de lista (evita anidar un
+  botón dentro del `<button>` de la fila); reasignar y marcar no-leída en el encabezado del chat;
+  búsqueda cambia de filtro client-side a `useSearchOpportunities` cuando hay texto
+* Menús flotantes nuevos (filtros de la lista, reasignar, tres-puntos del chat) cierran al hacer
+  clic afuera **en fase de captura**, no burbuja — mismo bug ya corregido en el mockup (un botón
+  dentro del propio menú que lo cierra de forma síncrona deja el nodo desconectado del árbol antes
+  de que un listener en burbuja lo revise)
+* Validado: `ruff`, `mypy`, `pytest` (29 tests, 11 nuevos en `test_contact_enrichment.py`) en
+  backend; `tsc`, `eslint`, `vitest`, `next build`, y Playwright (13/13, 6 tests nuevos: panel de
+  cliente + etiqueta + nota, programar/resolver seguimiento, reasignar, marcar no-leída, buscar por
+  contenido de mensaje) en frontend
+
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
 
@@ -565,6 +611,9 @@ tanda esté implementada y el piloto pospuesto dé evidencia real de qué más h
 Política vigente desde spec 008: toda spec nueva debe incluir tests de lo que introduce; si
 modifica comportamiento existente, actualiza los tests afectados (ver
 `03_Engineering_Principles.md`).
+
+**Siguiente acción: specs 011, 012 y 013 implementadas, validadas y committed (eb6071e, 332708c,
+7b59e54). Sigue spec 014 (Admin Governance & Access Control).**
 
 ---
 
@@ -707,6 +756,7 @@ reales (Telegram + OpenRouter), API protegida (Google OAuth + JWT), y un fronten
 Workspace) donde un asesor humano puede tomar una conversación, **responderle al cliente**, y
 devolverla a IA — validado manualmente con login real y Telegram real, sin bugs conocidos.
 Siguiente: se pospuso el piloto operativo para completar más la plataforma primero (UI rediseñada,
-WhatsApp, panel de administración, base de conocimiento, multimedia) — spec 011 (Navigation Shell &
-Theming) ya escrita, pendiente de implementar. Ver sección "Next Step" arriba para el orden
-completo de la nueva tanda de specs.
+WhatsApp, panel de administración, base de conocimiento, multimedia) — specs 011 (Navigation Shell
+& Theming), 012 (Chat Panel Redesign) y 013 (Contact Enrichment & Follow-ups) ya implementadas,
+validadas y committed. Sigue spec 014 (Admin Governance & Access Control). Ver sección "Next Step"
+arriba para el orden completo de la nueva tanda de specs.
