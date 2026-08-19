@@ -9,5 +9,8 @@ export function useOpportunities(organizationSlug: string | undefined) {
     queryFn: () =>
       apiFetch<OpenOpportunity[]>(`/api/organizations/${organizationSlug}/opportunities`),
     enabled: organizationSlug !== undefined,
+    // Mismo motivo que useConversationHistory -- sin esto, un mensaje nuevo en otra conversación
+    // (badge de no leído, orden por "recientes") solo se refleja al recargar la página.
+    refetchInterval: 5000,
   });
 }
