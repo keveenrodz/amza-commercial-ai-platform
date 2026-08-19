@@ -31,3 +31,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Resaltado de búsqueda dentro de una conversación (spec 012) -- el amarillo por defecto del
+   navegador no se lee bien en fondos oscuros. */
+mark {
+  background: #fde68a;
+  color: #171717;
+  border-radius: 2px;
+  padding: 0 1px;
+}

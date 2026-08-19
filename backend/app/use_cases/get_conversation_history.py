@@ -4,10 +4,11 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from core.entities.contact import Contact
 from core.entities.conversation import Conversation
 from core.entities.message import Message
 from core.entities.opportunity import Opportunity
-from core.exceptions.domain import OpportunityNotFoundError
+from core.exceptions.domain import ContactNotFoundError, OpportunityNotFoundError
 from core.value_objects.identifiers import OpportunityId
 from infrastructure.database.unit_of_work import SQLAlchemyUnitOfWork
 
@@ -18,6 +19,7 @@ _DEFAULT_MESSAGE_LIMIT = 50
 class ConversationHistory:
     opportunity: Opportunity
     conversation: Conversation | None
+    contact: Contact
     messages: list[Message]
 
 
@@ -35,6 +37,10 @@ class GetConversationHistoryUseCase:
             if opportunity is None:
                 raise OpportunityNotFoundError(opportunity_id)
 
+            contact = await uow.contacts.get_by_id(opportunity.contact_id)
+            if contact is None:
+                raise ContactNotFoundError(opportunity.contact_id)
+
             conversation = await uow.conversations.get_by_opportunity(opportunity_id)
 
             messages: list[Message] = []
@@ -47,5 +53,6 @@ class GetConversationHistoryUseCase:
             return ConversationHistory(
                 opportunity=opportunity,
                 conversation=conversation,
+                contact=contact,
                 messages=messages,
             )

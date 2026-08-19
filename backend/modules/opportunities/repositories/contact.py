@@ -51,6 +51,14 @@ class SQLAlchemyContactRepository:
         model = result.scalar_one_or_none()
         return _to_entity(model) if model else None
 
+    async def list_by_ids(self, ids: list[ContactId]) -> list[Contact]:
+        if not ids:
+            return []
+        result = await self._session.execute(
+            select(ContactModel).where(ContactModel.id.in_([i.value for i in ids]))
+        )
+        return [_to_entity(model) for model in result.scalars()]
+
     async def get_by_external_id(
         self,
         external_id: str,

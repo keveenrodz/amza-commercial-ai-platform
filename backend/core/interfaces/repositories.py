@@ -91,6 +91,8 @@ class ConversationSummaryRepository(Protocol):
 class ContactRepository(Protocol):
     async def get_by_id(self, id: ContactId) -> Contact | None: ...
 
+    async def list_by_ids(self, ids: list[ContactId]) -> list[Contact]: ...
+
     async def get_by_external_id(
         self,
         external_id: str,

@@ -6,6 +6,7 @@ from app.api.dto.opportunity import (
     AssignAdvisorRequest,
     ConversationHistoryResponse,
     MessageResponse,
+    OpenOpportunityResponse,
     OpportunityResponse,
     SendMessageRequest,
 )
@@ -39,9 +40,9 @@ router = APIRouter(
 async def list_open_opportunities(
     organization_slug: str,
     use_case: ListOpenOpportunitiesUseCase = Depends(get_list_open_opportunities_use_case),
-) -> list[OpportunityResponse]:
-    opportunities = await use_case.execute(organization_slug)
-    return [OpportunityResponse.from_domain(o) for o in opportunities]
+) -> list[OpenOpportunityResponse]:
+    items = await use_case.execute(organization_slug)
+    return [OpenOpportunityResponse.from_domain(item) for item in items]
 
 
 @router.get("/{opportunity_id}/history")

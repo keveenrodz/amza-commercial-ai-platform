@@ -24,6 +24,16 @@ export interface Opportunity {
   closed_at: string | null;
 }
 
+export interface ContactSummary {
+  display_name: string;
+  phone_number: string | null;
+}
+
+export interface OpenOpportunity {
+  opportunity: Opportunity;
+  contact: ContactSummary;
+}
+
 export interface Message {
   id: string;
   sender_role: "user" | "assistant" | "advisor" | "system";
@@ -34,5 +44,6 @@ export interface Message {
 
 export interface ConversationHistory {
   opportunity: Opportunity;
+  contact: ContactSummary;
   messages: Message[];
 }

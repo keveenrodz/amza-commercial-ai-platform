@@ -36,12 +36,22 @@ const MY_OPPORTUNITY = {
   status: "waiting_for_advisor",
 };
 
+// spec 012 -- OpportunityResponse ya no viaja sola en el listado, cada fila trae su Contact
+// (corrección de contrato: ninguna pantalla mostraba antes el nombre real del cliente).
+const CONTACT_UNASSIGNED = { display_name: "Distribuidora El Roble", phone_number: null };
+const CONTACT_MINE = { display_name: "Litoempaques S.A.S.", phone_number: null };
+
+const OPEN_OPPORTUNITIES = [
+  { opportunity: UNASSIGNED_OPPORTUNITY, contact: CONTACT_UNASSIGNED },
+  { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE },
+];
+
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/auth/me", (route) =>
     route.fulfill({ json: CURRENT_USER }),
   );
   await page.route("**/api/organizations/*/opportunities", (route) =>
-    route.fulfill({ json: [UNASSIGNED_OPPORTUNITY, MY_OPPORTUNITY] }),
+    route.fulfill({ json: OPEN_OPPORTUNITIES }),
   );
 });
 
@@ -50,11 +60,15 @@ test("las tres pestañas filtran correctamente", async ({ page }) => {
 
   await expect(page.getByText("Juan Perez (advisor)")).toBeVisible();
 
-  // Sin asignar es la pestaña por default.
-  await expect(page.getByRole("link", { name: /new/i })).toHaveCount(1);
+  // IA es la pestaña por default (antes "Sin asignar" -- spec 012 la renombró).
+  await expect(
+    page.locator("main").getByRole("link", { name: /Distribuidora El Roble/ }),
+  ).toHaveCount(1);
 
   await page.getByRole("button", { name: "Mías" }).click();
-  await expect(page.getByRole("link", { name: /waiting_for_advisor/i })).toHaveCount(1);
+  await expect(
+    page.locator("main").getByRole("link", { name: /Litoempaques/ }),
+  ).toHaveCount(1);
 
   await page.getByRole("button", { name: "Todas" }).click();
   // Acotado a <main> -- la barra lateral del shell (spec 011) también tiene enlaces reales
@@ -63,10 +77,20 @@ test("las tres pestañas filtran correctamente", async ({ page }) => {
   await expect(page.locator("main").getByRole("link")).toHaveCount(2);
 });
 
+test("buscar por nombre de contacto filtra la lista", async ({ page }) => {
+  await page.goto("/opportunities");
+  await page.getByRole("button", { name: "Todas" }).click();
+  await expect(page.locator("main").getByRole("link")).toHaveCount(2);
+
+  await page.getByPlaceholder("Buscar contacto").fill("Lito");
+  await expect(page.locator("main").getByRole("link")).toHaveCount(1);
+  await expect(page.getByText("Litoempaques S.A.S.")).toBeVisible();
+});
+
 test("tomar una conversación sin asignar llama al endpoint correcto", async ({ page }) => {
   await page.route("**/api/organizations/*/opportunities/opp-unassigned/history", (route) =>
     route.fulfill({
-      json: { opportunity: UNASSIGNED_OPPORTUNITY, messages: [] },
+      json: { opportunity: UNASSIGNED_OPPORTUNITY, contact: CONTACT_UNASSIGNED, messages: [] },
     }),
   );
 
@@ -80,6 +104,7 @@ test("tomar una conversación sin asignar llama al endpoint correcto", async ({ 
   );
 
   await page.goto("/opportunities/opp-unassigned");
+  await expect(page.getByRole("heading", { name: "Distribuidora El Roble" })).toBeVisible();
   await page.getByRole("button", { name: "Tomar conversación" }).click();
 
   await expect.poll(() => assignRequestBody).toEqual({ advisor_id: CURRENT_USER.id });
@@ -105,7 +130,7 @@ test("enviar un mensaje en una conversación propia llama al endpoint correcto",
 
   await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
     route.fulfill({
-      json: { opportunity: MY_OPPORTUNITY, messages: initialMessages },
+      json: { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, messages: initialMessages },
     }),
   );
 
@@ -134,6 +159,37 @@ test("enviar un mensaje en una conversación propia llama al endpoint correcto",
 
   // El input se limpia al terminar -- confirmación visual de que el envío funcionó.
   await expect(page.getByPlaceholder("Escribe tu respuesta...")).toHaveValue("");
+});
+
+test("buscar dentro de la conversación resalta la coincidencia", async ({ page }) => {
+  const initialMessages = [
+    {
+      id: "msg-1",
+      sender_role: "user",
+      content: "Necesito cajas corrugadas para exportación",
+      content_type: "text",
+      sent_at: "2026-01-01T00:00:00Z",
+    },
+    {
+      id: "msg-2",
+      sender_role: "assistant",
+      content: "¡Con gusto! ¿Cuántas unidades necesitas?",
+      content_type: "text",
+      sent_at: "2026-01-01T00:01:00Z",
+    },
+  ];
+
+  await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
+    route.fulfill({
+      json: { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, messages: initialMessages },
+    }),
+  );
+
+  await page.goto("/opportunities/opp-mine");
+  await page.getByRole("button", { name: "Buscar en la conversación" }).click();
+  await page.getByPlaceholder("Buscar en esta conversación").fill("corrugadas");
+
+  await expect(page.locator("mark", { hasText: "corrugadas" })).toBeVisible();
 });
 
 test("sin sesión redirige a /login", async ({ page }) => {

@@ -5,6 +5,8 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.use_cases.get_conversation_history import ConversationHistory
+from app.use_cases.list_open_opportunities import OpenOpportunity
+from core.entities.contact import Contact
 from core.entities.message import Message
 from core.entities.opportunity import Opportunity
 
@@ -50,6 +52,27 @@ class OpportunityResponse(BaseModel):
         )
 
 
+class ContactSummaryResponse(BaseModel):
+    display_name: str
+    phone_number: str | None
+
+    @classmethod
+    def from_domain(cls, contact: Contact) -> ContactSummaryResponse:
+        return cls(display_name=contact.display_name, phone_number=contact.phone_number)
+
+
+class OpenOpportunityResponse(BaseModel):
+    opportunity: OpportunityResponse
+    contact: ContactSummaryResponse
+
+    @classmethod
+    def from_domain(cls, item: OpenOpportunity) -> OpenOpportunityResponse:
+        return cls(
+            opportunity=OpportunityResponse.from_domain(item.opportunity),
+            contact=ContactSummaryResponse.from_domain(item.contact),
+        )
+
+
 class MessageResponse(BaseModel):
     id: str
     sender_role: str
@@ -70,11 +93,13 @@ class MessageResponse(BaseModel):
 
 class ConversationHistoryResponse(BaseModel):
     opportunity: OpportunityResponse
+    contact: ContactSummaryResponse
     messages: list[MessageResponse]
 
     @classmethod
     def from_domain(cls, history: ConversationHistory) -> ConversationHistoryResponse:
         return cls(
             opportunity=OpportunityResponse.from_domain(history.opportunity),
+            contact=ContactSummaryResponse.from_domain(history.contact),
             messages=[MessageResponse.from_domain(m) for m in history.messages],
         )
