@@ -100,7 +100,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 009 Advisor Workspace | ✅ | ✅ | ✅ | ✅ |
 | 010 Advisor Reply | ✅ | ✅ | ✅ | ✅ |
 | 011 Navigation Shell & Theming | ✅ | ✅ | ✅ | ✅ |
-| 012 Chat Panel Redesign | ✅ | ⬜ | ⬜ | ⬜ |
+| 012 Chat Panel Redesign | ✅ | ✅ | ✅ | ✅ |
 | 013 Contact Enrichment & Follow-ups | ✅ | ⬜ | ⬜ | ⬜ |
 | 014 Admin Governance & Access Control | ✅ | ⬜ | ⬜ | ⬜ |
 | 015 Channel Provider Routing | ✅ | ⬜ | ⬜ | ⬜ |
@@ -413,6 +413,23 @@ They must NOT be modified unless a formal architecture decision is made.
   ["tests/e2e/**"]` en `vitest.config.ts`
 * Validado: `tsc --noEmit`, `eslint`, `vitest run`, `next build`, y el suite completo de Playwright
   (6/6, incluyendo dos tests nuevos: persistencia de tema tras recargar, rutas placeholder)
+
+**Chat Panel Redesign (spec 012) ya implementado:**
+
+* Corrección de contrato primero: `ContactRepository.list_by_ids` (evita N+1 en el listado),
+  `OpenOpportunityResponse`/`ConversationHistoryResponse.contact` nuevos, `OpportunityResponse`
+  **sin tocar** — `assign-advisor`/`return-to-ai`/`messages` devuelven exactamente el mismo shape
+  que antes (test de regresión explícito en `test_opportunity_contact_summary.py`)
+* Frontend: filas de lista estilo WhatsApp Web (avatar, nombre real, chip de canal, chip
+  IA/Mía/Asignada), pestaña "Sin asignar" renombrada a "IA", búsqueda por nombre de contacto;
+  encabezado del detalle con el nombre real en vez de un UUID; burbujas distinguiendo
+  cliente/IA/asesor, separadores de día, selector de emojis (buscador + frecuentes vía
+  `localStorage`, portado del mockup), búsqueda dentro de la conversación con `<mark>` (el texto
+  se escapa antes de resaltar — lo único que puede producir HTML es el propio `<mark>`, nunca el
+  contenido del mensaje); adjuntos no-texto como tarjeta compacta, sin visor real todavía
+* Validado: `ruff`, `mypy`, `pytest` (18 tests) en backend; `tsc`, `eslint`, `vitest` (3 tests
+  nuevos del selector de emojis), `next build`, y Playwright (8/8, dos tests nuevos: búsqueda por
+  nombre y búsqueda dentro de la conversación) en frontend
 
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
