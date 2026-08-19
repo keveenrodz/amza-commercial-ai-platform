@@ -522,6 +522,27 @@ They must NOT be modified unless a formal architecture decision is made.
   estándar: `tsc`, `eslint`, `vitest`, `next build`, y Playwright (13/13, dos tests existentes
   ajustados para el layout compartido — el nombre/rol ya no está en una barra siempre visible, y
   los links de la lista ya no viven dentro de `<main>`)
+* **Tres problemas reales encontrados por el usuario al validar en el navegador, corregidos de
+  inmediato:**
+  1. "Reasignar"/"Devolver a IA" quedaron debajo del composer en vez de en el encabezado del chat
+     junto a buscar/más-opciones (así están en el mockup). Al mover el bloque se corrigió también
+     un gap real con spec 013: "Reasignar" ahora aparece siempre que la oportunidad esté en modo
+     `human` (sin importar quién la tenga asignada), no solo cuando ya es mía — el desplegable
+     lista a todos los asesores y solo deshabilita al que ya está asignado (marcado "· actual"),
+     igual que el mockup. Antes, tomar una conversación de OTRO asesor exigía usar el botón
+     "Tomar conversación" (que en realidad solo llama a `assign-advisor` con mi propio id) porque
+     "Reasignar" estaba oculto para cualquier oportunidad que no fuera ya mía
+  2. La conversación abierta nunca se refrescaba sola — un mensaje nuevo del cliente o una
+     respuesta de la IA solo aparecían cambiando de conversación o recargando la página. Sin
+     WebSocket/SSE todavía, se agregó polling (`refetchInterval`) a `useConversationHistory` (4s) y
+     `useOpportunities` (5s); el hilo también hace auto-scroll al fondo cuando llega un mensaje
+     nuevo, pero solo si ya se estaba cerca del final — si el asesor subió a leer historial viejo,
+     un mensaje nuevo no lo arrastra de vuelta abajo
+  3. La búsqueda dentro de una conversación resaltaba coincidencias pero nunca llevaba la vista
+     hasta ellas — si el match estaba arriba (mensaje viejo), quedaba invisible hasta hacer scroll
+     manual. Ahora muestra un contador ("N coincidencias"/"Sin coincidencias") y hace scroll al
+     primer match cada vez que cambia la búsqueda (no en cada refresco del polling, para no
+     arrastrar la vista mientras el asesor lee otra parte del hilo)
 
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
