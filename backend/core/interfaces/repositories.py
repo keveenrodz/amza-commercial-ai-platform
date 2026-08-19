@@ -5,8 +5,10 @@ from typing import Protocol
 
 from core.entities.agent import Agent
 from core.entities.contact import Contact
+from core.entities.contact_note import ContactNote
 from core.entities.conversation import Conversation
 from core.entities.conversation_summary import ConversationSummary
+from core.entities.follow_up import FollowUp
 from core.entities.internal_user import InternalUser
 from core.entities.message import Message
 from core.entities.opportunity import Opportunity
@@ -37,6 +39,12 @@ class OpportunityRepository(Protocol):
     async def list_open_by_organization(
         self,
         organization_id: OrganizationId,
+    ) -> list[Opportunity]: ...
+
+    async def search_open_by_organization(
+        self,
+        organization_id: OrganizationId,
+        query: str,
     ) -> list[Opportunity]: ...
 
 
@@ -103,6 +111,26 @@ class ContactRepository(Protocol):
     async def save(self, contact: Contact) -> None: ...
 
 
+class ContactNoteRepository(Protocol):
+    async def list_by_contact(self, contact_id: ContactId) -> list[ContactNote]: ...
+
+    async def save(self, note: ContactNote) -> None: ...
+
+
+class FollowUpRepository(Protocol):
+    async def get_active_by_opportunity(
+        self,
+        opportunity_id: OpportunityId,
+    ) -> FollowUp | None: ...
+
+    async def list_active_by_opportunity_ids(
+        self,
+        opportunity_ids: list[OpportunityId],
+    ) -> list[FollowUp]: ...
+
+    async def save(self, follow_up: FollowUp) -> None: ...
+
+
 class AgentRepository(Protocol):
     async def get_by_id(self, id: AgentId) -> Agent | None: ...
 
@@ -141,6 +169,8 @@ class UnitOfWork(Protocol):
     messages: MessageRepository
     conversation_summaries: ConversationSummaryRepository
     contacts: ContactRepository
+    contact_notes: ContactNoteRepository
+    follow_ups: FollowUpRepository
     agents: AgentRepository
     organizations: OrganizationRepository
     internal_users: InternalUserRepository

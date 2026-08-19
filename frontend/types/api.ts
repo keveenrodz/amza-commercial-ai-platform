@@ -22,16 +22,26 @@ export interface Opportunity {
   started_at: string;
   last_activity_at: string;
   closed_at: string | null;
+  has_unread_messages: boolean;
 }
 
 export interface ContactSummary {
   display_name: string;
   phone_number: string | null;
+  tags: string[];
+  is_favorite: boolean;
+}
+
+export interface FollowUp {
+  id: string;
+  due_at: string;
+  reason: string;
 }
 
 export interface OpenOpportunity {
   opportunity: Opportunity;
   contact: ContactSummary;
+  follow_up: FollowUp | null;
 }
 
 export interface Message {
@@ -45,5 +55,18 @@ export interface Message {
 export interface ConversationHistory {
   opportunity: Opportunity;
   contact: ContactSummary;
+  follow_up: FollowUp | null;
   messages: Message[];
+}
+
+export interface AdvisorSummary {
+  id: string;
+  full_name: string;
+}
+
+export interface ContactNote {
+  id: string;
+  author_name: string;
+  content: string;
+  created_at: string;
 }

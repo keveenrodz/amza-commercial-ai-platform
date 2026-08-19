@@ -59,3 +59,13 @@ class MessageId(_BaseId):
 @dataclass(frozen=True)
 class ConversationSummaryId(_BaseId):
     pass
+
+
+@dataclass(frozen=True)
+class ContactNoteId(_BaseId):
+    pass
+
+
+@dataclass(frozen=True)
+class FollowUpId(_BaseId):
+    pass

@@ -22,6 +22,8 @@ def _to_entity(model: ContactModel) -> Contact:
         updated_at=model.updated_at,
         phone_number=model.phone_number,
         email=model.email,
+        tags=list(model.tags),
+        is_favorite=model.is_favorite,
     )
 
 
@@ -35,6 +37,8 @@ def _from_entity(entity: Contact) -> ContactModel:
         status=entity.status.value,
         phone_number=entity.phone_number,
         email=entity.email,
+        tags=list(entity.tags),
+        is_favorite=entity.is_favorite,
         created_at=entity.created_at,
         updated_at=entity.updated_at,
     )

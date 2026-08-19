@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from core.enums.channel import ChannelType
@@ -20,3 +20,5 @@ class Contact:
     updated_at: datetime
     phone_number: str | None = None
     email: str | None = None
+    tags: list[str] = field(default_factory=list)
+    is_favorite: bool = False

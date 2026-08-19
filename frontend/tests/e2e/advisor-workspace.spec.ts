@@ -26,11 +26,13 @@ const UNASSIGNED_OPPORTUNITY = {
   started_at: "2026-01-01T00:00:00Z",
   last_activity_at: "2026-01-01T00:00:00Z",
   closed_at: null,
+  has_unread_messages: false,
 };
 
 const MY_OPPORTUNITY = {
   ...UNASSIGNED_OPPORTUNITY,
   id: "opp-mine",
+  contact_id: "contact-2",
   assigned_advisor_id: CURRENT_USER.id,
   attention_mode: "human",
   status: "waiting_for_advisor",
@@ -38,12 +40,23 @@ const MY_OPPORTUNITY = {
 
 // spec 012 -- OpportunityResponse ya no viaja sola en el listado, cada fila trae su Contact
 // (corrección de contrato: ninguna pantalla mostraba antes el nombre real del cliente).
-const CONTACT_UNASSIGNED = { display_name: "Distribuidora El Roble", phone_number: null };
-const CONTACT_MINE = { display_name: "Litoempaques S.A.S.", phone_number: null };
+// spec 013 -- ContactSummary gana tags/is_favorite, y cada item gana follow_up (sección 7).
+const CONTACT_UNASSIGNED = {
+  display_name: "Distribuidora El Roble",
+  phone_number: null,
+  tags: [],
+  is_favorite: false,
+};
+const CONTACT_MINE = {
+  display_name: "Litoempaques S.A.S.",
+  phone_number: null,
+  tags: [],
+  is_favorite: false,
+};
 
 const OPEN_OPPORTUNITIES = [
-  { opportunity: UNASSIGNED_OPPORTUNITY, contact: CONTACT_UNASSIGNED },
-  { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE },
+  { opportunity: UNASSIGNED_OPPORTUNITY, contact: CONTACT_UNASSIGNED, follow_up: null },
+  { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null },
 ];
 
 test.beforeEach(async ({ page }) => {
@@ -77,20 +90,66 @@ test("las tres pestañas filtran correctamente", async ({ page }) => {
   await expect(page.locator("main").getByRole("link")).toHaveCount(2);
 });
 
-test("buscar por nombre de contacto filtra la lista", async ({ page }) => {
+test("buscar por nombre de contacto llama al endpoint de búsqueda", async ({ page }) => {
+  // spec 013 -- ya no es un filtro puramente client-side (spec 012); una consulta no vacía
+  // dispara GET .../opportunities/search en vez de filtrar el listado en memoria.
+  let searchUrl: string | undefined;
+  await page.route("**/api/organizations/*/opportunities/search**", (route) => {
+    searchUrl = route.request().url();
+    route.fulfill({
+      json: [{ opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null }],
+    });
+  });
+
   await page.goto("/opportunities");
   await page.getByRole("button", { name: "Todas" }).click();
   await expect(page.locator("main").getByRole("link")).toHaveCount(2);
 
-  await page.getByPlaceholder("Buscar contacto").fill("Lito");
+  await page.getByPlaceholder("Buscar contacto o mensaje").fill("Lito");
   await expect(page.locator("main").getByRole("link")).toHaveCount(1);
   await expect(page.getByText("Litoempaques S.A.S.")).toBeVisible();
+  await expect.poll(() => searchUrl).toContain("q=Lito");
+});
+
+test("buscar por una palabra que solo existe en un mensaje encuentra la conversación", async ({
+  page,
+}) => {
+  const MESSAGE_MATCH_CONTACT = { display_name: "Fábrica ABC", phone_number: null, tags: [], is_favorite: false };
+  const MESSAGE_MATCH_OPPORTUNITY = {
+    ...UNASSIGNED_OPPORTUNITY,
+    id: "opp-message-match",
+    contact_id: "contact-3",
+  };
+
+  // Este item NO existe en el listado base (OPEN_OPPORTUNITIES) -- solo lo devuelve el
+  // endpoint de búsqueda, probando que el frontend de verdad llama a ese endpoint (que sí
+  // busca dentro del contenido de los mensajes) en vez de filtrar el listado ya cargado.
+  await page.route("**/api/organizations/*/opportunities/search**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          opportunity: MESSAGE_MATCH_OPPORTUNITY,
+          contact: MESSAGE_MATCH_CONTACT,
+          follow_up: null,
+        },
+      ],
+    }),
+  );
+
+  await page.goto("/opportunities");
+  await page.getByPlaceholder("Buscar contacto o mensaje").fill("guacal");
+  await expect(page.getByText("Fábrica ABC")).toBeVisible();
 });
 
 test("tomar una conversación sin asignar llama al endpoint correcto", async ({ page }) => {
   await page.route("**/api/organizations/*/opportunities/opp-unassigned/history", (route) =>
     route.fulfill({
-      json: { opportunity: UNASSIGNED_OPPORTUNITY, contact: CONTACT_UNASSIGNED, messages: [] },
+      json: {
+        opportunity: UNASSIGNED_OPPORTUNITY,
+        contact: CONTACT_UNASSIGNED,
+        follow_up: null,
+        messages: [],
+      },
     }),
   );
 
@@ -130,7 +189,12 @@ test("enviar un mensaje en una conversación propia llama al endpoint correcto",
 
   await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
     route.fulfill({
-      json: { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, messages: initialMessages },
+      json: {
+        opportunity: MY_OPPORTUNITY,
+        contact: CONTACT_MINE,
+        follow_up: null,
+        messages: initialMessages,
+      },
     }),
   );
 
@@ -181,7 +245,12 @@ test("buscar dentro de la conversación resalta la coincidencia", async ({ page 
 
   await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
     route.fulfill({
-      json: { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, messages: initialMessages },
+      json: {
+        opportunity: MY_OPPORTUNITY,
+        contact: CONTACT_MINE,
+        follow_up: null,
+        messages: initialMessages,
+      },
     }),
   );
 
@@ -190,6 +259,146 @@ test("buscar dentro de la conversación resalta la coincidencia", async ({ page 
   await page.getByPlaceholder("Buscar en esta conversación").fill("corrugadas");
 
   await expect(page.locator("mark", { hasText: "corrugadas" })).toBeVisible();
+});
+
+test("panel de cliente: agregar una etiqueta y una nota", async ({ page }) => {
+  let contactTags: string[] = [];
+  const notes: { id: string; author_name: string; content: string; created_at: string }[] = [];
+
+  await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
+    route.fulfill({
+      json: {
+        opportunity: MY_OPPORTUNITY,
+        contact: { ...CONTACT_MINE, tags: contactTags },
+        follow_up: null,
+        messages: [],
+      },
+    }),
+  );
+  await page.route("**/api/organizations/*/contacts/*/tags", (route) => {
+    const { tag } = route.request().postDataJSON();
+    if (!contactTags.includes(tag)) contactTags = [...contactTags, tag];
+    route.fulfill({ json: { ...CONTACT_MINE, tags: contactTags } });
+  });
+  await page.route("**/api/organizations/*/contacts/*/notes", (route) => {
+    if (route.request().method() === "GET") {
+      return route.fulfill({ json: notes });
+    }
+    const { content } = route.request().postDataJSON();
+    const note = {
+      id: `note-${notes.length + 1}`,
+      author_name: CURRENT_USER.full_name,
+      content,
+      created_at: "2026-01-01T00:00:00Z",
+    };
+    notes.push(note);
+    return route.fulfill({ json: note });
+  });
+
+  await page.goto("/opportunities/opp-mine");
+  await page.getByRole("button", { name: "Ver información del cliente" }).click();
+
+  await page.getByRole("button", { name: "+ Etiqueta" }).click();
+  await page.getByPlaceholder("Nueva etiqueta").fill("Cliente frecuente");
+  await page.getByPlaceholder("Nueva etiqueta").press("Enter");
+  await expect(page.getByText("Cliente frecuente")).toBeVisible();
+
+  await page
+    .getByPlaceholder("Agregar una nota sobre este cliente...")
+    .fill("Prefiere que lo contactemos por la tarde.");
+  await page.getByRole("button", { name: "Guardar nota" }).click();
+  await expect(page.getByText("Prefiere que lo contactemos por la tarde.")).toBeVisible();
+});
+
+test("programar un seguimiento y marcarlo resuelto", async ({ page }) => {
+  let followUp: { id: string; due_at: string; reason: string } | null = null;
+
+  await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
+    route.fulfill({
+      json: { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: followUp, messages: [] },
+    }),
+  );
+  await page.route("**/api/organizations/*/contacts/*/notes", (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route("**/api/organizations/*/opportunities/opp-mine/follow-up", (route) => {
+    const { reason } = route.request().postDataJSON();
+    followUp = { id: "fu-1", due_at: "2099-01-15T14:00:00Z", reason };
+    route.fulfill({ json: followUp });
+  });
+  await page.route(
+    "**/api/organizations/*/opportunities/opp-mine/follow-up/resolve",
+    (route) => {
+      followUp = null;
+      route.fulfill({ json: { id: "fu-1", due_at: "2099-01-15T14:00:00Z", reason: "" } });
+    },
+  );
+
+  await page.goto("/opportunities/opp-mine");
+  await page.getByRole("button", { name: "Ver información del cliente" }).click();
+
+  await page.getByRole("button", { name: "+ Programar seguimiento" }).click();
+  await page.getByText("Elige fecha y hora").click();
+  // Nos movemos al mes siguiente para elegir un día garantizado en el futuro, sin depender
+  // de qué día es "hoy" quando corre la prueba.
+  await page.getByRole("button", { name: "Mes siguiente" }).click();
+  await page.getByRole("button", { name: "15", exact: true }).click();
+  await page.getByRole("button", { name: "Listo" }).click();
+
+  await page.getByPlaceholder("Motivo del seguimiento").fill("Llamar para confirmar pedido");
+  await page.getByRole("button", { name: "Guardar seguimiento" }).click();
+
+  await expect(page.getByText("Llamar para confirmar pedido")).toBeVisible();
+
+  await page.getByRole("button", { name: "Marcar como resuelto" }).click();
+  await expect(page.getByRole("button", { name: "+ Programar seguimiento" })).toBeVisible();
+});
+
+test("reasignar una conversación a otro asesor", async ({ page }) => {
+  await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
+    route.fulfill({
+      json: { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null, messages: [] },
+    }),
+  );
+  await page.route("**/api/organizations/*/advisors", (route) =>
+    route.fulfill({ json: [{ id: "advisor-2", full_name: "Andrea T." }] }),
+  );
+
+  let assignRequestBody: unknown;
+  await page.route(
+    "**/api/organizations/*/opportunities/opp-mine/assign-advisor",
+    (route) => {
+      assignRequestBody = route.request().postDataJSON();
+      route.fulfill({ json: { ...MY_OPPORTUNITY, assigned_advisor_id: "advisor-2" } });
+    },
+  );
+
+  await page.goto("/opportunities/opp-mine");
+  await page.getByRole("button", { name: "Reasignar" }).click();
+  await page.getByRole("button", { name: "Andrea T." }).click();
+
+  await expect.poll(() => assignRequestBody).toEqual({ advisor_id: "advisor-2" });
+  await expect(page).toHaveURL(/\/opportunities$/);
+});
+
+test("marcar una conversación como no leída llama al endpoint correcto", async ({ page }) => {
+  await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
+    route.fulfill({
+      json: { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null, messages: [] },
+    }),
+  );
+
+  let unreadRequestBody: unknown;
+  await page.route("**/api/organizations/*/opportunities/opp-mine/unread", (route) => {
+    unreadRequestBody = route.request().postDataJSON();
+    route.fulfill({ json: { ...MY_OPPORTUNITY, has_unread_messages: true } });
+  });
+
+  await page.goto("/opportunities/opp-mine");
+  await page.getByRole("button", { name: "Más opciones" }).click();
+  await page.getByRole("button", { name: "Marcar como no leída" }).click();
+
+  await expect.poll(() => unreadRequestBody).toEqual({ unread: true });
 });
 
 test("sin sesión redirige a /login", async ({ page }) => {

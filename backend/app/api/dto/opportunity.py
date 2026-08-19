@@ -4,9 +4,10 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.api.dto.contact import ContactSummaryResponse
+from app.api.dto.follow_up import FollowUpResponse
 from app.use_cases.get_conversation_history import ConversationHistory
 from app.use_cases.list_open_opportunities import OpenOpportunity
-from core.entities.contact import Contact
 from core.entities.message import Message
 from core.entities.opportunity import Opportunity
 
@@ -20,6 +21,10 @@ class SendMessageRequest(BaseModel):
     content: str
 
 
+class SetUnreadRequest(BaseModel):
+    unread: bool
+
+
 class OpportunityResponse(BaseModel):
     id: str
     contact_id: str
@@ -31,6 +36,7 @@ class OpportunityResponse(BaseModel):
     started_at: datetime
     last_activity_at: datetime
     closed_at: datetime | None
+    has_unread_messages: bool
 
     @classmethod
     def from_domain(cls, opportunity: Opportunity) -> OpportunityResponse:
@@ -49,27 +55,21 @@ class OpportunityResponse(BaseModel):
             started_at=opportunity.started_at,
             last_activity_at=opportunity.last_activity_at,
             closed_at=opportunity.closed_at,
+            has_unread_messages=opportunity.has_unread_messages,
         )
-
-
-class ContactSummaryResponse(BaseModel):
-    display_name: str
-    phone_number: str | None
-
-    @classmethod
-    def from_domain(cls, contact: Contact) -> ContactSummaryResponse:
-        return cls(display_name=contact.display_name, phone_number=contact.phone_number)
 
 
 class OpenOpportunityResponse(BaseModel):
     opportunity: OpportunityResponse
     contact: ContactSummaryResponse
+    follow_up: FollowUpResponse | None
 
     @classmethod
     def from_domain(cls, item: OpenOpportunity) -> OpenOpportunityResponse:
         return cls(
             opportunity=OpportunityResponse.from_domain(item.opportunity),
             contact=ContactSummaryResponse.from_domain(item.contact),
+            follow_up=FollowUpResponse.from_domain(item.follow_up) if item.follow_up else None,
         )
 
 
@@ -94,6 +94,7 @@ class MessageResponse(BaseModel):
 class ConversationHistoryResponse(BaseModel):
     opportunity: OpportunityResponse
     contact: ContactSummaryResponse
+    follow_up: FollowUpResponse | None
     messages: list[MessageResponse]
 
     @classmethod
@@ -101,5 +102,8 @@ class ConversationHistoryResponse(BaseModel):
         return cls(
             opportunity=OpportunityResponse.from_domain(history.opportunity),
             contact=ContactSummaryResponse.from_domain(history.contact),
+            follow_up=FollowUpResponse.from_domain(history.follow_up)
+            if history.follow_up
+            else None,
             messages=[MessageResponse.from_domain(m) for m in history.messages],
         )

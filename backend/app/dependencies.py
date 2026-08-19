@@ -5,13 +5,23 @@ from functools import lru_cache
 from app.config import settings
 from app.services.conversation_context_assembler import ConversationContextAssembler
 from app.services.conversation_summarization_service import ConversationSummarizationService
+from app.use_cases.add_contact_note import AddContactNoteUseCase
+from app.use_cases.add_contact_tag import AddContactTagUseCase
 from app.use_cases.assign_to_advisor import AssignToAdvisorUseCase
 from app.use_cases.authenticate_with_provider import AuthenticateUseCase
 from app.use_cases.get_conversation_history import GetConversationHistoryUseCase
+from app.use_cases.list_advisors import ListAdvisorsUseCase
+from app.use_cases.list_contact_notes import ListContactNotesUseCase
 from app.use_cases.list_open_opportunities import ListOpenOpportunitiesUseCase
 from app.use_cases.receive_incoming_message import ReceiveIncomingMessageUseCase
+from app.use_cases.remove_contact_tag import RemoveContactTagUseCase
+from app.use_cases.resolve_follow_up import ResolveFollowUpUseCase
 from app.use_cases.return_to_ai import ReturnToAIUseCase
+from app.use_cases.schedule_follow_up import ScheduleFollowUpUseCase
+from app.use_cases.search_opportunities import SearchOpportunitiesUseCase
 from app.use_cases.send_advisor_reply import SendAdvisorReplyUseCase
+from app.use_cases.set_opportunity_unread import SetOpportunityUnreadUseCase
+from app.use_cases.toggle_contact_favorite import ToggleContactFavoriteUseCase
 from core.interfaces.auth import AuthProvider
 from core.interfaces.providers import AIProvider, ChannelProvider
 from infrastructure.ai.openrouter import OpenRouterAIProvider
@@ -91,6 +101,56 @@ def get_get_conversation_history_use_case() -> GetConversationHistoryUseCase:
 @lru_cache
 def get_list_open_opportunities_use_case() -> ListOpenOpportunitiesUseCase:
     return ListOpenOpportunitiesUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_add_contact_tag_use_case() -> AddContactTagUseCase:
+    return AddContactTagUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_remove_contact_tag_use_case() -> RemoveContactTagUseCase:
+    return RemoveContactTagUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_toggle_contact_favorite_use_case() -> ToggleContactFavoriteUseCase:
+    return ToggleContactFavoriteUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_list_contact_notes_use_case() -> ListContactNotesUseCase:
+    return ListContactNotesUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_add_contact_note_use_case() -> AddContactNoteUseCase:
+    return AddContactNoteUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_schedule_follow_up_use_case() -> ScheduleFollowUpUseCase:
+    return ScheduleFollowUpUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_resolve_follow_up_use_case() -> ResolveFollowUpUseCase:
+    return ResolveFollowUpUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_set_opportunity_unread_use_case() -> SetOpportunityUnreadUseCase:
+    return SetOpportunityUnreadUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_list_advisors_use_case() -> ListAdvisorsUseCase:
+    return ListAdvisorsUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_search_opportunities_use_case() -> SearchOpportunitiesUseCase:
+    return SearchOpportunitiesUseCase(session_factory=AsyncSessionFactory)
 
 
 @lru_cache

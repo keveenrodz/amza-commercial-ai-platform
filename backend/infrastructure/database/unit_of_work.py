@@ -4,9 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from core.interfaces.repositories import (
     AgentRepository,
+    ContactNoteRepository,
     ContactRepository,
     ConversationRepository,
     ConversationSummaryRepository,
+    FollowUpRepository,
     InternalUserRepository,
     MessageRepository,
     OpportunityRepository,
@@ -18,7 +20,9 @@ from modules.memory.repositories.conversation_summary import (
     SQLAlchemyConversationSummaryRepository,
 )
 from modules.opportunities.repositories.contact import SQLAlchemyContactRepository
+from modules.opportunities.repositories.contact_note import SQLAlchemyContactNoteRepository
 from modules.opportunities.repositories.conversation import SQLAlchemyConversationRepository
+from modules.opportunities.repositories.follow_up import SQLAlchemyFollowUpRepository
 from modules.opportunities.repositories.message import SQLAlchemyMessageRepository
 from modules.opportunities.repositories.opportunity import SQLAlchemyOpportunityRepository
 from modules.users.repositories.internal_user import SQLAlchemyInternalUserRepository
@@ -30,6 +34,8 @@ class SQLAlchemyUnitOfWork:
     messages: MessageRepository
     conversation_summaries: ConversationSummaryRepository
     contacts: ContactRepository
+    contact_notes: ContactNoteRepository
+    follow_ups: FollowUpRepository
     agents: AgentRepository
     organizations: OrganizationRepository
     internal_users: InternalUserRepository
@@ -44,6 +50,8 @@ class SQLAlchemyUnitOfWork:
         self.messages = SQLAlchemyMessageRepository(self._session)
         self.conversation_summaries = SQLAlchemyConversationSummaryRepository(self._session)
         self.contacts = SQLAlchemyContactRepository(self._session)
+        self.contact_notes = SQLAlchemyContactNoteRepository(self._session)
+        self.follow_ups = SQLAlchemyFollowUpRepository(self._session)
         self.agents = SQLAlchemyAgentRepository(self._session)
         self.organizations = SQLAlchemyOrganizationRepository(self._session)
         self.internal_users = SQLAlchemyInternalUserRepository(self._session)

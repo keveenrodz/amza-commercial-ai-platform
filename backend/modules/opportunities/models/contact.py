@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
@@ -27,5 +28,7 @@ class ContactModel(Base):
     status: Mapped[str] = mapped_column(sa.String(50), nullable=False)
     phone_number: Mapped[str | None] = mapped_column(sa.String(50), nullable=True)
     email: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
+    tags: Mapped[list[Any]] = mapped_column(sa.JSON, nullable=False, default=list)
+    is_favorite: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)

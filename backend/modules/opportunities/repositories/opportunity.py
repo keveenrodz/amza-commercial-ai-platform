@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlalchemy as sa
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +14,9 @@ from core.value_objects.identifiers import (
     OpportunityId,
     OrganizationId,
 )
+from modules.opportunities.models.contact import ContactModel
+from modules.opportunities.models.conversation import ConversationModel
+from modules.opportunities.models.message import MessageModel
 from modules.opportunities.models.opportunity import OpportunityModel
 
 _TERMINAL_STATUSES = (
@@ -39,6 +43,7 @@ def _to_entity(model: OpportunityModel) -> Opportunity:
         started_at=model.started_at,
         last_activity_at=model.last_activity_at,
         closed_at=model.closed_at,
+        has_unread_messages=model.has_unread_messages,
     )
 
 
@@ -57,6 +62,7 @@ def _from_entity(entity: Opportunity) -> OpportunityModel:
         started_at=entity.started_at,
         last_activity_at=entity.last_activity_at,
         closed_at=entity.closed_at,
+        has_unread_messages=entity.has_unread_messages,
     )
 
 
@@ -105,3 +111,28 @@ class SQLAlchemyOpportunityRepository:
             .order_by(OpportunityModel.last_activity_at.desc())
         )
         return [_to_entity(m) for m in result.scalars().all()]
+
+    async def search_open_by_organization(
+        self,
+        organization_id: OrganizationId,
+        query: str,
+    ) -> list[Opportunity]:
+        pattern = f"%{query}%"
+        result = await self._session.execute(
+            select(OpportunityModel)
+            .join(ContactModel, ContactModel.id == OpportunityModel.contact_id)
+            .outerjoin(ConversationModel, ConversationModel.opportunity_id == OpportunityModel.id)
+            .outerjoin(MessageModel, MessageModel.conversation_id == ConversationModel.id)
+            .where(
+                OpportunityModel.organization_id == organization_id.value,
+                ~OpportunityModel.status.in_(_TERMINAL_STATUSES),
+                sa.or_(
+                    ContactModel.display_name.ilike(pattern),
+                    ContactModel.phone_number.ilike(pattern),
+                    MessageModel.content.ilike(pattern),
+                ),
+            )
+            .distinct()
+            .order_by(OpportunityModel.last_activity_at.desc())
+        )
+        return [_to_entity(model) for model in result.scalars().all()]

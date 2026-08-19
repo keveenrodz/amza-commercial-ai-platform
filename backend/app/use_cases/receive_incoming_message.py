@@ -128,6 +128,9 @@ class ReceiveIncomingMessageUseCase:
             )
             await uow.messages.save(incoming_message)
 
+            # Se marca sin importar el attention_mode -- indica actividad nueva sin revisar, no
+            # "necesita intervención humana" (eso ya lo indica attention_mode por su cuenta).
+            opportunity.mark_unread()
             opportunity.record_activity()
             await uow.opportunities.save(opportunity)
 

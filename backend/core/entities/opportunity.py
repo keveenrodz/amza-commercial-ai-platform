@@ -72,6 +72,13 @@ class Opportunity:
     started_at: datetime
     last_activity_at: datetime
     closed_at: datetime | None
+    has_unread_messages: bool = False
+
+    def mark_unread(self) -> None:
+        self.has_unread_messages = True
+
+    def mark_read(self) -> None:
+        self.has_unread_messages = False
 
     def assign_to_advisor(self, advisor_id: InternalUserId) -> None:
         self.attention_mode = AttentionMode.HUMAN

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from core.entities.contact import Contact
 from core.entities.conversation import Conversation
+from core.entities.follow_up import FollowUp
 from core.entities.message import Message
 from core.entities.opportunity import Opportunity
 from core.exceptions.domain import ContactNotFoundError, OpportunityNotFoundError
@@ -20,6 +21,7 @@ class ConversationHistory:
     opportunity: Opportunity
     conversation: Conversation | None
     contact: Contact
+    follow_up: FollowUp | None
     messages: list[Message]
 
 
@@ -41,6 +43,8 @@ class GetConversationHistoryUseCase:
             if contact is None:
                 raise ContactNotFoundError(opportunity.contact_id)
 
+            follow_up = await uow.follow_ups.get_active_by_opportunity(opportunity_id)
+
             conversation = await uow.conversations.get_by_opportunity(opportunity_id)
 
             messages: list[Message] = []
@@ -50,9 +54,17 @@ class GetConversationHistoryUseCase:
                     limit=message_limit,
                 )
 
+            # Excepción deliberada a "las lecturas no escriben" (spec 013, sección 5): abrir la
+            # conversación *es* la señal de "ya lo vi", igual que en cualquier cliente de chat.
+            if opportunity.has_unread_messages:
+                opportunity.mark_read()
+                await uow.opportunities.save(opportunity)
+                await uow.commit()
+
             return ConversationHistory(
                 opportunity=opportunity,
                 conversation=conversation,
                 contact=contact,
+                follow_up=follow_up,
                 messages=messages,
             )

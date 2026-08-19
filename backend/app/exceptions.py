@@ -4,7 +4,10 @@ from fastapi.responses import JSONResponse
 
 from core.exceptions.domain import (
     AccessDeniedError,
+    ContactNotFoundError,
     DomainError,
+    FollowUpAlreadyScheduledError,
+    FollowUpNotFoundError,
     InternalUserNotFoundError,
     InvalidStatusTransitionError,
     NoActiveAgentError,
@@ -23,10 +26,13 @@ _NOT_FOUND_ERRORS = (
     OrganizationSlugNotFoundError,
     InternalUserNotFoundError,
     NoActiveAgentError,
+    ContactNotFoundError,
+    FollowUpNotFoundError,
 )
 
 _UNPROCESSABLE_ERRORS = (
     InvalidStatusTransitionError,
+    FollowUpAlreadyScheduledError,
     OpportunityAlreadyClosedError,
     OpportunityNotAssignedToAdvisorError,
 )

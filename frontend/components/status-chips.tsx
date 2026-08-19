@@ -1,5 +1,5 @@
-import { TelegramIcon, WhatsAppIcon } from "@/components/icons";
-import type { Opportunity } from "@/types/api";
+import { ClockIcon, TelegramIcon, WhatsAppIcon } from "@/components/icons";
+import type { FollowUp, Opportunity } from "@/types/api";
 
 export function ChannelChip({ channelType }: { channelType: string }) {
   const isWhatsApp = channelType === "whatsapp";
@@ -42,6 +42,22 @@ export function StatusChip({
   return (
     <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
       Asignada
+    </span>
+  );
+}
+
+export function FollowUpChip({ followUp }: { followUp: FollowUp }) {
+  const overdue = new Date(followUp.due_at) < new Date();
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+        overdue
+          ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300"
+          : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+      }`}
+    >
+      <ClockIcon className="h-2.5 w-2.5" />
+      {overdue ? "Vencido" : "Seguimiento"}
     </span>
   );
 }

@@ -87,6 +87,18 @@ class OpportunityNotAssignedToAdvisorError(DomainError):
         self.advisor_id = advisor_id
 
 
+class FollowUpAlreadyScheduledError(DomainError):
+    def __init__(self, opportunity_id: OpportunityId) -> None:
+        super().__init__(f"Opportunity {opportunity_id} already has an active follow-up")
+        self.opportunity_id = opportunity_id
+
+
+class FollowUpNotFoundError(DomainError):
+    def __init__(self, opportunity_id: OpportunityId) -> None:
+        super().__init__(f"Opportunity {opportunity_id} has no active follow-up")
+        self.opportunity_id = opportunity_id
+
+
 class AccessDeniedError(DomainError):
     """Alguien probó con éxito ser dueño de un email vía OAuth, pero no existe ningún
     InternalUser activo para ese email. Distinto de InternalUserNotFoundError -- ese es un lookup
