@@ -102,6 +102,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 011 Navigation Shell & Theming | ✅ | ✅ | ✅ | ✅ |
 | 012 Chat Panel Redesign | ✅ | ✅ | ✅ | ✅ |
 | 013 Contact Enrichment & Follow-ups | ✅ | ✅ | ✅ | ✅ |
+| 013b Design System Alignment | ✅ | ✅ | ✅ | ✅ |
 | 014 Admin Governance & Access Control | ✅ | ⬜ | ⬜ | ⬜ |
 | 015 Channel Provider Routing | ✅ | ⬜ | ⬜ | ⬜ |
 | 016 WhatsApp Integration (Evolution API) | ✅ | ⬜ | ⬜ | ⬜ |
@@ -477,6 +478,51 @@ They must NOT be modified unless a formal architecture decision is made.
   cliente + etiqueta + nota, programar/resolver seguimiento, reasignar, marcar no-leída, buscar por
   contenido de mensaje) en frontend
 
+**Design System Alignment (spec 013b) ya implementado:**
+
+* Gap real encontrado por el usuario al revisar spec 013 en el navegador (no un pedido de mejora):
+  la interfaz implementada en specs 011-013 no se parecía al mockup validado
+  (`docs/design/amza_workspace_mockup/`) — y la causa no era solo de ejecución. Specs 011/012, tal
+  como quedaron escritas, ya usaban clases Tailwind genéricas (`bg-emerald-900`) y el boilerplate de
+  Next.js (fuente Geist, `--background: #ffffff`) en vez de transcribir la paleta/tipografía reales
+  que el mockup validó con el usuario. Spec correctiva escrita e implementada de inmediato, antes
+  de seguir con spec 014, para no seguir construyendo sobre una base visual equivocada
+* Dos gaps distintos, mismo origen: (1) paleta/tipografía/tokens nunca portados, (2) el mockup es
+  una vista única de 3 columnas simultáneas (lista + chat + panel de cliente), pero lo implementado
+  eran dos rutas separadas (`/opportunities` y `/opportunities/[id]`, heredadas de spec 009,
+  anterior al mockup) que se reemplazan una a la otra en vez de convivir
+* `frontend/app/globals.css` — tokens reales del mockup (`--paper`, `--surface`, `--accent`,
+  `--warn`, `--info`, `--whatsapp`, `--gold`, `--overdue`, colores de burbuja, `--app-shadow`) en
+  los 3 estados de tema ya establecidos desde spec 011, mapeados a utilidades Tailwind v4 vía
+  `@theme inline` (`bg-accent`, `text-ink-muted`, `shadow-card`, etc.)
+* Fuente Manrope vía `next/font/google` (pesos 500-800, igual que el mockup) reemplaza Geist —
+  aplicada solo a texto estructural (`font-heading`: nombres, encabezados, chips, botones), no al
+  cuerpo de mensajes/notas, replicando a propósito el mismo efecto que el mockup lograba sin
+  proponérselo (su `@font-face` de rango 500-800 hace que el texto sin peso explícito caiga fuera
+  del rango y use la fuente sans del sistema — `next/font` con pesos discretos no reproduce ese
+  fallback automático, así que se aplicó `font-heading` explícitamente en los mismos lugares)
+* Rail nav (`workspace-shell.tsx`) rediseñado para calzar con `.rail` del mockup: fondo
+  `bg-accent-deep`, logo en tarjeta con sombra, tooltips flotantes por ítem al hover. El
+  encabezado superior con nombre/rol/"Cerrar sesión" (no existe en el mockup) se reemplazó por un
+  avatar circular con iniciales al final del rail que abre un menú flotante al clic — pérdida de
+  visibilidad permanente del nombre, aceptada a cambio de fidelidad real con el mockup
+* `frontend/app/(workspace)/opportunities/layout.tsx` (nuevo) — la columna de lista (tabs,
+  buscador, orden/filtros) se movió del `page.tsx` a un layout compartido entre `/opportunities` y
+  `/opportunities/[id]` (hermanos bajo el mismo layout de Next.js), sin romper el principio ya
+  frozen de spec 011 ("cada sección es una ruta real, nunca un `if` decidiendo qué mostrar"). Efecto
+  colateral positivo: la lista ya no se remonta al abrir/cerrar una conversación, y su estado de
+  tabs/búsqueda/filtros sobrevive la navegación — algo que antes se perdía
+* `opportunities/page.tsx` pasó a ser el estado vacío (`.placeholder-panel` del mockup); no se
+  agregó ningún endpoint ni caso de uso nuevo — cero cambios en `backend/`
+* Recoloreo de todos los componentes ya construidos en specs 011-013 (burbujas, composer, chips,
+  panel de cliente, selector de fecha/hora, emoji picker, placeholders, login) a los tokens nuevos,
+  sin tocar su lógica
+* Validado visualmente con un script de Playwright ad-hoc (capturas de pantalla en claro/oscuro de
+  lista, detalle, panel de cliente, y menú de cuenta) además de la validación automatizada
+  estándar: `tsc`, `eslint`, `vitest`, `next build`, y Playwright (13/13, dos tests existentes
+  ajustados para el layout compartido — el nombre/rol ya no está en una barra siempre visible, y
+  los links de la lista ya no viven dentro de `<main>`)
+
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
 
@@ -612,8 +658,8 @@ Política vigente desde spec 008: toda spec nueva debe incluir tests de lo que i
 modifica comportamiento existente, actualiza los tests afectados (ver
 `03_Engineering_Principles.md`).
 
-**Siguiente acción: specs 011, 012 y 013 implementadas, validadas y committed (eb6071e, 332708c,
-7b59e54). Sigue spec 014 (Admin Governance & Access Control).**
+**Siguiente acción: specs 011, 012, 013 y 013b implementadas, validadas y committed (eb6071e,
+332708c, 7b59e54, 7d1a6a9). Sigue spec 014 (Admin Governance & Access Control).**
 
 ---
 
@@ -757,6 +803,7 @@ Workspace) donde un asesor humano puede tomar una conversación, **responderle a
 devolverla a IA — validado manualmente con login real y Telegram real, sin bugs conocidos.
 Siguiente: se pospuso el piloto operativo para completar más la plataforma primero (UI rediseñada,
 WhatsApp, panel de administración, base de conocimiento, multimedia) — specs 011 (Navigation Shell
-& Theming), 012 (Chat Panel Redesign) y 013 (Contact Enrichment & Follow-ups) ya implementadas,
-validadas y committed. Sigue spec 014 (Admin Governance & Access Control). Ver sección "Next Step"
-arriba para el orden completo de la nueva tanda de specs.
+& Theming), 012 (Chat Panel Redesign), 013 (Contact Enrichment & Follow-ups) y 013b (Design System
+Alignment, spec correctiva que portó la paleta/tipografía/layout reales del mockup — ver esa
+sección para el porqué) ya implementadas, validadas y committed. Sigue spec 014 (Admin Governance &
+Access Control). Ver sección "Next Step" arriba para el orden completo de la nueva tanda de specs.

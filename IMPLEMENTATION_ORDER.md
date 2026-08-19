@@ -38,6 +38,7 @@ Orden de implementación:
 | 011 Navigation Shell & Theming | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (eb6071e) |
 | 012 Chat Panel Redesign | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (332708c) |
 | 013 Contact Enrichment & Follow-ups | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (7b59e54) |
+| 013b Design System Alignment | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (7d1a6a9) |
 | 014 Admin Governance & Access Control | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 | 015 Channel Provider Routing | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
 | 016 WhatsApp Integration (Evolution API) | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
@@ -65,8 +66,8 @@ partió la propuesta original de spec 006 (ver más abajo). Orden vigente:
 (subida de archivos) → 019 Media Library (almacenamiento e inbound media). No implementar más de
 una a la vez, misma regla de siempre.
 
-**Siguiente acción: specs 011, 012 y 013 implementadas, validadas y committed (eb6071e, 332708c,
-7b59e54). Sigue spec 014 (Admin Governance & Access Control).**
+**Siguiente acción: specs 011, 012, 013 y 013b implementadas, validadas y committed (eb6071e,
+332708c, 7b59e54, 7d1a6a9). Sigue spec 014 (Admin Governance & Access Control).**
 
 <details>
 <summary>Propuesta original de spec 006 (histórica, no lo que terminó pasando — ver arriba)</summary>
