@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Mismo rango de peso que el mockup (500-800) -- ver spec 013b, sección 2, sobre por qué el
+// texto sin peso explícito (cuerpo de mensajes/notas) deliberadamente NO usa esta fuente.
+const manrope = Manrope({
+  variable: "--font-manrope",
+  weight: ["500", "600", "700", "800"],
   subsets: ["latin"],
 });
 
@@ -41,9 +39,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${manrope.variable} antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -145,22 +145,22 @@ export function EmojiPicker({
   return (
     <div
       ref={containerRef}
-      className="absolute bottom-full left-0 z-30 mb-2 w-72 rounded-xl border bg-white p-2.5 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+      className="absolute bottom-full left-0 z-30 mb-2 w-72 rounded-xl border border-line bg-surface p-2.5 shadow-card"
     >
-      <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-gray-100 px-2 py-1.5 dark:bg-gray-800">
-        <SearchIcon className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+      <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-1.5">
+        <SearchIcon className="h-3.5 w-3.5 flex-shrink-0 text-ink-faint" />
         <input
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar emoji"
-          className="w-full bg-transparent text-xs outline-none"
+          className="w-full bg-transparent text-xs outline-none placeholder:text-ink-faint"
         />
       </div>
 
       {!trimmed && (
-        <div className="mb-2 border-b pb-2 dark:border-gray-700">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+        <div className="mb-2 border-b border-line pb-2">
+          <p className="mb-1 font-heading text-[10px] uppercase tracking-wide text-ink-faint">
             Frecuentes
           </p>
           <div className="grid grid-cols-8 gap-0.5">
@@ -169,7 +169,7 @@ export function EmojiPicker({
                 key={emoji}
                 type="button"
                 onClick={() => pick(emoji)}
-                className="rounded p-1 text-lg leading-none hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="rounded p-1 text-lg leading-none hover:bg-surface-2"
               >
                 {emoji}
               </button>
@@ -180,14 +180,14 @@ export function EmojiPicker({
 
       <div className="grid max-h-40 grid-cols-8 gap-0.5 overflow-y-auto">
         {results.length === 0 ? (
-          <p className="col-span-8 py-3 text-center text-xs text-gray-400">Sin resultados</p>
+          <p className="col-span-8 py-3 text-center text-xs text-ink-faint">Sin resultados</p>
         ) : (
           results.map((d) => (
             <button
               key={d.e}
               type="button"
               onClick={() => pick(d.e)}
-              className="rounded p-1 text-lg leading-none hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded p-1 text-lg leading-none hover:bg-surface-2"
             >
               {d.e}
             </button>

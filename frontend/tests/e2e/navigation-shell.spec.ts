@@ -39,7 +39,10 @@ test("el tema elegido persiste tras recargar la página", async ({ page }) => {
 test("las rutas placeholder muestran 'Próxima spec' en vez de un error", async ({ page }) => {
   await page.goto("/knowledge-base");
   await expect(page.getByText("Próxima spec")).toBeVisible();
-  await expect(page.getByText("Base de conocimiento")).toBeVisible();
+  // getByRole("heading", ...), no getByText -- spec 013b agrega un tooltip flotante al rail
+  // nav con el mismo texto ("Base de conocimiento"), y un getByText sin acotar encuentra los
+  // dos (modo estricto de Playwright lo rechaza).
+  await expect(page.getByRole("heading", { name: "Base de conocimiento" })).toBeVisible();
 
   await page.getByRole("link", { name: "Multimedia" }).click();
   await expect(page).toHaveURL(/\/media$/);

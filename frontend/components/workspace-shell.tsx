@@ -3,11 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import { AdminIcon, BookIcon, ChatIcon, MediaIcon } from "@/components/icons";
+import { initials } from "@/components/status-chips";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useLogout } from "@/hooks/use-logout";
 import type { CurrentUser } from "@/types/api";
+
+const ROLE_LABELS: Record<CurrentUser["role"], string> = {
+  advisor: "Asesor",
+  administrator: "Administrador",
+};
 
 const NAV_ITEMS = [
   { href: "/opportunities", label: "Conversaciones", Icon: ChatIcon },
@@ -25,50 +32,89 @@ export function WorkspaceShell({
 }) {
   const pathname = usePathname();
   const logout = useLogout();
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleOutsideClick(event: MouseEvent) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setShowAccountMenu(false);
+      }
+    }
+    // Fase de captura -- ver memoria de decisiones técnicas: mismo patrón ya usado en los
+    // demás menús flotantes (filtros, reasignar, tres-puntos del chat).
+    document.addEventListener("click", handleOutsideClick, true);
+    return () => document.removeEventListener("click", handleOutsideClick, true);
+  }, []);
 
   return (
     <div className="flex h-screen">
-      <nav className="flex w-16 flex-shrink-0 flex-col items-center gap-2 bg-emerald-900 py-4">
-        <Image
-          src="/amza-logo.png"
-          alt="Amza"
-          width={32}
-          height={32}
-          className="mb-4 rounded bg-white p-1"
-        />
-        {NAV_ITEMS.map(({ href, label, Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            aria-label={label}
-            className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-              pathname.startsWith(href)
-                ? "bg-white text-emerald-900"
-                : "text-emerald-100 hover:bg-white/10"
-            }`}
-          >
-            <Icon className="h-5 w-5" />
-          </Link>
-        ))}
-        <div className="flex-1" />
-        <ThemeToggle />
+      <nav
+        className="flex w-[72px] flex-shrink-0 flex-col items-center border-r border-line bg-accent-deep py-[18px]"
+        aria-label="Navegación principal"
+      >
+        <div className="mb-[22px] flex h-10 w-10 items-center justify-center rounded-[11px] bg-surface p-1.5 shadow-card">
+          <Image src="/amza-logo.png" alt="Amza" width={28} height={28} className="h-full w-full object-contain" />
+        </div>
+
+        <div className="flex flex-1 flex-col gap-1.5">
+          {NAV_ITEMS.map(({ href, label, Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              aria-label={label}
+              className={`group relative flex h-11 w-11 items-center justify-center rounded-xl ${
+                pathname.startsWith(href)
+                  ? "bg-surface text-accent-deep"
+                  : "text-[#d9e6d3] hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              <span
+                className="pointer-events-none absolute left-[56px] top-1/2 z-20 -translate-y-1/2 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 font-heading text-[11.5px] font-semibold text-paper opacity-0 group-hover:opacity-100"
+              >
+                {label}
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        <div className="flex flex-col items-center gap-2.5">
+          <ThemeToggle />
+          <div className="relative" ref={accountMenuRef}>
+            <button
+              onClick={() => setShowAccountMenu((v) => !v)}
+              title={`${currentUser.full_name} — ${ROLE_LABELS[currentUser.role]}`}
+              aria-label="Cuenta"
+              className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/50 bg-surface font-heading text-xs font-bold text-accent-deep"
+            >
+              {initials(currentUser.full_name)}
+            </button>
+            {showAccountMenu && (
+              <div className="absolute bottom-0 left-full z-30 ml-2 w-48 rounded-xl border border-line bg-surface p-2 shadow-card">
+                <p className="truncate px-2 pt-1 font-heading text-sm font-bold text-ink">
+                  {currentUser.full_name}
+                </p>
+                <p className="px-2 pb-2 text-xs text-ink-muted">
+                  {ROLE_LABELS[currentUser.role]}
+                </p>
+                <button
+                  onClick={() => logout.mutate()}
+                  className="w-full rounded-lg border-t border-line px-2 pt-2 text-left text-sm text-ink-muted hover:text-overdue"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </nav>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex items-center justify-between border-b px-6 py-3">
-          <span className="text-sm text-gray-500">
-            {currentUser.full_name} ({currentUser.role})
-          </span>
-          <button onClick={() => logout.mutate()} className="text-sm underline">
-            Cerrar sesión
-          </button>
-        </header>
-        {/* No es <main> -- cada página ya dibuja su propio <main>; anidar dos rompería la
-            semántica HTML (un solo <main> por documento) y haría que selectores por rol
-            "link"/"main" en tests confundieran la navegación de la barra lateral con el
-            contenido de la página. */}
-        <div className="flex-1 overflow-y-auto">{children}</div>
-      </div>
+      {/* No es <main> -- cada página ya dibuja su propio <main>; anidar dos rompería la
+          semántica HTML (un solo <main> por documento) y haría que selectores por rol
+          "link"/"main" en tests confundieran la navegación de la barra lateral con el
+          contenido de la página. */}
+      <div className="flex min-h-0 flex-1 overflow-hidden bg-paper">{children}</div>
     </div>
   );
 }

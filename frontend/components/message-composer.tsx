@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { EmojiPicker } from "@/components/emoji-picker";
-import { EmojiIcon } from "@/components/icons";
+import { EmojiIcon, SendIcon } from "@/components/icons";
 
 export function MessageComposer({
   value,
@@ -39,12 +39,12 @@ export function MessageComposer({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="relative mt-4 flex items-end gap-2">
+    <form onSubmit={handleSubmit} className="relative flex items-end gap-2">
       <button
         type="button"
         onClick={() => setShowEmoji((v) => !v)}
         aria-label="Insertar emoticón"
-        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+        className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface-2"
       >
         <EmojiIcon className="h-5 w-5" />
       </button>
@@ -62,14 +62,15 @@ export function MessageComposer({
         placeholder={placeholder}
         rows={1}
         disabled={isSending}
-        className="max-h-32 flex-1 resize-none rounded border px-3 py-2"
+        className="max-h-32 flex-1 resize-none rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
       />
       <button
         type="submit"
+        aria-label="Enviar"
         disabled={isSending || !value.trim()}
-        className="rounded bg-foreground px-4 py-2 text-background disabled:opacity-50"
+        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent text-white hover:bg-accent-deep disabled:opacity-50"
       >
-        {isSending ? "Enviando..." : "Enviar"}
+        <SendIcon className="h-[17px] w-[17px]" />
       </button>
     </form>
   );

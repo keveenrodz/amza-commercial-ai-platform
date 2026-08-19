@@ -1,10 +1,10 @@
 export default function MediaPage() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-gray-500">
-      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+    <div className="flex h-full flex-1 flex-col items-center justify-center gap-2 text-center text-ink-muted">
+      <span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-heading font-bold text-accent-deep">
         Próxima spec
       </span>
-      <h2 className="text-lg font-semibold text-foreground">Multimedia</h2>
+      <h2 className="font-heading text-lg font-bold text-ink">Multimedia</h2>
       <p className="max-w-sm text-sm">
         Archivos que envían los clientes y material propio para compartir, con limpieza
         automática. Todavía no implementado.

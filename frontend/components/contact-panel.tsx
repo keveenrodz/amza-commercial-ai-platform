@@ -47,29 +47,29 @@ export function ContactPanel({
   const isOverdue = followUp ? new Date(followUp.due_at) < new Date() : false;
 
   return (
-    <aside className="flex h-full w-72 flex-shrink-0 flex-col overflow-y-auto border-l p-4">
-      <div className="mb-3 flex justify-end">
+    <aside className="flex h-full w-[300px] flex-shrink-0 flex-col overflow-y-auto border-l border-line bg-surface p-4">
+      <div className="mb-1 flex justify-end">
         <button
           onClick={onClose}
           aria-label="Cerrar"
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-surface-2"
         >
           <CloseIcon className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="mb-4 flex flex-col items-center border-b pb-4 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">
+      <div className="mb-3.5 flex flex-col items-center border-b border-line pb-4 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-3 font-heading text-sm font-bold text-ink-muted">
           {initials(contact.display_name)}
         </div>
-        <div className="mt-2 flex items-center gap-1.5">
-          <h3 className="font-semibold">{contact.display_name}</h3>
+        <div className="mt-2.5 flex items-center gap-1.5">
+          <h3 className="font-heading text-[15px] font-bold text-ink">{contact.display_name}</h3>
           <button
             onClick={() =>
               toggleFavorite.mutate({ organizationSlug, opportunityId, contactId })
             }
             aria-label="Marcar como preferido"
-            className={contact.is_favorite ? "text-amber-500" : "text-gray-400"}
+            className={contact.is_favorite ? "text-gold" : "text-ink-faint"}
           >
             <StarIcon filled={contact.is_favorite} className="h-4 w-4" />
           </button>
@@ -77,24 +77,24 @@ export function ContactPanel({
       </div>
 
       <div className="mb-4">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <h4 className="mb-2 font-heading text-[11px] uppercase tracking-wide text-ink-faint">
           Información
         </h4>
-        <div className="flex justify-between text-xs">
-          <span className="text-gray-500">Teléfono</span>
-          <span className="font-medium">{contact.phone_number ?? "—"}</span>
+        <div className="flex justify-between text-[12.5px]">
+          <span className="text-ink-muted">Teléfono</span>
+          <span className="font-semibold text-ink">{contact.phone_number ?? "—"}</span>
         </div>
       </div>
 
       <div className="mb-4">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <h4 className="mb-2 font-heading text-[11px] uppercase tracking-wide text-ink-faint">
           Etiquetas
         </h4>
         <div className="flex flex-wrap items-center gap-1.5">
           {contact.tags.map((tag) => (
             <span
               key={tag}
-              className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
+              className="flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-[11.5px] font-semibold text-accent-deep"
             >
               {tag}
               <button
@@ -102,7 +102,7 @@ export function ContactPanel({
                   removeTag.mutate({ organizationSlug, opportunityId, contactId, tag })
                 }
                 aria-label={`Quitar etiqueta ${tag}`}
-                className="text-emerald-600 hover:text-emerald-900 dark:text-emerald-300"
+                className="text-accent-deep/70 hover:text-accent-deep"
               >
                 <CloseIcon className="h-2.5 w-2.5" />
               </button>
@@ -127,13 +127,13 @@ export function ContactPanel({
                 onChange={(e) => setTagDraft(e.target.value)}
                 onBlur={() => setAddingTag(false)}
                 placeholder="Nueva etiqueta"
-                className="w-28 rounded border px-2 py-1 text-[11px]"
+                className="w-28 rounded-lg border border-line bg-paper px-2 py-1 text-[11px] text-ink"
               />
             </form>
           ) : (
             <button
               onClick={() => setAddingTag(true)}
-              className="rounded-full border border-dashed px-2 py-1 text-[11px] text-gray-500"
+              className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] font-bold text-ink-muted"
             >
               + Etiqueta
             </button>
@@ -142,20 +142,18 @@ export function ContactPanel({
       </div>
 
       <div className="mb-4">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <h4 className="mb-2 font-heading text-[11px] uppercase tracking-wide text-ink-faint">
           Seguimiento
         </h4>
         {followUp ? (
           <div
-            className={`rounded-lg p-2.5 text-xs ${
-              isOverdue
-                ? "bg-red-50 dark:bg-red-950"
-                : "bg-amber-50 dark:bg-amber-950"
+            className={`rounded-[10px] p-2.5 text-xs ${
+              isOverdue ? "bg-overdue-soft" : "bg-warn-soft"
             }`}
           >
             <p
-              className={`mb-1 flex items-center gap-1 font-bold ${
-                isOverdue ? "text-red-700 dark:text-red-300" : "text-amber-700 dark:text-amber-300"
+              className={`mb-1 flex items-center gap-1.5 font-bold ${
+                isOverdue ? "text-overdue" : "text-warn"
               }`}
             >
               <ClockIcon className="h-3.5 w-3.5" />
@@ -166,11 +164,11 @@ export function ContactPanel({
                 minute: "2-digit",
               })}
             </p>
-            <p className="mb-2 text-gray-600 dark:text-gray-400">{followUp.reason}</p>
+            <p className="mb-2 text-ink-muted">{followUp.reason}</p>
             <button
               onClick={() => resolveFollowUp.mutate({ organizationSlug, opportunityId })}
               disabled={resolveFollowUp.isPending}
-              className="w-full rounded border px-2 py-1 text-[11px] font-semibold"
+              className="w-full rounded-[7px] border border-line bg-surface px-2 py-1 text-[11.5px] font-bold text-ink"
             >
               Marcar como resuelto
             </button>
@@ -181,7 +179,7 @@ export function ContactPanel({
               <button
                 type="button"
                 onClick={() => setShowDatePicker((v) => !v)}
-                className="w-full rounded border px-2 py-1.5 text-left text-xs text-gray-500"
+                className="w-full rounded-[7px] border border-line bg-paper px-2 py-1.5 text-left text-xs text-ink-muted"
               >
                 {dueAt
                   ? dueAt.toLocaleString("es-CO", {
@@ -206,7 +204,7 @@ export function ContactPanel({
               value={followUpReason}
               onChange={(e) => setFollowUpReason(e.target.value)}
               placeholder="Motivo del seguimiento"
-              className="rounded border px-2 py-1.5 text-xs"
+              className="rounded-[7px] border border-line bg-paper px-2 py-1.5 text-xs text-ink"
             />
             <button
               onClick={() => {
@@ -229,7 +227,7 @@ export function ContactPanel({
                 );
               }}
               disabled={!dueAt || scheduleFollowUp.isPending}
-              className="rounded bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50"
+              className="rounded-[7px] bg-accent px-2 py-1.5 text-[11.5px] font-bold text-white disabled:opacity-50"
             >
               Guardar seguimiento
             </button>
@@ -237,7 +235,7 @@ export function ContactPanel({
         ) : (
           <button
             onClick={() => setSchedulingFollowUp(true)}
-            className="w-full rounded border border-dashed px-2 py-1.5 text-center text-xs text-gray-500"
+            className="w-full rounded-[7px] border border-dashed border-line px-2 py-1.5 text-center text-xs text-ink-muted"
           >
             + Programar seguimiento
           </button>
@@ -245,16 +243,16 @@ export function ContactPanel({
       </div>
 
       <div>
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <h4 className="mb-2 font-heading text-[11px] uppercase tracking-wide text-ink-faint">
           Notas
         </h4>
         <div className="mb-2 flex flex-col gap-2">
           {notesLoading ? (
-            <p className="text-xs text-gray-400">Cargando notas...</p>
+            <p className="text-xs text-ink-faint">Cargando notas...</p>
           ) : notes && notes.length > 0 ? (
             notes.map((note) => (
-              <div key={note.id} className="rounded bg-gray-50 p-2 text-xs dark:bg-gray-800">
-                <div className="mb-1 flex justify-between font-semibold text-gray-500">
+              <div key={note.id} className="rounded-[9px] bg-surface-2 p-2 text-xs">
+                <div className="mb-1 flex justify-between font-heading font-bold text-ink-muted">
                   <span>{note.author_name}</span>
                   <span>
                     {new Date(note.created_at).toLocaleDateString("es-CO", {
@@ -263,11 +261,11 @@ export function ContactPanel({
                     })}
                   </span>
                 </div>
-                <p>{note.content}</p>
+                <p className="text-ink">{note.content}</p>
               </div>
             ))
           ) : (
-            <p className="text-xs text-gray-400">Sin notas todavía.</p>
+            <p className="text-xs text-ink-faint">Sin notas todavía.</p>
           )}
         </div>
         <textarea
@@ -275,7 +273,7 @@ export function ContactPanel({
           onChange={(e) => setNoteDraft(e.target.value)}
           placeholder="Agregar una nota sobre este cliente..."
           rows={2}
-          className="mb-1.5 w-full resize-none rounded border px-2 py-1.5 text-xs"
+          className="mb-1.5 w-full resize-none rounded-lg border border-line bg-paper px-2 py-1.5 text-xs text-ink"
         />
         <button
           onClick={() =>
@@ -285,7 +283,7 @@ export function ContactPanel({
             )
           }
           disabled={!noteDraft.trim() || addNote.isPending}
-          className="w-full rounded bg-foreground px-2 py-1.5 text-xs font-semibold text-background disabled:opacity-50"
+          className="w-full rounded-lg bg-accent px-2 py-1.5 text-xs font-bold text-white hover:bg-accent-deep disabled:opacity-50"
         >
           Guardar nota
         </button>

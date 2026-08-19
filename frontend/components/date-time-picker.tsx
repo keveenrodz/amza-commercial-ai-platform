@@ -72,7 +72,7 @@ export function DateTimePicker({
   return (
     <div
       ref={containerRef}
-      className="absolute z-30 mt-2 w-60 rounded-xl border bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+      className="absolute z-30 mt-2 w-[218px] rounded-xl border border-line bg-surface p-2.5 shadow-card"
     >
       {view === "calendar" ? (
         <div>
@@ -81,23 +81,23 @@ export function DateTimePicker({
               type="button"
               onClick={prevMonth}
               aria-label="Mes anterior"
-              className="rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-md p-1 text-ink-muted hover:bg-surface-2"
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </button>
-            <span className="text-xs font-bold">
+            <span className="font-heading text-xs font-bold text-ink">
               {MONTH_NAMES_ES[month]} {year}
             </span>
             <button
               type="button"
               onClick={nextMonth}
               aria-label="Mes siguiente"
-              className="rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-md p-1 text-ink-muted hover:bg-surface-2"
             >
               <ChevronRightIcon className="h-4 w-4" />
             </button>
           </div>
-          <div className="mb-1 grid grid-cols-7 text-center text-[9px] text-gray-400">
+          <div className="mb-1 grid grid-cols-7 text-center text-[9.5px] text-ink-faint">
             {DOW_ES.map((d) => (
               <span key={d}>{d}</span>
             ))}
@@ -119,11 +119,9 @@ export function DateTimePicker({
                     setSelectedDay(day);
                     setView("time");
                   }}
-                  className={`rounded p-1.5 text-[11px] ${
-                    past
-                      ? "text-gray-300 dark:text-gray-700"
-                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                  } ${isToday ? "font-bold text-emerald-700 dark:text-emerald-400" : ""}`}
+                  className={`rounded-md p-1.5 text-[11.5px] ${
+                    past ? "cursor-default text-ink-faint opacity-45" : "text-ink hover:bg-surface-2"
+                  } ${isToday ? "font-extrabold text-accent-deep" : ""}`}
                 >
                   {day}
                 </button>
@@ -133,14 +131,14 @@ export function DateTimePicker({
         </div>
       ) : (
         <div>
-          <p className="mb-3 text-center text-xs font-bold">
+          <p className="mb-3 text-center text-xs font-bold text-ink">
             {selectedDay} {MONTH_NAMES_ES[month].slice(0, 3).toLowerCase()} {year}
           </p>
           <div className="mb-3 flex items-center justify-center gap-1">
             <select
               value={hour}
               onChange={(e) => setHour(Number(e.target.value))}
-              className="rounded border px-1.5 py-1 text-xs dark:bg-gray-800"
+              className="rounded-md border border-line bg-paper px-1.5 py-1 text-xs text-ink"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
                 <option key={h} value={h}>
@@ -148,11 +146,11 @@ export function DateTimePicker({
                 </option>
               ))}
             </select>
-            <span>:</span>
+            <span className="text-ink">:</span>
             <select
               value={minute}
               onChange={(e) => setMinute(e.target.value)}
-              className="rounded border px-1.5 py-1 text-xs dark:bg-gray-800"
+              className="rounded-md border border-line bg-paper px-1.5 py-1 text-xs text-ink"
             >
               {["00", "15", "30", "45"].map((m) => (
                 <option key={m} value={m}>
@@ -160,14 +158,14 @@ export function DateTimePicker({
                 </option>
               ))}
             </select>
-            <div className="ml-1 flex overflow-hidden rounded border">
+            <div className="ml-1 flex overflow-hidden rounded-md border border-line">
               {(["AM", "PM"] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => setAmpm(v)}
                   className={`px-2 py-1 text-[10px] font-bold ${
-                    ampm === v ? "bg-emerald-600 text-white" : ""
+                    ampm === v ? "bg-accent text-white" : "bg-surface text-ink-muted"
                   }`}
                 >
                   {v}
@@ -179,14 +177,14 @@ export function DateTimePicker({
             <button
               type="button"
               onClick={() => setView("calendar")}
-              className="flex-1 rounded border py-1.5 text-xs"
+              className="flex-1 rounded-[7px] border border-line bg-surface py-1.5 text-xs font-bold text-ink-muted"
             >
               Atrás
             </button>
             <button
               type="button"
               onClick={confirm}
-              className="flex-1 rounded bg-emerald-600 py-1.5 text-xs font-bold text-white"
+              className="flex-1 rounded-[7px] bg-accent py-1.5 text-xs font-bold text-white"
             >
               Listo
             </button>

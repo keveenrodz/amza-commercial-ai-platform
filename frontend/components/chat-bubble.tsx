@@ -12,7 +12,7 @@ export function ChatBubble({ message, searchQuery }: { message: Message; searchQ
   if (message.sender_role === "system") {
     return (
       <div className="my-2 flex justify-center">
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-500 dark:bg-gray-800">
+        <span className="max-w-[70%] rounded-lg bg-surface-2 px-3 py-1.5 text-center text-[11.5px] text-ink-muted">
           {message.content}
         </span>
       </div>
@@ -29,16 +29,16 @@ export function ChatBubble({ message, searchQuery }: { message: Message; searchQ
   return (
     <div className={`flex ${isCustomer ? "justify-start" : "justify-end"}`}>
       <div
-        className={`max-w-[75%] rounded-lg px-3 py-2 text-sm shadow-sm ${
+        className={`max-w-[62%] rounded-[13px] px-3 py-2 text-[13.5px] shadow-card ${
           isCustomer
-            ? "bg-white dark:bg-gray-800"
+            ? "rounded-tl-[3px] bg-bubble-customer"
             : message.sender_role === "advisor"
-              ? "bg-sky-100 dark:bg-sky-900"
-              : "bg-emerald-100 dark:bg-emerald-900"
+              ? "rounded-tr-[3px] bg-bubble-advisor"
+              : "rounded-tr-[3px] bg-bubble-agent"
         }`}
       >
         {label && (
-          <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <p className="mb-0.5 font-heading text-[10px] font-extrabold uppercase tracking-wide text-info">
             {label}
           </p>
         )}
@@ -46,13 +46,13 @@ export function ChatBubble({ message, searchQuery }: { message: Message; searchQ
           <FileCard type={message.content_type} />
         ) : (
           <p
-            className="whitespace-pre-wrap"
+            className="whitespace-pre-wrap text-ink"
             dangerouslySetInnerHTML={{
               __html: highlightText(message.content, searchQuery ?? ""),
             }}
           />
         )}
-        <p className="mt-1 text-right text-[10px] text-gray-400">{time}</p>
+        <p className="mt-1 text-right text-[10.5px] tabular-nums text-ink-faint">{time}</p>
       </div>
     </div>
   );

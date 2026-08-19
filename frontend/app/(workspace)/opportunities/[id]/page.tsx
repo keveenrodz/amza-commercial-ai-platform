@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -58,7 +57,7 @@ export default function OpportunityDetailPage() {
   }, []);
 
   if (!currentUser || isLoading || !history) {
-    return <p className="p-8">Cargando...</p>;
+    return <p className="flex-1 p-8">Cargando...</p>;
   }
 
   const { opportunity, contact, follow_up: followUp, messages } = history;
@@ -67,23 +66,21 @@ export default function OpportunityDetailPage() {
   const orgSlug = currentUser.organization_slug;
 
   return (
-    <div className="flex h-full">
-      <div className="mx-auto flex h-full w-full max-w-2xl flex-col p-8">
-        <Link href="/opportunities" className="text-sm underline">
-          ← Volver
-        </Link>
-
-        <div className="mt-4 mb-2 flex items-center gap-3">
+    <div className="flex min-w-0 flex-1">
+      <main className="flex min-w-0 flex-1 flex-col bg-paper">
+        <div className="flex items-center gap-3 border-b border-line bg-surface px-5 py-[13px]">
           <button
             onClick={() => setShowContactPanel((v) => !v)}
             aria-label="Ver información del cliente"
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100"
+            className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-full bg-surface-3 font-heading text-sm font-bold text-ink-muted"
           >
             {initials(contact.display_name)}
           </button>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <h1 className="truncate text-xl font-semibold">{contact.display_name}</h1>
+              <h1 className="truncate font-heading text-[14.5px] font-extrabold text-ink">
+                {contact.display_name}
+              </h1>
               <button
                 onClick={() =>
                   toggleFavorite.mutate({
@@ -93,12 +90,12 @@ export default function OpportunityDetailPage() {
                   })
                 }
                 aria-label="Marcar como preferido"
-                className={contact.is_favorite ? "text-amber-500" : "text-gray-400"}
+                className={contact.is_favorite ? "text-gold" : "text-ink-faint"}
               >
-                <StarIcon filled={contact.is_favorite} className="h-4 w-4" />
+                <StarIcon filled={contact.is_favorite} className="h-[15px] w-[15px]" />
               </button>
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <div className="mt-[3px] flex flex-wrap items-center gap-1.5">
               <ChannelChip channelType={opportunity.channel_type} />
               <StatusChip opportunity={opportunity} currentUserId={currentUser.id} />
               {followUp && <FollowUpChip followUp={followUp} />}
@@ -107,7 +104,7 @@ export default function OpportunityDetailPage() {
           <button
             onClick={() => setShowSearch((v) => !v)}
             aria-label="Buscar en la conversación"
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface-2"
           >
             <SearchIcon className="h-4 w-4" />
           </button>
@@ -116,12 +113,12 @@ export default function OpportunityDetailPage() {
               <button
                 onClick={() => setShowChatMenu((v) => !v)}
                 aria-label="Más opciones"
-                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface-2"
               >
                 <DotsIcon className="h-4 w-4" />
               </button>
               {showChatMenu && (
-                <div className="absolute right-0 z-30 mt-1 w-48 rounded-lg border bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                <div className="absolute right-0 z-30 mt-1.5 w-48 rounded-xl border border-line bg-surface py-1 shadow-card">
                   <button
                     onClick={() => {
                       setUnread.mutate({
@@ -131,7 +128,7 @@ export default function OpportunityDetailPage() {
                       });
                       setShowChatMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                    className="w-full px-3 py-2 text-left text-sm text-ink hover:bg-surface-2"
                   >
                     {opportunity.has_unread_messages ? "Marcar como leída" : "Marcar como no leída"}
                   </button>
@@ -142,24 +139,24 @@ export default function OpportunityDetailPage() {
         </div>
 
         {showSearch && (
-          <div className="mb-3 flex items-center gap-2 rounded-lg border px-3 py-2">
-            <SearchIcon className="h-4 w-4 flex-shrink-0 text-gray-400" />
+          <div className="flex items-center gap-2 border-b border-line bg-surface px-5 py-2.5">
+            <SearchIcon className="h-[15px] w-[15px] flex-shrink-0 text-ink-faint" />
             <input
               autoFocus
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar en esta conversación"
-              className="w-full bg-transparent text-sm outline-none"
+              className="w-full bg-transparent text-[13px] outline-none placeholder:text-ink-faint"
             />
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="flex flex-col gap-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <div className="flex flex-col gap-1">
             {dayGroups.map((group) => (
               <div key={group.label}>
-                <div className="mb-2 flex justify-center">
-                  <span className="rounded-full border px-3 py-0.5 text-xs text-gray-500">
+                <div className="my-2.5 flex justify-center">
+                  <span className="rounded-full border border-line bg-surface px-3 py-0.5 text-[11px] font-semibold text-ink-muted">
                     {group.label}
                   </span>
                 </div>
@@ -173,119 +170,121 @@ export default function OpportunityDetailPage() {
           </div>
         </div>
 
-        {isMine && (
-          <MessageComposer
-            value={draft}
-            onChange={setDraft}
-            onSubmit={() =>
-              sendMessage.mutate(
-                {
-                  organizationSlug: orgSlug,
-                  opportunityId: opportunity.id,
-                  advisorId: currentUser.id,
-                  content: draft,
-                },
-                { onSuccess: () => setDraft("") },
-              )
-            }
-            isSending={sendMessage.isPending}
-            placeholder="Escribe tu respuesta..."
-          />
-        )}
-
-        {sendMessage.isError && (
-          <p className="mt-2 text-sm text-red-600">
-            No se pudo enviar el mensaje: {sendMessage.error.message}
-          </p>
-        )}
-
-        <div className="mt-4 flex items-center gap-2">
-          {!isMine ? (
-            <>
-              <button
-                onClick={() =>
-                  assignToAdvisor.mutate(
-                    {
-                      organizationSlug: orgSlug,
-                      opportunityId: opportunity.id,
-                      advisorId: currentUser.id,
-                    },
-                    // Vuelve a la lista al terminar -- es la confirmación de que la acción
-                    // funcionó (la oportunidad aparece en "Mías"), sin necesitar un popup aparte.
-                    { onSuccess: () => router.push("/opportunities") },
-                  )
-                }
-                disabled={assignToAdvisor.isPending}
-                className="rounded bg-foreground px-4 py-2 text-background disabled:opacity-50"
-              >
-                {assignToAdvisor.isPending ? "Tomando..." : "Tomar conversación"}
-              </button>
-              {assignToAdvisor.isError && (
-                <p className="mt-2 text-sm text-red-600">
-                  No se pudo tomar la conversación: {assignToAdvisor.error.message}
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="relative" ref={reassignMenuRef}>
-                <button
-                  onClick={() => setShowReassignMenu((v) => !v)}
-                  className="rounded border px-4 py-2"
-                >
-                  Reasignar
-                </button>
-                {showReassignMenu && (
-                  <div className="absolute bottom-full left-0 z-30 mb-1 w-48 rounded-lg border bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
-                    <p className="px-3 py-1 text-xs text-gray-400">Reasignar a</p>
-                    {(advisors ?? [])
-                      .filter((a) => a.id !== currentUser.id)
-                      .map((a) => (
-                        <button
-                          key={a.id}
-                          onClick={() => {
-                            assignToAdvisor.mutate(
-                              {
-                                organizationSlug: orgSlug,
-                                opportunityId: opportunity.id,
-                                advisorId: a.id,
-                              },
-                              { onSuccess: () => router.push("/opportunities") },
-                            );
-                            setShowReassignMenu(false);
-                          }}
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                          {a.full_name}
-                        </button>
-                      ))}
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() =>
-                  returnToAI.mutate(
-                    {
-                      organizationSlug: orgSlug,
-                      opportunityId: opportunity.id,
-                    },
-                    { onSuccess: () => router.push("/opportunities") },
-                  )
-                }
-                disabled={returnToAI.isPending}
-                className="rounded border px-4 py-2 disabled:opacity-50"
-              >
-                {returnToAI.isPending ? "Devolviendo..." : "Devolver a IA"}
-              </button>
-              {returnToAI.isError && (
-                <p className="mt-2 text-sm text-red-600">
-                  No se pudo devolver la conversación: {returnToAI.error.message}
-                </p>
-              )}
-            </>
+        <div className="border-t border-line bg-surface px-5 py-3">
+          {isMine && (
+            <MessageComposer
+              value={draft}
+              onChange={setDraft}
+              onSubmit={() =>
+                sendMessage.mutate(
+                  {
+                    organizationSlug: orgSlug,
+                    opportunityId: opportunity.id,
+                    advisorId: currentUser.id,
+                    content: draft,
+                  },
+                  { onSuccess: () => setDraft("") },
+                )
+              }
+              isSending={sendMessage.isPending}
+              placeholder="Escribe tu respuesta..."
+            />
           )}
+
+          {sendMessage.isError && (
+            <p className="mt-2 text-sm text-overdue">
+              No se pudo enviar el mensaje: {sendMessage.error.message}
+            </p>
+          )}
+
+          <div className="mt-3 flex items-center gap-2">
+            {!isMine ? (
+              <>
+                <button
+                  onClick={() =>
+                    assignToAdvisor.mutate(
+                      {
+                        organizationSlug: orgSlug,
+                        opportunityId: opportunity.id,
+                        advisorId: currentUser.id,
+                      },
+                      // Vuelve a la lista al terminar -- es la confirmación de que la acción
+                      // funcionó (la oportunidad aparece en "Mías"), sin necesitar un popup aparte.
+                      { onSuccess: () => router.push("/opportunities") },
+                    )
+                  }
+                  disabled={assignToAdvisor.isPending}
+                  className="rounded-[9px] bg-accent px-3.5 py-2 font-heading text-[12.5px] font-bold text-white hover:bg-accent-deep disabled:opacity-50"
+                >
+                  {assignToAdvisor.isPending ? "Tomando..." : "Tomar conversación"}
+                </button>
+                {assignToAdvisor.isError && (
+                  <p className="text-sm text-overdue">
+                    No se pudo tomar la conversación: {assignToAdvisor.error.message}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="relative" ref={reassignMenuRef}>
+                  <button
+                    onClick={() => setShowReassignMenu((v) => !v)}
+                    className="rounded-[9px] border border-line px-3.5 py-2 font-heading text-[12.5px] font-bold text-ink-muted hover:bg-surface-2"
+                  >
+                    Reasignar
+                  </button>
+                  {showReassignMenu && (
+                    <div className="absolute bottom-full left-0 z-30 mb-1.5 w-48 rounded-xl border border-line bg-surface py-1.5 shadow-card">
+                      <p className="px-3 py-1 text-xs text-ink-muted">Reasignar a</p>
+                      {(advisors ?? [])
+                        .filter((a) => a.id !== currentUser.id)
+                        .map((a) => (
+                          <button
+                            key={a.id}
+                            onClick={() => {
+                              assignToAdvisor.mutate(
+                                {
+                                  organizationSlug: orgSlug,
+                                  opportunityId: opportunity.id,
+                                  advisorId: a.id,
+                                },
+                                { onSuccess: () => router.push("/opportunities") },
+                              );
+                              setShowReassignMenu(false);
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-ink hover:bg-surface-2"
+                          >
+                            {a.full_name}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() =>
+                    returnToAI.mutate(
+                      {
+                        organizationSlug: orgSlug,
+                        opportunityId: opportunity.id,
+                      },
+                      { onSuccess: () => router.push("/opportunities") },
+                    )
+                  }
+                  disabled={returnToAI.isPending}
+                  className="rounded-[9px] border border-line px-3.5 py-2 font-heading text-[12.5px] font-bold text-ink-muted hover:bg-surface-2 disabled:opacity-50"
+                >
+                  {returnToAI.isPending ? "Devolviendo..." : "Devolver a IA"}
+                </button>
+                {returnToAI.isError && (
+                  <p className="text-sm text-overdue">
+                    No se pudo devolver la conversación: {returnToAI.error.message}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      </main>
 
       {showContactPanel && (
         <ContactPanel

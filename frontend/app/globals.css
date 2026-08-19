@@ -1,42 +1,146 @@
 @import "tailwindcss";
 
+/* Tokens portados de docs/design/amza_workspace_mockup/template.html -- ver spec 013b
+   (Design System Alignment) para la tabla completa claro/oscuro y el porqué. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f6f6f4;
+  --surface: #ffffff;
+  --surface-2: #eef0ea;
+  --surface-3: #e3e6dc;
+  --ink: #1b1d16;
+  --ink-muted: #63695a;
+  --ink-faint: #9aa08e;
+  --line: #dfe2d7;
+  --accent: #5f7d55;
+  --accent-deep: #3a5233;
+  --accent-soft: #eef1ea;
+  --warn: #b5722a;
+  --warn-soft: #f4e6d6;
+  --info: #3b6c93;
+  --info-soft: #dde9f0;
+  --whatsapp: #2f8f5b;
+  --whatsapp-soft: #dcf0e4;
+  --gold: #ad8112;
+  --gold-soft: #f6ecd2;
+  --overdue: #b3432f;
+  --overdue-soft: #f5e0da;
+  --bubble-customer: #ffffff;
+  --bubble-agent: #eef2ea;
+  --bubble-advisor: #dfeaf4;
+  --app-shadow: 0 1px 2px rgba(27, 29, 22, 0.06), 0 8px 24px rgba(27, 29, 22, 0.06);
+  --focus: #3a5233;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-whatsapp: var(--whatsapp);
+  --color-whatsapp-soft: var(--whatsapp-soft);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-overdue: var(--overdue);
+  --color-overdue-soft: var(--overdue-soft);
+  --color-bubble-customer: var(--bubble-customer);
+  --color-bubble-agent: var(--bubble-agent);
+  --color-bubble-advisor: var(--bubble-advisor);
+  --shadow-card: var(--app-shadow);
+  --font-heading: var(--font-manrope);
 }
 
 /* El sistema decide, solo si el usuario no forzó un tema explícito. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --paper: #14160f;
+    --surface: #1b1e17;
+    --surface-2: #242820;
+    --surface-3: #2d3226;
+    --ink: #edefe7;
+    --ink-muted: #98a08c;
+    --ink-faint: #626b56;
+    --line: #333829;
+    --accent: #74ac5e;
+    --accent-deep: #8fc878;
+    --accent-soft: #24331c;
+    --warn: #d99553;
+    --warn-soft: #3a2c1c;
+    --info: #6fa8d9;
+    --info-soft: #1e2c37;
+    --whatsapp: #4fbf86;
+    --whatsapp-soft: #1a3327;
+    --gold: #e8c158;
+    --gold-soft: #362b13;
+    --overdue: #e0836f;
+    --overdue-soft: #3a231d;
+    --bubble-customer: #242820;
+    --bubble-agent: #22301f;
+    --bubble-advisor: #1d2a35;
+    --app-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --focus: #8fc878;
   }
 }
 
 /* El toggle manual siempre gana, en ambas direcciones. */
 :root[data-theme="dark"] {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --paper: #14160f;
+  --surface: #1b1e17;
+  --surface-2: #242820;
+  --surface-3: #2d3226;
+  --ink: #edefe7;
+  --ink-muted: #98a08c;
+  --ink-faint: #626b56;
+  --line: #333829;
+  --accent: #74ac5e;
+  --accent-deep: #8fc878;
+  --accent-soft: #24331c;
+  --warn: #d99553;
+  --warn-soft: #3a2c1c;
+  --info: #6fa8d9;
+  --info-soft: #1e2c37;
+  --whatsapp: #4fbf86;
+  --whatsapp-soft: #1a3327;
+  --gold: #e8c158;
+  --gold-soft: #362b13;
+  --overdue: #e0836f;
+  --overdue-soft: #3a231d;
+  --bubble-customer: #242820;
+  --bubble-agent: #22301f;
+  --bubble-advisor: #1d2a35;
+  --app-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --focus: #8fc878;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Resaltado de búsqueda dentro de una conversación (spec 012) -- el amarillo por defecto del
-   navegador no se lee bien en fondos oscuros. */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Resaltado de búsqueda dentro de una conversación (spec 012) -- mismo color que el mockup
+   usa para esto (#thread mark), se lee bien en ambos temas. */
 mark {
-  background: #fde68a;
-  color: #171717;
-  border-radius: 2px;
+  background: var(--gold-soft);
+  color: var(--ink);
+  border-radius: 3px;
   padding: 0 1px;
 }

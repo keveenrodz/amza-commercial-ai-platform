@@ -6,13 +6,11 @@ export function ChannelChip({ channelType }: { channelType: string }) {
   const Icon = isWhatsApp ? WhatsAppIcon : TelegramIcon;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-        isWhatsApp
-          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-          : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-heading text-[9.5px] font-bold tracking-wide ${
+        isWhatsApp ? "bg-whatsapp-soft text-whatsapp" : "bg-info-soft text-info"
       }`}
     >
-      <Icon className="h-2.5 w-2.5" />
+      <Icon className="h-[9px] w-[9px]" />
       {isWhatsApp ? "WhatsApp" : "Telegram"}
     </span>
   );
@@ -27,20 +25,21 @@ export function StatusChip({
 }) {
   if (opportunity.attention_mode === "ai") {
     return (
-      <span className="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-900 dark:text-sky-200">
+      <span className="inline-flex items-center rounded-full bg-info-soft px-1.5 py-0.5 font-heading text-[9.5px] font-bold tracking-wide text-info">
         IA
       </span>
     );
   }
   if (opportunity.assigned_advisor_id === currentUserId) {
     return (
-      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+      <span className="inline-flex items-center rounded-full bg-accent-soft px-1.5 py-0.5 font-heading text-[9.5px] font-bold tracking-wide text-accent-deep">
         Mía
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+    <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-1.5 py-0.5 font-heading text-[9.5px] font-bold tracking-wide text-ink">
+      <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent" />
       Asignada
     </span>
   );
@@ -50,13 +49,11 @@ export function FollowUpChip({ followUp }: { followUp: FollowUp }) {
   const overdue = new Date(followUp.due_at) < new Date();
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-        overdue
-          ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300"
-          : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-heading text-[9.5px] font-bold tracking-wide ${
+        overdue ? "bg-overdue-soft text-overdue" : "bg-warn-soft text-warn"
       }`}
     >
-      <ClockIcon className="h-2.5 w-2.5" />
+      <ClockIcon className="h-[9px] w-[9px]" />
       {overdue ? "Vencido" : "Seguimiento"}
     </span>
   );

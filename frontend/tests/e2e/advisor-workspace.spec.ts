@@ -71,23 +71,25 @@ test.beforeEach(async ({ page }) => {
 test("las tres pestañas filtran correctamente", async ({ page }) => {
   await page.goto("/opportunities");
 
-  await expect(page.getByText("Juan Perez (advisor)")).toBeVisible();
+  // spec 013b -- el nombre/rol ya no vive en una barra visible siempre; está detrás del
+  // avatar del rail (mismo patrón que el mockup), en un menú que se abre al hacer clic.
+  await page.getByRole("button", { name: "Cuenta" }).click();
+  await expect(page.getByText("Juan Perez")).toBeVisible();
+  await expect(page.getByText("Asesor")).toBeVisible();
+  await page.getByRole("heading", { name: "Conversaciones" }).click();
+
+  const list = page.getByRole("region", { name: "Lista de conversaciones" });
 
   // IA es la pestaña por default (antes "Sin asignar" -- spec 012 la renombró).
-  await expect(
-    page.locator("main").getByRole("link", { name: /Distribuidora El Roble/ }),
-  ).toHaveCount(1);
+  await expect(list.getByRole("link", { name: /Distribuidora El Roble/ })).toHaveCount(1);
 
   await page.getByRole("button", { name: "Mías" }).click();
-  await expect(
-    page.locator("main").getByRole("link", { name: /Litoempaques/ }),
-  ).toHaveCount(1);
+  await expect(list.getByRole("link", { name: /Litoempaques/ })).toHaveCount(1);
 
   await page.getByRole("button", { name: "Todas" }).click();
-  // Acotado a <main> -- la barra lateral del shell (spec 011) también tiene enlaces reales
-  // (Conversaciones/Base de conocimiento/Multimedia/Administración), un getByRole("link") sin
-  // acotar los cuenta también.
-  await expect(page.locator("main").getByRole("link")).toHaveCount(2);
+  // Acotado a la región de la lista -- spec 013b la mueve al layout compartido, ya no vive
+  // dentro de <main> (que ahora es solo el estado vacío o el detalle de una conversación).
+  await expect(list.getByRole("link")).toHaveCount(2);
 });
 
 test("buscar por nombre de contacto llama al endpoint de búsqueda", async ({ page }) => {
@@ -102,11 +104,12 @@ test("buscar por nombre de contacto llama al endpoint de búsqueda", async ({ pa
   });
 
   await page.goto("/opportunities");
+  const list = page.getByRole("region", { name: "Lista de conversaciones" });
   await page.getByRole("button", { name: "Todas" }).click();
-  await expect(page.locator("main").getByRole("link")).toHaveCount(2);
+  await expect(list.getByRole("link")).toHaveCount(2);
 
   await page.getByPlaceholder("Buscar contacto o mensaje").fill("Lito");
-  await expect(page.locator("main").getByRole("link")).toHaveCount(1);
+  await expect(list.getByRole("link")).toHaveCount(1);
   await expect(page.getByText("Litoempaques S.A.S.")).toBeVisible();
   await expect.poll(() => searchUrl).toContain("q=Lito");
 });
