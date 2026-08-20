@@ -82,6 +82,12 @@ class GoogleOAuthProvider:
                 algorithms=["RS256"],
                 audience=self._client_id,
                 issuer=_VALID_ISSUERS,
+                # PyJWT valida iat/exp con cero tolerancia por defecto -- unos pocos segundos de
+                # diferencia entre cuándo Google emitió el token y cuándo este proceso lo valida
+                # (red, no necesariamente desincronización real de reloj) ya lo rechaza
+                # (ImmatureSignatureError). 10s de leeway es la tolerancia estándar en este tipo de
+                # validación OIDC, sin debilitar la comprobación de firma/issuer/audience.
+                leeway=10,
             )
         except InvalidTokenError as exc:
             raise GoogleAuthenticationError(f"Invalid Google id_token: {exc}") from exc
