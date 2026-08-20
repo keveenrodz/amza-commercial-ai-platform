@@ -38,7 +38,9 @@ class _FakeChannelProvider:
     def __init__(self, *, healthy: bool) -> None:
         self._healthy = healthy
 
-    async def send(self, message: Message, contact: Contact) -> None:
+    async def send(
+        self, message: Message, contact: Contact, *, is_first_reply: bool = False
+    ) -> None:
         return None
 
     async def health(self) -> bool:

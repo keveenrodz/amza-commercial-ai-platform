@@ -25,6 +25,7 @@ os.environ["GOOGLE_CLIENT_ID"] = "test-client-id"
 os.environ["GOOGLE_CLIENT_SECRET"] = "test-client-secret"
 os.environ["GOOGLE_REDIRECT_URI"] = "http://testserver/auth/google/callback"
 os.environ["DEBUG"] = "true"  # Secure=False en la cookie, httpx no manda cookies Secure en test
+os.environ["WHATSAPP_WEBHOOK_SECRET"] = "test-whatsapp-secret"
 
 import pytest
 import pytest_asyncio

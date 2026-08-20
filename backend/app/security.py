@@ -23,6 +23,13 @@ async def verify_telegram_secret(
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
 
+async def verify_whatsapp_secret(
+    x_webhook_secret: str = Header(default=""),
+) -> None:
+    if x_webhook_secret != settings.whatsapp_webhook_secret:
+        raise HTTPException(status_code=401, detail="Invalid webhook secret")
+
+
 def create_access_token(user: InternalUser) -> str:
     now = datetime.now(tz=UTC)
     payload = {

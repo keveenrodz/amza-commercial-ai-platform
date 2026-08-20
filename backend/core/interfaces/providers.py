@@ -25,7 +25,9 @@ class CompletionRequest:
 
 
 class ChannelProvider(Protocol):
-    async def send(self, message: Message, contact: Contact) -> None: ...
+    async def send(
+        self, message: Message, contact: Contact, *, is_first_reply: bool = False
+    ) -> None: ...
 
     async def health(self) -> bool: ...
 

@@ -34,7 +34,9 @@ class _SpyChannelProvider:
     def __init__(self) -> None:
         self.sent: list[tuple[Message, Contact]] = []
 
-    async def send(self, message: Message, contact: Contact) -> None:
+    async def send(
+        self, message: Message, contact: Contact, *, is_first_reply: bool = False
+    ) -> None:
         self.sent.append((message, contact))
 
     async def health(self) -> bool:

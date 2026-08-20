@@ -1,0 +1,70 @@
+from __future__ import annotations
+
+from typing import Any
+
+import structlog
+from fastapi import APIRouter, Depends, Response
+from pydantic import ValidationError
+
+from app.api.dto.whatsapp import WhatsAppWebhookEvent
+from app.dependencies import get_receive_incoming_message_use_case
+from app.security import verify_whatsapp_secret
+from app.use_cases.receive_incoming_message import (
+    IncomingMessageInput,
+    ReceiveIncomingMessageUseCase,
+)
+from core.enums.channel import ChannelType
+from core.enums.message import MessageContentType
+
+router = APIRouter(prefix="/webhooks/whatsapp", tags=["whatsapp"])
+logger = structlog.get_logger()
+
+
+@router.post("/{organization_slug}", dependencies=[Depends(verify_whatsapp_secret)])
+async def receive_whatsapp_event(
+    organization_slug: str,
+    payload: dict[str, Any],
+    use_case: ReceiveIncomingMessageUseCase = Depends(get_receive_incoming_message_use_case),
+) -> Response:
+    try:
+        event = WhatsAppWebhookEvent.model_validate(payload)
+    except ValidationError:
+        logger.warning("whatsapp.webhook.malformed_payload", organization_slug=organization_slug)
+        return Response(status_code=200)
+
+    if event.event != "MESSAGES_UPSERT" or event.data.key.fromMe:
+        # fromMe=True es un mensaje que salió de este mismo número (ej. enviado manualmente
+        # desde el teléfono vinculado) -- no es un mensaje del cliente, se ignora en silencio.
+        return Response(status_code=200)
+
+    if event.data.message.conversation is None:
+        # Multimedia (foto, audio, documento, ubicación) -- distinguir el tipo real necesita el
+        # payload real de Evolution API (ver spec 016 sección 4); se guarda como placeholder de
+        # imagen, mismo criterio que spec 012 ya decidió para adjuntos entrantes: mostrar el
+        # tipo, no el contenido.
+        content, content_type = "[multimedia]", MessageContentType.IMAGE
+    else:
+        content, content_type = event.data.message.conversation, MessageContentType.TEXT
+
+    try:
+        await use_case.execute(
+            IncomingMessageInput(
+                organization_slug=organization_slug,
+                channel_type=ChannelType.WHATSAPP,
+                external_contact_id=event.data.key.remoteJid,
+                contact_display_name=event.data.pushName or event.data.key.remoteJid,
+                content=content,
+                content_type=content_type,
+                provider_message_id=event.data.key.id,
+            )
+        )
+    except Exception:
+        # Mismo criterio que telegram_webhook.py (spec 007 sección 6): nunca delegar el
+        # reintento a Evolution API, cualquier fallo posterior al secreto válido se registra
+        # para diagnóstico y el webhook igual responde 200.
+        logger.exception(
+            "whatsapp.webhook.processing_failed",
+            organization_slug=organization_slug,
+        )
+
+    return Response(status_code=200)

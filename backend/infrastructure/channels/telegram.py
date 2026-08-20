@@ -23,7 +23,9 @@ class TelegramChannelProvider:
     def __init__(self, bot_token: str) -> None:
         self._client = httpx.AsyncClient(base_url=f"https://api.telegram.org/bot{bot_token}")
 
-    async def send(self, message: Message, contact: Contact) -> None:
+    async def send(
+        self, message: Message, contact: Contact, *, is_first_reply: bool = False
+    ) -> None:
         response = await self._client.post(
             "/sendMessage",
             json={"chat_id": contact.external_id, "text": message.content},

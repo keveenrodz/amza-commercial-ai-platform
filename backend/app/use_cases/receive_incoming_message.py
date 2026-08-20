@@ -136,6 +136,14 @@ class ReceiveIncomingMessageUseCase:
             await uow.opportunities.save(opportunity)
 
             if opportunity.attention_mode == AttentionMode.AI:
+                # Contado ANTES de guardar la respuesta -- "primera respuesta de la conversación"
+                # significa que el mensaje entrante que se acaba de guardar es el único que existe
+                # todavía. El proveedor no debería tener que consultar la BD por su cuenta para
+                # saber esto (mismo principio que ya corrigió el bug real de
+                # TelegramChannelProvider en spec 006).
+                message_count = await uow.messages.count_since(conversation.id, after=None)
+                is_first_reply = message_count == 1
+
                 context = await self._context_assembler.assemble(conversation.id, uow)
                 response_text = await self._ai_provider.generate(context, opportunity.agent_id)
                 response_message = Message(
@@ -148,8 +156,9 @@ class ReceiveIncomingMessageUseCase:
                     sent_at=datetime.now(tz=UTC),
                 )
                 await uow.messages.save(response_message)
+
                 provider = self._channel_provider_registry.get(contact.channel_type)
-                await provider.send(response_message, contact)
+                await provider.send(response_message, contact, is_first_reply=is_first_reply)
 
             await uow.commit()
 

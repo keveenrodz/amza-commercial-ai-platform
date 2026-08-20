@@ -34,6 +34,7 @@ from core.interfaces.providers import AIProvider
 from infrastructure.ai.openrouter import OpenRouterAIProvider
 from infrastructure.auth.google import GoogleOAuthProvider
 from infrastructure.channels.telegram import TelegramChannelProvider
+from infrastructure.channels.whatsapp import WhatsAppChannelProvider
 from infrastructure.database.session import AsyncSessionFactory
 
 
@@ -51,6 +52,11 @@ def get_channel_provider_registry() -> ChannelProviderRegistry:
     return ChannelProviderRegistry(
         {
             ChannelType.TELEGRAM: TelegramChannelProvider(bot_token=settings.telegram_bot_token),
+            ChannelType.WHATSAPP: WhatsAppChannelProvider(
+                base_url=settings.evolution_api_base_url,
+                api_key=settings.evolution_api_key,
+                instance_name=settings.evolution_instance_name,
+            ),
         }
     )
 

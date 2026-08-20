@@ -34,7 +34,9 @@ from tests.test_security_and_identity import _ORG_SLUG, _login, _seed_organizati
 
 
 class _SpyChannelProvider:
-    async def send(self, message: Message, contact: Contact) -> None:
+    async def send(
+        self, message: Message, contact: Contact, *, is_first_reply: bool = False
+    ) -> None:
         return None
 
     async def health(self) -> bool:

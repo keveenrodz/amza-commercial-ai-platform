@@ -16,7 +16,9 @@ from core.exceptions.domain import UnsupportedChannelError
 
 
 class _FakeChannelProvider:
-    async def send(self, message: Message, contact: Contact) -> None:
+    async def send(
+        self, message: Message, contact: Contact, *, is_first_reply: bool = False
+    ) -> None:
         return None
 
     async def health(self) -> bool:

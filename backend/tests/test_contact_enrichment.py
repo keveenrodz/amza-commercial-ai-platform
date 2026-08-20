@@ -58,8 +58,13 @@ class _FakeAIProvider:
 
 
 class _FakeChannelProvider:
-    async def send(self, message: Message, contact: Contact) -> None:
-        return None
+    def __init__(self) -> None:
+        self.sent: list[tuple[Message, Contact, bool]] = []
+
+    async def send(
+        self, message: Message, contact: Contact, *, is_first_reply: bool = False
+    ) -> None:
+        self.sent.append((message, contact, is_first_reply))
 
     async def health(self) -> bool:
         return True
@@ -334,6 +339,63 @@ async def test_receive_incoming_message_marks_opportunity_unread() -> None:
     )
 
     assert opportunity.unread_count == 1
+
+
+async def test_receive_incoming_message_passes_is_first_reply_to_the_channel_provider() -> None:
+    """Regresión de spec 016: el use case sigue llamando send() sin romper nada con un registro
+    de una sola entrada Telegram (que ignora is_first_reply) -- y calcula el valor correcto:
+    True solo en la primera respuesta automática de la conversación, False después."""
+    await _seed_organization()
+
+    async with AsyncSessionFactory() as session:
+        org = (
+            await session.execute(
+                select(OrganizationModel).where(OrganizationModel.slug == _ORG_SLUG)
+            )
+        ).scalar_one()
+        now = datetime.now(tz=UTC)
+        session.add(
+            AgentModel(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                name="Test Agent",
+                system_prompt="You are a helpful assistant.",
+                model="openai/gpt-4.1-nano",
+                status="active",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        await session.commit()
+
+    fake_provider = _FakeChannelProvider()
+    use_case = ReceiveIncomingMessageUseCase(
+        session_factory=AsyncSessionFactory,
+        ai_provider=_FakeAIProvider(),
+        channel_provider_registry=ChannelProviderRegistry({ChannelType.TELEGRAM: fake_provider}),
+        context_assembler=ConversationContextAssembler(working_memory_size=10),
+        summarization_service=ConversationSummarizationService(
+            ai_provider=_FakeAIProvider(),
+            summarization_model="openai/gpt-4.1-nano",
+        ),
+        summary_trigger_messages=999,
+    )
+
+    for _ in range(2):
+        await use_case.execute(
+            IncomingMessageInput(
+                organization_slug=_ORG_SLUG,
+                channel_type=ChannelType.TELEGRAM,
+                external_contact_id="chat-first-reply",
+                contact_display_name="Cliente Primera Respuesta",
+                content="Hola",
+                content_type=MessageContentType.TEXT,
+            )
+        )
+
+    assert len(fake_provider.sent) == 2
+    assert fake_provider.sent[0][2] is True  # primer mensaje entrante -> primera respuesta
+    assert fake_provider.sent[1][2] is False  # segundo mensaje entrante -> ya no es la primera
 
 
 async def test_get_conversation_history_marks_opportunity_read(client: AsyncClient) -> None:

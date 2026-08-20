@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_webhook_secret: str = ""
 
+    evolution_api_base_url: str = ""
+    evolution_api_key: str = ""
+    evolution_instance_name: str = ""
+    whatsapp_webhook_secret: str = ""
+
     working_memory_size: int = 20
     summary_trigger_messages: int = 30
     summarization_model: str = "openai/gpt-4.1-nano"
