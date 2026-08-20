@@ -1,4 +1,43 @@
 services:
+  # WhatsApp (spec 016/017), self-hosted -- ver docs/ops/whatsapp_setup.md. Imagen oficial.
+  # La doc de instalación con Docker sugiere que Postgres es opcional (DATABASE_ENABLED=false) --
+  # en la práctica (confirmado en vivo con evoapicloud/evolution-api:v2.1.1 y v2.3.7) esta imagen
+  # corre migraciones de Prisma contra Postgres al arrancar sin importar DATABASE_ENABLED, y
+  # falla en bucle de reinicio sin un Postgres real alcanzable. Este Postgres es mínimo,
+  # dedicado solo a Evolution API -- no comparte nada con el SQLite del backend.
+  evolution-postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      - POSTGRES_USER=evolution
+      - POSTGRES_PASSWORD=evolution
+      - POSTGRES_DB=evolution_db
+    volumes:
+      - evolution_postgres_data:/var/lib/postgresql/data
+
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
+      # Debe ser una URL donde Evolution API en sí sea alcanzable (usa esto para construir sus
+      # propias respuestas/callbacks) -- en desarrollo local, tu túnel de ngrok; en producción,
+      # el dominio público real de esta instancia. Nunca localhost si algo externo necesita
+      # llegar hasta aquí.
+      - SERVER_URL=${EVOLUTION_SERVER_URL:-http://localhost:8080}
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://evolution:evolution@evolution-postgres:5432/evolution_db?schema=public
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - CACHE_REDIS_ENABLED=false
+      - CACHE_LOCAL_ENABLED=true
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      - evolution-postgres
+
   backend:
     build:
       context: .
@@ -35,3 +74,5 @@ services:
 
 volumes:
   backend_data:
+  evolution_instances:
+  evolution_postgres_data:

@@ -6,33 +6,62 @@ Cubre cómo dejar corriendo Evolution API, aprovisionar la instancia de
 
 ---
 
-## 1. Desplegar Evolution API
+## 1. Levantar Evolution API
 
-Evolution API es un servicio aparte (self-hosted), no algo que corra dentro de este repo. Seguir
-la guía oficial, no se duplica aquí porque cambia con cada versión de Evolution API:
+Evolution API corre como dos servicios más de `docker-compose.yml` (`evolution-api`, imagen
+oficial `evoapicloud/evolution-api:v2.3.7`, y `evolution-postgres`, un Postgres mínimo dedicado
+solo a esta instancia) — no hace falta instalar nada por fuera de este repo.
 
-- https://docs.evolutionfoundation.com.br/en/evolution-api/install/nginx (instalación + nginx
-  como proxy inverso — necesario porque Evolution API necesita ser accesible por HTTPS desde
-  fuera, igual que este backend necesita serlo para recibir webhooks)
+**Nota real, contradice la doc oficial:** "Database"/"Redis"
+(https://docs.evolutionfoundation.com.br/evolution-api/requirements/) dicen que Postgres es
+opcional vía `DATABASE_ENABLED=false`. Confirmado en vivo con dos versiones de la imagen
+(`v2.1.1` y `v2.3.7`) que **no es así** — el contenedor corre migraciones de Prisma contra
+Postgres al arrancar sin importar `DATABASE_ENABLED`, y sin un Postgres real alcanzable queda en
+bucle de reinicio (`Error: P1001: Can't reach database server`). De ahí `evolution-postgres` en
+el compose — Redis sí resultó innecesario en la práctica (`CACHE_LOCAL_ENABLED=true` funciona
+bien sin él).
 
-Al terminar tendrás una URL base (ej. `https://evolution.tu-dominio.com`) y una API key —
-guárdalas para el paso 3.
+Requiere `EVOLUTION_API_KEY`/`EVOLUTION_SERVER_URL` ya presentes en `.env` (paso 2) antes de
+levantarlo:
+
+```bash
+docker compose up -d evolution-postgres evolution-api
+docker logs amza-commercial-ai-platform-evolution-api-1   # confirmar que arrancó sin errores
+curl http://localhost:8080   # debe responder {"status":200,"message":"Welcome to the Evolution API..."}
+```
+
+En **desarrollo local** (backend corriendo nativo, no en Docker), Evolution API queda
+accesible en `http://localhost:8080` gracias al mapeo de puertos del servicio. En producción,
+este servicio necesita quedar detrás de HTTPS igual que el backend (ver
+https://docs.evolutionfoundation.com.br/evolution-api/install/nginx para el proxy inverso) —
+`EVOLUTION_API_BASE_URL`/`EVOLUTION_SERVER_URL` deben apuntar a esa URL pública, no a
+`localhost`, en ese caso.
 
 ---
 
 ## 2. Variables de entorno
 
-En `.env` (raíz del repo, mismo archivo que ya tiene `TELEGRAM_BOT_TOKEN` etc.):
+En `.env` (raíz del repo, mismo archivo que ya tiene `TELEGRAM_BOT_TOKEN` etc.) — ver
+`.env.example` para el detalle de cada una:
 
 ```
-EVOLUTION_API_BASE_URL=https://evolution.tu-dominio.com
-EVOLUTION_API_KEY=<api key de tu despliegue de Evolution API>
+EVOLUTION_API_BASE_URL=http://localhost:8080
+EVOLUTION_API_KEY=<elige cualquier string aleatorio largo -- es también AUTHENTICATION_API_KEY del contenedor>
 EVOLUTION_INSTANCE_NAME=amza-empaques
+EVOLUTION_SERVER_URL=http://localhost:8080
 WHATSAPP_WEBHOOK_SECRET=<cualquier string aleatorio largo>
 ```
 
+`EVOLUTION_API_KEY` lo elige quien despliega (no es algo que Evolution API entregue) — el mismo
+valor lo usan tanto este backend (para autenticar sus llamadas) como el propio contenedor (vía
+`AUTHENTICATION_API_KEY` en `docker-compose.yml`, ya cableado a esta misma variable).
 `WHATSAPP_WEBHOOK_SECRET` es propio de esta plataforma (lo generas tú, igual que
 `TELEGRAM_WEBHOOK_SECRET`), no algo que te dé Evolution API.
+
+**En desarrollo local con ngrok:** una vez tengas `ngrok http 8000` corriendo (paso 3), actualiza
+`EVOLUTION_SERVER_URL` a esa URL pública y reinicia el contenedor
+(`docker compose restart evolution-api`) antes de aprovisionar la instancia — si no, Evolution
+API construye sus propias respuestas/callbacks con una URL que nadie de afuera puede alcanzar.
 
 ---
 

@@ -110,7 +110,12 @@ class WhatsAppChannelProvider:
     async def get_qr_code(self) -> str:
         response = await self._client.get(f"/instance/connect/{self._instance_name}")
         response.raise_for_status()
-        return str(response.json()["base64"])
+        # Evolution API devuelve el data URI completo ("data:image/png;base64,...."), no solo el
+        # payload -- confirmado contra una instancia real, no documentado con claridad. Se le
+        # quita el prefijo aquí porque el nombre del campo (qrcode_base64 en el DTO) y el
+        # frontend (que construye su propio data URI) asumen que es solo el payload.
+        base64_value = str(response.json()["base64"])
+        return base64_value.removeprefix("data:image/png;base64,")
 
     async def disconnect(self) -> None:
         response = await self._client.delete(f"/instance/logout/{self._instance_name}")

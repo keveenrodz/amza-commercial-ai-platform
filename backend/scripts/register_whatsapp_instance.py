@@ -38,6 +38,12 @@ async def register_whatsapp_instance(webhook_base_url: str) -> None:
             json={
                 "instanceName": settings.evolution_instance_name,
                 "qrcode": True,
+                # Requerido en la práctica (no documentado con claridad al escribir spec 016):
+                # sin esto, /instance/create devuelve 400 "Invalid integration". BAILEYS es el
+                # protocolo de WhatsApp Web no oficial -- la otra opción real, WHATSAPP-BUSINESS,
+                # es la API oficial de Meta (de pago, requiere aprobación de Meta), fuera de
+                # alcance de este spec.
+                "integration": "WHATSAPP-BAILEYS",
                 "webhook": {
                     "enabled": True,
                     "url": webhook_url,

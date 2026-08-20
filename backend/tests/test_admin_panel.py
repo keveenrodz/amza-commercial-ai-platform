@@ -203,8 +203,11 @@ async def test_whatsapp_connect_returns_qrcode_base64(client: AsyncClient) -> No
     await create_user(_ORG_SLUG, "admin@gmail.com", "Admin Principal", "administrator")
     await _login(client, "admin@gmail.com")
 
+    # Evolution API real devuelve el data URI completo, no solo el payload -- regresión: sin
+    # quitarle el prefijo aquí, el frontend construye su propio "data:image/png;base64,..." y
+    # termina duplicándolo (data URI inválido, icono de imagen rota en el navegador).
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"base64": "iVBORfake=="})
+        return httpx.Response(200, json={"base64": "data:image/png;base64,iVBORfake=="})
 
     provider = _make_whatsapp_provider(httpx.MockTransport(handler))
     app.dependency_overrides[get_channel_provider_registry] = lambda: ChannelProviderRegistry(
