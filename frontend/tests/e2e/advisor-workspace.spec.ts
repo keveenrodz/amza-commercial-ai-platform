@@ -136,10 +136,15 @@ test("buscar por una palabra que solo existe en un mensaje encuentra la conversa
   page,
 }) => {
   const MESSAGE_MATCH_CONTACT = { display_name: "Fábrica ABC", phone_number: null, tags: [], is_favorite: false };
+  // attention_mode "human" a propósito -- la pestaña activa por defecto al entrar es "IA", y la
+  // búsqueda es global (no debe filtrarse por la pestaña activa). Regresión real: el resultado
+  // desaparecía en la pestaña "IA" porque el filtro de tab seguía aplicándose sobre los
+  // resultados de búsqueda.
   const MESSAGE_MATCH_OPPORTUNITY = {
     ...UNASSIGNED_OPPORTUNITY,
     id: "opp-message-match",
     contact_id: "contact-3",
+    attention_mode: "human",
   };
 
   // Este item NO existe en el listado base (OPEN_OPPORTUNITIES) -- solo lo devuelve el

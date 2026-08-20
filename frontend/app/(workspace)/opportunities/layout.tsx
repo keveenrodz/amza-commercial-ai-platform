@@ -93,7 +93,10 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
     all: baseItems.filter((i) => matchesTabValue(i, "all")).length,
   };
 
-  let items = baseItems.filter(matchesTab);
+  // La búsqueda es global (todas las conversaciones, sin importar la pestaña activa) -- si se
+  // le aplicara el filtro de tab, la mayoría de resultados desaparecería en cuanto la pestaña
+  // activa no fuera "Todas" (ej. la pestaña por defecto es "IA").
+  let items = usingSearch ? baseItems.slice() : baseItems.filter(matchesTab);
   if (tab === "all") {
     if (assigneeFilter === "ai") {
       items = items.filter((item) => item.opportunity.attention_mode === "ai");
