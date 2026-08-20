@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.services.channel_provider_registry import ChannelProviderRegistry
 from app.services.conversation_context_assembler import ConversationContextAssembler
 from app.services.conversation_summarization_service import ConversationSummarizationService
 from core.entities.contact import Contact
@@ -17,7 +18,7 @@ from core.enums.message import MessageContentType, MessageRole
 from core.enums.opportunity import AttentionMode, OpportunityStatus
 from core.enums.user import ContactStatus
 from core.exceptions.domain import NoActiveAgentError, OrganizationSlugNotFoundError
-from core.interfaces.providers import AIProvider, ChannelProvider
+from core.interfaces.providers import AIProvider
 from core.value_objects.identifiers import (
     ContactId,
     ConversationId,
@@ -45,14 +46,14 @@ class ReceiveIncomingMessageUseCase:
         self,
         session_factory: async_sessionmaker[AsyncSession],
         ai_provider: AIProvider,
-        channel_provider: ChannelProvider,
+        channel_provider_registry: ChannelProviderRegistry,
         context_assembler: ConversationContextAssembler,
         summarization_service: ConversationSummarizationService,
         summary_trigger_messages: int,
     ) -> None:
         self._session_factory = session_factory
         self._ai_provider = ai_provider
-        self._channel_provider = channel_provider
+        self._channel_provider_registry = channel_provider_registry
         self._context_assembler = context_assembler
         self._summarization_service = summarization_service
         self._summary_trigger_messages = summary_trigger_messages
@@ -147,7 +148,8 @@ class ReceiveIncomingMessageUseCase:
                     sent_at=datetime.now(tz=UTC),
                 )
                 await uow.messages.save(response_message)
-                await self._channel_provider.send(response_message, contact)
+                provider = self._channel_provider_registry.get(contact.channel_type)
+                await provider.send(response_message, contact)
 
             await uow.commit()
 

@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from app.dependencies import get_ai_provider, get_channel_provider
-from core.interfaces.providers import AIProvider, ChannelProvider
+from app.dependencies import get_ai_provider, get_channel_provider_registry
+from app.services.channel_provider_registry import ChannelProviderRegistry
+from core.interfaces.providers import AIProvider
 from infrastructure.database.session import AsyncSessionFactory
 
 router = APIRouter(prefix="/health", tags=["health"])
@@ -19,7 +20,7 @@ async def health() -> dict[str, str]:
 @router.get("/ready")
 async def readiness(
     ai_provider: AIProvider = Depends(get_ai_provider),
-    channel_provider: ChannelProvider = Depends(get_channel_provider),
+    channel_registry: ChannelProviderRegistry = Depends(get_channel_provider_registry),
 ) -> JSONResponse:
     checks: dict[str, bool] = {}
 
@@ -31,7 +32,8 @@ async def readiness(
         checks["database"] = False
 
     checks["openrouter"] = await ai_provider.health()
-    checks["telegram"] = await channel_provider.health()
+    for channel_type, provider in channel_registry.all().items():
+        checks[channel_type.value] = await provider.health()
 
     status_code = 200 if all(checks.values()) else 503
     return JSONResponse(status_code=status_code, content=checks)

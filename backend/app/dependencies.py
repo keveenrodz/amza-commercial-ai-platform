@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from app.config import settings
+from app.services.channel_provider_registry import ChannelProviderRegistry
 from app.services.conversation_context_assembler import ConversationContextAssembler
 from app.services.conversation_summarization_service import ConversationSummarizationService
 from app.use_cases.activate_internal_user import ActivateInternalUserUseCase
@@ -27,8 +28,9 @@ from app.use_cases.send_advisor_reply import SendAdvisorReplyUseCase
 from app.use_cases.set_opportunity_unread import SetOpportunityUnreadUseCase
 from app.use_cases.toggle_contact_favorite import ToggleContactFavoriteUseCase
 from app.use_cases.update_internal_user import UpdateInternalUserUseCase
+from core.enums.channel import ChannelType
 from core.interfaces.auth import AuthProvider
-from core.interfaces.providers import AIProvider, ChannelProvider
+from core.interfaces.providers import AIProvider
 from infrastructure.ai.openrouter import OpenRouterAIProvider
 from infrastructure.auth.google import GoogleOAuthProvider
 from infrastructure.channels.telegram import TelegramChannelProvider
@@ -45,8 +47,12 @@ def get_ai_provider() -> AIProvider:
 
 
 @lru_cache
-def get_channel_provider() -> ChannelProvider:
-    return TelegramChannelProvider(bot_token=settings.telegram_bot_token)
+def get_channel_provider_registry() -> ChannelProviderRegistry:
+    return ChannelProviderRegistry(
+        {
+            ChannelType.TELEGRAM: TelegramChannelProvider(bot_token=settings.telegram_bot_token),
+        }
+    )
 
 
 @lru_cache
@@ -67,7 +73,7 @@ def get_receive_incoming_message_use_case() -> ReceiveIncomingMessageUseCase:
     return ReceiveIncomingMessageUseCase(
         session_factory=AsyncSessionFactory,
         ai_provider=get_ai_provider(),
-        channel_provider=get_channel_provider(),
+        channel_provider_registry=get_channel_provider_registry(),
         context_assembler=get_context_assembler(),
         summarization_service=get_summarization_service(),
         summary_trigger_messages=settings.summary_trigger_messages,
@@ -94,7 +100,7 @@ def get_return_to_ai_use_case() -> ReturnToAIUseCase:
 def get_send_advisor_reply_use_case() -> SendAdvisorReplyUseCase:
     return SendAdvisorReplyUseCase(
         session_factory=AsyncSessionFactory,
-        channel_provider=get_channel_provider(),
+        channel_provider_registry=get_channel_provider_registry(),
     )
 
 

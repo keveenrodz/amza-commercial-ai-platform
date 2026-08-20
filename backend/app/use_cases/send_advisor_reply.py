@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.services.channel_provider_registry import ChannelProviderRegistry
 from core.entities.message import Message
 from core.enums.message import MessageContentType, MessageRole
 from core.exceptions.domain import (
@@ -11,7 +12,6 @@ from core.exceptions.domain import (
     OpportunityNotAssignedToAdvisorError,
     OpportunityNotFoundError,
 )
-from core.interfaces.providers import ChannelProvider
 from core.value_objects.identifiers import InternalUserId, MessageId, OpportunityId
 from infrastructure.database.unit_of_work import SQLAlchemyUnitOfWork
 
@@ -20,10 +20,10 @@ class SendAdvisorReplyUseCase:
     def __init__(
         self,
         session_factory: async_sessionmaker[AsyncSession],
-        channel_provider: ChannelProvider,
+        channel_provider_registry: ChannelProviderRegistry,
     ) -> None:
         self._session_factory = session_factory
-        self._channel_provider = channel_provider
+        self._channel_provider_registry = channel_provider_registry
 
     async def execute(
         self,
@@ -61,7 +61,8 @@ class SendAdvisorReplyUseCase:
             opportunity.record_activity()
             await uow.opportunities.save(opportunity)
 
-            await self._channel_provider.send(message, contact)
+            provider = self._channel_provider_registry.get(contact.channel_type)
+            await provider.send(message, contact)
 
             await uow.commit()
 

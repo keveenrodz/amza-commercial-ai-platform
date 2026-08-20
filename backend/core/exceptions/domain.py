@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from core.enums.channel import ChannelType
 from core.enums.opportunity import OpportunityStatus
 from core.value_objects.identifiers import (
     AgentId,
@@ -140,3 +141,9 @@ class AccessDeniedError(DomainError):
     def __init__(self, email: str) -> None:
         super().__init__(f"No active InternalUser found for email {email!r}")
         self.email = email
+
+
+class UnsupportedChannelError(DomainError):
+    def __init__(self, channel_type: ChannelType) -> None:
+        super().__init__(f"No ChannelProvider registered for channel {channel_type.value!r}")
+        self.channel_type = channel_type

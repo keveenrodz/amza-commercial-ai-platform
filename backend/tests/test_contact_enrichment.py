@@ -22,6 +22,7 @@ from datetime import UTC, datetime
 from httpx import AsyncClient
 from sqlalchemy import select
 
+from app.services.channel_provider_registry import ChannelProviderRegistry
 from app.services.conversation_context_assembler import ConversationContextAssembler
 from app.services.conversation_summarization_service import ConversationSummarizationService
 from app.use_cases.receive_incoming_message import (
@@ -310,7 +311,9 @@ async def test_receive_incoming_message_marks_opportunity_unread() -> None:
     use_case = ReceiveIncomingMessageUseCase(
         session_factory=AsyncSessionFactory,
         ai_provider=_FakeAIProvider(),
-        channel_provider=_FakeChannelProvider(),
+        channel_provider_registry=ChannelProviderRegistry(
+            {ChannelType.TELEGRAM: _FakeChannelProvider()}
+        ),
         context_assembler=ConversationContextAssembler(working_memory_size=10),
         summarization_service=ConversationSummarizationService(
             ai_provider=_FakeAIProvider(),

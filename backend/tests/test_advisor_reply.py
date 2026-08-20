@@ -15,9 +15,11 @@ from datetime import UTC, datetime
 from httpx import AsyncClient
 
 from app.dependencies import get_send_advisor_reply_use_case
+from app.services.channel_provider_registry import ChannelProviderRegistry
 from app.use_cases.send_advisor_reply import SendAdvisorReplyUseCase
 from core.entities.contact import Contact
 from core.entities.message import Message
+from core.enums.channel import ChannelType
 from infrastructure.database.session import AsyncSessionFactory
 from modules.agents.models.agent import AgentModel
 from modules.configuration.models.organization import OrganizationModel
@@ -42,7 +44,7 @@ class _SpyChannelProvider:
 def _override_channel_provider(app, spy: _SpyChannelProvider) -> None:  # noqa: ANN001
     app.dependency_overrides[get_send_advisor_reply_use_case] = lambda: SendAdvisorReplyUseCase(
         session_factory=AsyncSessionFactory,
-        channel_provider=spy,
+        channel_provider_registry=ChannelProviderRegistry({ChannelType.TELEGRAM: spy}),
     )
 
 
