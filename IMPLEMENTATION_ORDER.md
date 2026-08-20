@@ -67,7 +67,8 @@ partió la propuesta original de spec 006 (ver más abajo). Orden vigente:
 una a la vez, misma regla de siempre.
 
 **Siguiente acción: specs 011, 012, 013, 013b y 014 implementadas, validadas y committed (eb6071e,
-332708c, 7b59e54, 7d1a6a9, 3e8d86a). Sigue spec 015 (Channel Provider Routing).**
+332708c, 7b59e54, 7d1a6a9, 3e8d86a), más refinamientos post-014 de administración/chat (cc33ae7).
+Sigue spec 015 (Channel Provider Routing).**
 
 <details>
 <summary>Propuesta original de spec 006 (histórica, no lo que terminó pasando — ver arriba)</summary>

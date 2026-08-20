@@ -592,6 +592,44 @@ They must NOT be modified unless a formal architecture decision is made.
   `next build`, y Playwright (15/15, 2 tests nuevos en `admin.spec.ts`) en frontend, más
   verificación visual con un script de Playwright ad-hoc (claro/oscuro)
 
+**Admin panel y refinamientos de chat post-014 (feedback del usuario validando en el navegador):**
+
+* Panel de administración: formulario "Agregar usuario" detrás de un botón (antes siempre
+  visible); botón "Editar" por fila (nombre/rol para cualquier admin, email solo el principal) vía
+  `PUT .../users/{id}` nuevo; se registra quién creó a cada usuario (`created_by`, columna nueva,
+  **solo para auditoría — nunca se expone en la respuesta**); se quitó el subtítulo del panel
+  (ya no aplica, van a convivir varias secciones ahí, no solo usuarios)
+* `Opportunity.has_unread_messages` (booleano, decisión explícita de spec 013) se reemplazó por
+  `unread_count` (entero real) — sube uno por cada mensaje entrante, se resetea a 0 al leer. La
+  lista ahora muestra el número real, no solo un punto
+* Vista previa del último mensaje en el listado (`last_message_preview`) — nuevo método de
+  `MessageRepository` que resuelve el último mensaje por oportunidad en lote (evita N+1), truncado
+  a 60 caracteres si es texto, o una etiqueta legible ("📷 Imagen", etc.) si no
+* Notas de sistema en el hilo — reasignar (o tomar de la IA), devolver a IA, y programar/resolver
+  un seguimiento ahora escriben un `Message(sender_role=SYSTEM)` describiendo qué pasó, igual que
+  el mockup validado (`ChatBubble` ya sabía renderizar `system` desde spec 012, solo faltaba que
+  el backend los generara). `ResolveFollowUpUseCase` ganó un parámetro `advisor_id` que no tenía
+  antes, para poder nombrar a quién resolvió
+* Header del chat: nombre real del asesor asignado + punto verde, en vez de "Mía"/"Asignada" —
+  mismo criterio que el mockup (el chip de asignación siempre muestra a quién, sin distinguir si
+  ese quién es el usuario actual)
+* Composer bloqueado con mensaje explicativo ("La IA está respondiendo..." / "Asignada a
+  {nombre}...") en vez de simplemente desaparecer cuando el asesor actual no puede responder
+* Buscador dentro de la conversación: contador de coincidencias + navegación con flechas
+  arriba/abajo, cada una con su propio scroll. La búsqueda general (lista) ahora pasa su query a
+  la conversación abierta vía `?q=` para que llegue ya resaltada
+* Contador por pestaña (IA/Mías/Todas) en la barra lateral
+* **Bug real de migración encontrado al aplicar 0006 a la BD de desarrollo real** (no lo detectó
+  ningún test — los tests construyen el esquema con `Base.metadata.create_all`, nunca corren
+  Alembic de verdad): SQLite no soporta `ALTER TABLE ADD COLUMN` con una constraint (el FK de
+  `created_by`) fuera de modo batch, y modo batch a su vez exige que el FK tenga nombre explícito.
+  Corregido en la migración; quedó documentado en memoria como el mismo patrón de riesgo ya visto
+  antes (specs 013b/014) — verificar siempre contra la BD real, no solo contra los tests
+* Validado: `ruff`, `mypy`, `pytest` (51 tests, 12 nuevos entre `test_admin_governance.py` y
+  `test_chat_refinements.py`) en backend; `tsc`, `eslint`, `vitest`, `next build`, y Playwright
+  (16/16, 2 tests nuevos en `admin.spec.ts`) en frontend, más verificación visual con capturas
+  ad-hoc de cada pieza (header, composer bloqueado, buscador, fila de edición)
+
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
 
@@ -728,7 +766,9 @@ modifica comportamiento existente, actualiza los tests afectados (ver
 `03_Engineering_Principles.md`).
 
 **Siguiente acción: specs 011, 012, 013, 013b y 014 implementadas, validadas y committed (eb6071e,
-332708c, 7b59e54, 7d1a6a9, 3e8d86a). Sigue spec 015 (Channel Provider Routing).**
+332708c, 7b59e54, 7d1a6a9, 3e8d86a), más una tanda de refinamientos post-014 sobre el panel de
+administración y el chat (cc33ae7, ver sección "Admin panel y refinamientos de chat post-014"
+arriba). Sigue spec 015 (Channel Provider Routing).**
 
 ---
 
@@ -875,5 +915,7 @@ WhatsApp, panel de administración, base de conocimiento, multimedia) — specs 
 & Theming), 012 (Chat Panel Redesign), 013 (Contact Enrichment & Follow-ups), 013b (Design System
 Alignment, spec correctiva que portó la paleta/tipografía/layout reales del mockup — ver esa
 sección para el porqué) y 014 (Admin Governance & Access Control) ya implementadas, validadas y
-committed. Sigue spec 015 (Channel Provider Routing). Ver sección "Next Step" arriba para el orden
-completo de la nueva tanda de specs.
+committed, más una tanda de refinamientos post-014 sobre administración y chat (edición de
+usuarios, notas de sistema en el hilo, conteo real de no leídos, vista previa del último mensaje,
+buscador con navegación entre coincidencias). Sigue spec 015 (Channel Provider Routing). Ver
+sección "Next Step" arriba para el orden completo de la nueva tanda de specs.
