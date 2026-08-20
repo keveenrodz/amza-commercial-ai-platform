@@ -105,7 +105,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 013b Design System Alignment | ✅ | ✅ | ✅ | ✅ |
 | 014 Admin Governance & Access Control | ✅ | ✅ | ✅ | ✅ |
 | 015 Channel Provider Routing | ✅ | ✅ | ✅ | ✅ |
-| 016 WhatsApp Integration (Evolution API) | ✅ | ⬜ | ⬜ | ⬜ |
+| 016 WhatsApp Integration (Evolution API) | ✅ | ✅ | ✅ | ✅ |
 | 017 Admin Panel | ✅ | ⬜ | ⬜ | ⬜ |
 
 ---
@@ -686,6 +686,48 @@ después de la ronda de refinamientos de arriba):**
   `test_channel_provider_registry.py` y `test_health.py`) en backend. Sin cambios de frontend, sin
   necesidad de Playwright
 
+**WhatsApp Integration (spec 016) ya implementado:**
+
+* Segundo canal real, registrado en `ChannelProviderRegistry` (spec 015 era exactamente el
+  prerrequisito para esto — ningún caso de uso se tocó de nuevo, solo `app/dependencies.py`)
+* Problema arquitectónico real que motivó la mitad del spec: `send()` se llama **dentro** de la
+  transacción que persiste el mensaje (decisión de spec 006), y el ritmo anti-baneo necesario
+  (30s en la primera respuesta automática de una conversación, 2-15s aleatorios después, más una
+  separación mínima entre envíos consecutivos) puede tardar más de lo que SQLite con un solo
+  escritor tolera con una transacción abierta. Resuelto sin tocar esa garantía para Telegram:
+  `WhatsAppChannelProvider.send()` encola y retorna casi de inmediato; un único worker
+  supervisado en segundo plano (arrancado/detenido en `app/lifecycle.py`, nunca un
+  `asyncio.create_task()` por request — ese patrón se descartó explícitamente en spec 006)
+  drena la cola con el ritmo real
+* `ChannelProvider.send()` gana `is_first_reply: bool = False` (con default, no rompe a
+  Telegram, que lo acepta y lo ignora); `ReceiveIncomingMessageUseCase` lo calcula contando
+  mensajes de la conversación **antes** de guardar la respuesta de la IA — el proveedor nunca
+  consulta la BD por su cuenta (mismo principio que ya corrigió el bug real de
+  `TelegramChannelProvider` en spec 006)
+* `POST /webhooks/whatsapp/{organization_slug}` (evento `MESSAGES_UPSERT`), mismo patrón que
+  `telegram_webhook.py`: siempre 200 salvo secreto inválido, cualquier fallo de procesamiento se
+  loguea y se absorbe. `verify_whatsapp_secret` — header propio (`X-Webhook-Secret`), no
+  confirmado al 100% en la documentación de Evolution API que se reenvíe tal cual, con un plan B
+  documentado (mover el secreto a la URL) si en producción no fuera así
+  * Los DTOs del payload (`app/api/dto/whatsapp.py`) son un **modelo tentativo** — la
+    documentación de Evolution API no publicó un ejemplo real de payload; se ajusta contra uno
+    real capturado al conectar un número de verdad, mismo criterio que ya usa `TelegramUpdate`
+* `scripts/register_whatsapp_instance.py` (nuevo) — crea la instancia + registra el webhook en
+  la misma llamada, guarda el QR como `.png` para escanear. Sin UI de conexión/QR en `/admin`
+  todavía — deliberadamente fuera de alcance, es spec 017
+* Riesgo aceptado, mismo espíritu que "sin cola de reintentos para fallos de infraestructura"
+  (ya en la tabla de Production Risks de abajo): la cola vive en memoria del proceso — si se cae
+  con mensajes encolados sin enviar, esos mensajes ya están en la BD pero el cliente nunca los
+  recibió
+* Validado: `ruff`, `mypy` (los 5 errores preexistentes en `scripts/seed_dev_data.py`, no
+  relacionados), `pytest` (69 tests, 13 nuevos entre `test_whatsapp_provider.py` —incluida la
+  separación mínima entre envíos consecutivos, verificada con delays encogidos a milisegundos en
+  vez de parchar `asyncio.sleep`/`time.monotonic` globalmente, más riesgoso al ser módulos
+  compartidos por todo el proceso— y `test_whatsapp_webhook.py`) en backend. Backend reiniciado y
+  confirmado arrancando limpio con el worker arrancando/deteniéndose sin warnings; `GET
+  /health/ready` ya reporta `whatsapp: false` (sin credenciales reales de Evolution API todavía)
+  sin haber tenido que tocar `health.py` de nuevo. Sin cambios de frontend
+
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
 
@@ -821,11 +863,11 @@ Política vigente desde spec 008: toda spec nueva debe incluir tests de lo que i
 modifica comportamiento existente, actualiza los tests afectados (ver
 `03_Engineering_Principles.md`).
 
-**Siguiente acción: specs 011, 012, 013, 013b, 014 y 015 implementadas, validadas y committed
-(eb6071e, 332708c, 7b59e54, 7d1a6a9, 3e8d86a, e1b1482), más dos tandas de refinamientos post-014
-sobre el panel de administración y el chat (cc33ae7, 6ff94ae, 02c693d, 68c8b20, 2a866e9 — ver
-secciones "Admin panel y refinamientos de chat post-014" y "Buscador general post-014, segunda
-ronda" arriba). Sigue spec 016 (WhatsApp Integration).**
+**Siguiente acción: specs 011, 012, 013, 013b, 014, 015 y 016 implementadas, validadas y
+committed (eb6071e, 332708c, 7b59e54, 7d1a6a9, 3e8d86a, e1b1482, f5d77db), más dos tandas de
+refinamientos post-014 sobre el panel de administración y el chat (cc33ae7, 6ff94ae, 02c693d,
+68c8b20, 2a866e9 — ver secciones "Admin panel y refinamientos de chat post-014" y "Buscador
+general post-014, segunda ronda" arriba). Sigue spec 017 (Admin Panel).**
 
 ---
 
@@ -964,17 +1006,19 @@ If documentation conflicts, the following priority applies:
 # Project Status
 
 🟢 Plataforma completa de punta a punta: dominio, persistencia, memoria conversacional, providers
-reales (Telegram + OpenRouter), API protegida (Google OAuth + JWT), y un frontend real (Advisor
-Workspace) donde un asesor humano puede tomar una conversación, **responderle al cliente**, y
-devolverla a IA — validado manualmente con login real y Telegram real, sin bugs conocidos.
-Siguiente: se pospuso el piloto operativo para completar más la plataforma primero (UI rediseñada,
-WhatsApp, panel de administración, base de conocimiento, multimedia) — specs 011 (Navigation Shell
-& Theming), 012 (Chat Panel Redesign), 013 (Contact Enrichment & Follow-ups), 013b (Design System
-Alignment, spec correctiva que portó la paleta/tipografía/layout reales del mockup — ver esa
-sección para el porqué), 014 (Admin Governance & Access Control) y 015 (Channel Provider Routing)
-ya implementadas, validadas y committed, más dos tandas de refinamientos post-014 sobre
+reales (Telegram + OpenRouter, más WhatsApp vía Evolution API ya implementado y con tests propios
+pero sin una instancia real todavía provisionada — ver spec 016), API protegida (Google OAuth +
+JWT), y un frontend real (Advisor Workspace) donde un asesor humano puede tomar una conversación,
+**responderle al cliente**, y devolverla a IA — validado manualmente con login real y Telegram
+real, sin bugs conocidos. Siguiente: se pospuso el piloto operativo para completar más la
+plataforma primero (UI rediseñada, WhatsApp, panel de administración, base de conocimiento,
+multimedia) — specs 011 (Navigation Shell & Theming), 012 (Chat Panel Redesign), 013 (Contact
+Enrichment & Follow-ups), 013b (Design System Alignment, spec correctiva que portó la
+paleta/tipografía/layout reales del mockup — ver esa sección para el porqué), 014 (Admin
+Governance & Access Control), 015 (Channel Provider Routing) y 016 (WhatsApp Integration) ya
+implementadas, validadas y committed, más dos tandas de refinamientos post-014 sobre
 administración y chat (edición de usuarios, notas de sistema en el hilo, conteo real de no
 leídos, vista previa del último mensaje, buscador con navegación entre coincidencias, apertura
 automática de un único resultado de búsqueda, botón de limpiar que vuelve a la conversación de
-antes). Sigue spec 016 (WhatsApp Integration). Ver sección "Next Step" arriba para el orden
-completo de la nueva tanda de specs.
+antes). Sigue spec 017 (Admin Panel). Ver sección "Next Step" arriba para el orden completo de
+la nueva tanda de specs.
