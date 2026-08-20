@@ -104,7 +104,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 013 Contact Enrichment & Follow-ups | ✅ | ✅ | ✅ | ✅ |
 | 013b Design System Alignment | ✅ | ✅ | ✅ | ✅ |
 | 014 Admin Governance & Access Control | ✅ | ✅ | ✅ | ✅ |
-| 015 Channel Provider Routing | ✅ | ⬜ | ⬜ | ⬜ |
+| 015 Channel Provider Routing | ✅ | ✅ | ✅ | ✅ |
 | 016 WhatsApp Integration (Evolution API) | ✅ | ⬜ | ⬜ | ⬜ |
 | 017 Admin Panel | ✅ | ⬜ | ⬜ | ⬜ |
 
@@ -630,6 +630,62 @@ They must NOT be modified unless a formal architecture decision is made.
   (16/16, 2 tests nuevos en `admin.spec.ts`) en frontend, más verificación visual con capturas
   ad-hoc de cada pieza (header, composer bloqueado, buscador, fila de edición)
 
+**Buscador general post-014, segunda ronda (feedback del usuario validando en el navegador,
+después de la ronda de refinamientos de arriba):**
+
+* Bug real: los resultados de búsqueda general seguían filtrándose por la pestaña activa
+  (IA/Mías/Todas) — un resultado asignado a un humano desaparecía si la pestaña activa era "IA"
+  (la de por defecto al entrar), dando la impresión de que el buscador "no encontraba nada". La
+  búsqueda es global por diseño; ahora se le hace bypass al filtro de tab
+* Bug real: `/opportunities/[id]` es la misma instancia de componente para cualquier id (rutas
+  hermanas bajo el layout compartido, spec 013b) — el estado de búsqueda interna (`showSearch`/
+  `searchQuery`, precargado desde `?q=`) solo se sembraba una vez al montar, así que navegar de un
+  resultado de búsqueda a otro sin desmontar la página lo dejaba desactualizado. Ahora se
+  resincroniza cada vez que cambia el id o el query param
+* Bug real de auto-scroll: el efecto que hace scroll al match dependía solo de
+  `searchQuery`/`matchIndex` (ninguno cambia al cargar), así que corría una vez mientras el hilo
+  todavía era el placeholder "Cargando..." (ref nulo) y nunca de nuevo una vez el hilo real se
+  montaba. Ahora depende también de `isLoading` (pasa de true a false una sola vez por
+  conversación, no en cada poll de refetch)
+* Confirmado con el usuario en vivo que, con esos tres bugs corregidos, el flujo de clic (buscar →
+  clic en el resultado → conversación abierta con el match resaltado y con scroll) ya funcionaba
+  bien — lo único que faltaba era que un único resultado siguiera exigiendo el clic. Se agregó
+  apertura automática cuando la búsqueda resuelve a exactamente un resultado (con más de uno,
+  sigue exigiendo clic — no hay forma de adivinar cuál sin ambigüedad)
+* Botón de limpiar (X) en el buscador general — al principio solo vaciaba el texto, dejando al
+  asesor varado en la conversación a la que la búsqueda lo hubiera llevado. Ahora recuerda en qué
+  conversación estaba antes de empezar a buscar (capturado una sola vez, en la transición de vacío
+  a no vacío) y vuelve ahí al limpiar
+* Validado: `tsc`, `eslint`, `vitest`, Playwright (20/20, 4 tests nuevos en
+  `advisor-workspace.spec.ts`) en frontend, más varios scripts de Playwright ad-hoc contra el
+  backend y frontend reales (no solo mockeados) para reproducir cada bug exactamente como lo
+  reportó el usuario antes de confirmarlo corregido
+
+**Channel Provider Routing (spec 015) ya implementado:**
+
+* Backend-only, sin superficie de frontend. Prerrequisito real de spec 016 (WhatsApp
+  Integration): antes de este spec, `app/dependencies.py::get_channel_provider()` construía **un
+  solo** `TelegramChannelProvider`, inyectado tanto en `ReceiveIncomingMessageUseCase` como en
+  `SendAdvisorReplyUseCase` — funcionaba porque solo existe un canal real hoy, pero en el momento
+  en que existiera un `Contact` de WhatsApp, responderle seguiría intentando enviar por la API de
+  Telegram, silenciosamente mal
+* `app/services/channel_provider_registry.py` (nuevo) — `ChannelProviderRegistry`, clase concreta
+  de composición (no un `Protocol` nuevo), resuelve el `ChannelProvider` correcto por
+  `contact.channel_type` en el momento de enviar. `UnsupportedChannelError` nueva en
+  `core/exceptions/domain.py` — deliberadamente sin bucket en `app/exceptions.py` (cae en el
+  handler genérico de `DomainError`, 400 + warning): es un error de configuración de despliegue
+  (canal nuevo sin provider registrado), no una respuesta esperada del usuario
+* `ReceiveIncomingMessageUseCase`/`SendAdvisorReplyUseCase` reciben `channel_provider_registry`
+  en vez de `channel_provider`; ninguna otra lógica de negocio cambia
+* `GET /health/ready` generalizado — itera `channel_registry.all()` en vez de reportar una clave
+  `"telegram"` fija; con un solo canal registrado (el caso de hoy) la respuesta no cambia
+* Cuando spec 016 agregue `WhatsAppChannelProvider`, el único cambio en `app/dependencies.py` es
+  una línea más en el diccionario del registro — ninguno de los dos casos de uso se vuelve a tocar
+* Validado: `ruff`, `mypy` (los 5 errores preexistentes en `scripts/seed_dev_data.py` no
+  relacionados, confirmado con `git stash`), `pytest` (56 tests, 5 nuevos entre
+  `test_channel_provider_registry.py` y `test_health.py`) en backend. Sin cambios de frontend, sin
+  necesidad de Playwright
+
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
 
@@ -765,10 +821,11 @@ Política vigente desde spec 008: toda spec nueva debe incluir tests de lo que i
 modifica comportamiento existente, actualiza los tests afectados (ver
 `03_Engineering_Principles.md`).
 
-**Siguiente acción: specs 011, 012, 013, 013b y 014 implementadas, validadas y committed (eb6071e,
-332708c, 7b59e54, 7d1a6a9, 3e8d86a), más una tanda de refinamientos post-014 sobre el panel de
-administración y el chat (cc33ae7, ver sección "Admin panel y refinamientos de chat post-014"
-arriba). Sigue spec 015 (Channel Provider Routing).**
+**Siguiente acción: specs 011, 012, 013, 013b, 014 y 015 implementadas, validadas y committed
+(eb6071e, 332708c, 7b59e54, 7d1a6a9, 3e8d86a, e1b1482), más dos tandas de refinamientos post-014
+sobre el panel de administración y el chat (cc33ae7, 6ff94ae, 02c693d, 68c8b20, 2a866e9 — ver
+secciones "Admin panel y refinamientos de chat post-014" y "Buscador general post-014, segunda
+ronda" arriba). Sigue spec 016 (WhatsApp Integration).**
 
 ---
 
@@ -914,8 +971,10 @@ Siguiente: se pospuso el piloto operativo para completar más la plataforma prim
 WhatsApp, panel de administración, base de conocimiento, multimedia) — specs 011 (Navigation Shell
 & Theming), 012 (Chat Panel Redesign), 013 (Contact Enrichment & Follow-ups), 013b (Design System
 Alignment, spec correctiva que portó la paleta/tipografía/layout reales del mockup — ver esa
-sección para el porqué) y 014 (Admin Governance & Access Control) ya implementadas, validadas y
-committed, más una tanda de refinamientos post-014 sobre administración y chat (edición de
-usuarios, notas de sistema en el hilo, conteo real de no leídos, vista previa del último mensaje,
-buscador con navegación entre coincidencias). Sigue spec 015 (Channel Provider Routing). Ver
-sección "Next Step" arriba para el orden completo de la nueva tanda de specs.
+sección para el porqué), 014 (Admin Governance & Access Control) y 015 (Channel Provider Routing)
+ya implementadas, validadas y committed, más dos tandas de refinamientos post-014 sobre
+administración y chat (edición de usuarios, notas de sistema en el hilo, conteo real de no
+leídos, vista previa del último mensaje, buscador con navegación entre coincidencias, apertura
+automática de un único resultado de búsqueda, botón de limpiar que vuelve a la conversación de
+antes). Sigue spec 016 (WhatsApp Integration). Ver sección "Next Step" arriba para el orden
+completo de la nueva tanda de specs.
