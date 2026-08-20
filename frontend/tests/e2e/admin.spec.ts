@@ -168,6 +168,32 @@ test("un administrador ve el estado de WhatsApp y el QR al conectar", async ({ p
   );
 });
 
+test("el QR se cierra solo en cuanto el estado detecta que ya se conectó", async ({ page }) => {
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: ADMIN_USER }));
+  await page.route("**/api/organizations/*/users", (route) => route.fulfill({ json: EXISTING_USERS }));
+
+  let connected = false;
+  await page.route("**/api/organizations/*/whatsapp/status", (route) =>
+    route.fulfill({ json: { connected } }),
+  );
+  await page.route("**/api/organizations/*/whatsapp/connect", (route) =>
+    route.fulfill({ json: { qrcode_base64: "iVBORfakebase64==" } }),
+  );
+
+  await page.goto("/admin");
+  await page.getByRole("button", { name: "Canales" }).click();
+  await page.getByRole("button", { name: "Conectar" }).click();
+  await expect(page.getByAltText("Código QR de WhatsApp")).toBeVisible();
+
+  // Simula que el administrador ya escaneó desde el teléfono -- nadie hace clic en
+  // "Actualizar estado" aquí, el sondeo mientras el QR está abierto (page.tsx) debe detectarlo
+  // solo y cerrar el diálogo, sin necesitar la acción manual.
+  connected = true;
+
+  await expect(page.getByAltText("Código QR de WhatsApp")).toBeHidden({ timeout: 6000 });
+  await expect(page.getByText("Conectado")).toBeVisible();
+});
+
 test("un asesor no ve 'Administración' y recibe 403 al entrar directo a /admin", async ({
   page,
 }) => {

@@ -32,7 +32,13 @@ async def receive_whatsapp_event(
         logger.warning("whatsapp.webhook.malformed_payload", organization_slug=organization_slug)
         return Response(status_code=200)
 
-    if event.event != "MESSAGES_UPSERT" or event.data.key.fromMe:
+    if event.event != "messages.upsert" or event.data.key.fromMe:
+        # "messages.upsert" (minúsculas, con punto) confirmado contra un payload real -- spec
+        # 016 lo modeló tentativamente como "MESSAGES_UPSERT" (mayúsculas, con guion bajo, el
+        # nombre del evento en el array `events` al registrar el webhook) sin poder confirmarlo
+        # contra la documentación; ese es el valor que de verdad manda Evolution API en el
+        # payload entrante, y no coincidir aquí hacía que el mensaje se ignorara en silencio
+        # (200 sin invocar el caso de uso, sin ningún error visible).
         # fromMe=True es un mensaje que salió de este mismo número (ej. enviado manualmente
         # desde el teléfono vinculado) -- no es un mensaje del cliente, se ignora en silencio.
         return Response(status_code=200)

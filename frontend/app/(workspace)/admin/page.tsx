@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { TelegramIcon, WhatsAppIcon } from "@/components/icons";
 import { useAgent, useUpdateAgent } from "@/hooks/use-agent";
@@ -443,6 +443,20 @@ function WhatsAppChannelCard({ orgSlug }: { orgSlug: string }) {
       { onSuccess: (data) => setQrCode(data.qrcode_base64) },
     );
   }
+
+  // Sondeo acotado -- solo mientras el QR está en pantalla, nunca en segundo plano ni
+  // reconectando sola (esa sigue siendo la regla de la sección 3 del spec 017). Esto es
+  // detectar que el propio administrador, en medio de la acción que él inició, ya terminó de
+  // escanear -- no un polling general de la pantalla.
+  useEffect(() => {
+    if (!qrCode) return;
+    if (status?.connected) {
+      setQrCode(null);
+      return;
+    }
+    const interval = setInterval(() => refetch(), 3000);
+    return () => clearInterval(interval);
+  }, [qrCode, status?.connected, refetch]);
 
   function handleDisconnect() {
     disconnect.mutate(

@@ -25,8 +25,10 @@ class _SpyUseCase:
 
 
 def _valid_payload(**overrides: object) -> dict:
+    # "messages.upsert" (minúsculas, con punto) -- confirmado contra un payload real de
+    # Evolution API en vivo, no el "MESSAGES_UPSERT" tentativo original de spec 016.
     payload = {
-        "event": "MESSAGES_UPSERT",
+        "event": "messages.upsert",
         "data": {
             "key": {
                 "remoteJid": "573001234567@s.whatsapp.net",
