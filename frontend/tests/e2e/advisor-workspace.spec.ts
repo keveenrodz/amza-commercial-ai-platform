@@ -149,6 +149,40 @@ test("un único resultado de búsqueda abre esa conversación automáticamente, 
   await expect(page).toHaveURL(/\/opportunities\/opp-mine\?q=Lito/);
 });
 
+test("limpiar la búsqueda (X) cierra la búsqueda y vuelve a la conversación de antes", async ({
+  page,
+}) => {
+  await page.route("**/api/organizations/*/opportunities/opp-unassigned/history", (route) =>
+    route.fulfill({
+      json: { opportunity: UNASSIGNED_OPPORTUNITY, contact: CONTACT_UNASSIGNED, follow_up: null, messages: [] },
+    }),
+  );
+  await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
+    route.fulfill({
+      json: { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null, messages: [] },
+    }),
+  );
+  await page.route("**/api/organizations/*/opportunities/search**", (route) =>
+    route.fulfill({
+      json: [
+        { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null, last_message_preview: null },
+      ],
+    }),
+  );
+
+  await page.goto("/opportunities/opp-unassigned");
+  await expect(page.getByRole("heading", { name: "Distribuidora El Roble" })).toBeVisible();
+
+  await page.getByPlaceholder("Buscar contacto o mensaje").fill("Lito");
+  await expect(page).toHaveURL(/opp-mine/);
+
+  await page.getByRole("button", { name: "Limpiar búsqueda" }).click();
+
+  await expect(page).toHaveURL("/opportunities/opp-unassigned");
+  await expect(page.getByPlaceholder("Buscar contacto o mensaje")).toHaveValue("");
+  await expect(page.getByRole("heading", { name: "Distribuidora El Roble" })).toBeVisible();
+});
+
 test("varios resultados de búsqueda NO navegan solos -- requieren que el asesor elija con clic", async ({
   page,
 }) => {

@@ -45,6 +45,23 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
   const [tab, setTab] = useState<Tab>("ai");
   const [query, setQuery] = useState("");
   const trimmedQuery = query.trim();
+  // Dónde estaba antes de empezar a buscar -- para que el botón de limpiar (X) pueda devolver
+  // ahí, no solo vaciar el texto. Se captura una sola vez por sesión de búsqueda (transición de
+  // vacío a no vacío), nunca se sobreescribe con los ids a los que la búsqueda te haya llevado
+  // mientras tanto (el auto-open de abajo, por ejemplo).
+  const previousIdRef = useRef<string | undefined>(undefined);
+
+  function handleQueryChange(value: string) {
+    if (value.trim() !== "" && trimmedQuery === "") {
+      previousIdRef.current = selectedId;
+    }
+    setQuery(value);
+  }
+
+  function handleClearSearch() {
+    setQuery("");
+    router.push(previousIdRef.current ? `/opportunities/${previousIdRef.current}` : "/opportunities");
+  }
   const { data: searchResults, isLoading: searchLoading } = useSearchOpportunities(
     currentUser?.organization_slug,
     query,
@@ -186,13 +203,13 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
             <input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => handleQueryChange(e.target.value)}
               placeholder="Buscar contacto o mensaje"
               className="w-full bg-transparent text-[13px] outline-none placeholder:text-ink-faint"
             />
             {query !== "" && (
               <button
-                onClick={() => setQuery("")}
+                onClick={handleClearSearch}
                 aria-label="Limpiar búsqueda"
                 className="flex-shrink-0 text-ink-faint hover:text-ink-muted"
               >
