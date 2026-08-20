@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { CloseIcon, FilterIcon, SearchIcon, SortIcon } from "@/components/icons";
@@ -37,6 +37,7 @@ function allTags(items: OpenOpportunity[]): string[] {
 export default function OpportunitiesLayout({ children }: { children: React.ReactNode }) {
   const params = useParams<{ id?: string }>();
   const selectedId = params.id;
+  const router = useRouter();
   const { data: currentUser } = useCurrentUser();
   const { data: opportunities, isLoading: oppsLoading } = useOpportunities(
     currentUser?.organization_slug,
@@ -49,6 +50,16 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
     query,
   );
   const { data: advisors } = useAdvisors(currentUser?.organization_slug);
+
+  // Abre automáticamente el único resultado -- si hay más de uno, el asesor sigue eligiendo con
+  // clic (no hay forma de adivinar cuál quiere sin ambigüedad). El chequeo contra selectedId
+  // evita un loop: una vez abierto, este mismo efecto ya no vuelve a navegar hacia el mismo id.
+  useEffect(() => {
+    if (trimmedQuery === "" || !searchResults || searchResults.length !== 1) return;
+    const only = searchResults[0];
+    if (only.opportunity.id === selectedId) return;
+    router.push(`/opportunities/${only.opportunity.id}?q=${encodeURIComponent(trimmedQuery)}`);
+  }, [trimmedQuery, searchResults, selectedId, router]);
 
   const [sortIndex, setSortIndex] = useState(0);
   const [assigneeFilter, setAssigneeFilter] = useState("all");

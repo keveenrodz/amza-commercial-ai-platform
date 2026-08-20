@@ -132,6 +132,42 @@ test("buscar por nombre de contacto llama al endpoint de búsqueda", async ({ pa
   await expect.poll(() => searchUrl).toContain("q=Lito");
 });
 
+test("un único resultado de búsqueda abre esa conversación automáticamente, sin clic", async ({
+  page,
+}) => {
+  await page.route("**/api/organizations/*/opportunities/search**", (route) =>
+    route.fulfill({
+      json: [
+        { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null, last_message_preview: null },
+      ],
+    }),
+  );
+
+  await page.goto("/opportunities");
+  await page.getByPlaceholder("Buscar contacto o mensaje").fill("Lito");
+
+  await expect(page).toHaveURL(/\/opportunities\/opp-mine\?q=Lito/);
+});
+
+test("varios resultados de búsqueda NO navegan solos -- requieren que el asesor elija con clic", async ({
+  page,
+}) => {
+  await page.route("**/api/organizations/*/opportunities/search**", (route) =>
+    route.fulfill({
+      json: [
+        { opportunity: UNASSIGNED_OPPORTUNITY, contact: CONTACT_UNASSIGNED, follow_up: null, last_message_preview: null },
+        { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null, last_message_preview: null },
+      ],
+    }),
+  );
+
+  await page.goto("/opportunities");
+  await page.getByPlaceholder("Buscar contacto o mensaje").fill("a");
+  await page.waitForTimeout(500);
+
+  await expect(page).toHaveURL("/opportunities");
+});
+
 test("buscar por una palabra que solo existe en un mensaje encuentra la conversación", async ({
   page,
 }) => {
