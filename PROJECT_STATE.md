@@ -106,7 +106,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 014 Admin Governance & Access Control | ✅ | ✅ | ✅ | ✅ |
 | 015 Channel Provider Routing | ✅ | ✅ | ✅ | ✅ |
 | 016 WhatsApp Integration (Evolution API) | ✅ | ✅ | ✅ | ✅ |
-| 017 Admin Panel | ✅ | ⬜ | ⬜ | ⬜ |
+| 017 Admin Panel | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -728,6 +728,42 @@ después de la ronda de refinamientos de arriba):**
   /health/ready` ya reporta `whatsapp: false` (sin credenciales reales de Evolution API todavía)
   sin haber tenido que tocar `health.py` de nuevo. Sin cambios de frontend
 
+**Admin Panel (spec 017) ya implementado:**
+
+* Cierra `/admin` con las dos piezas que faltaban del pedido original: editar el prompt del
+  agente (principal + reglas de escalamiento) y conectar/desconectar WhatsApp — lo que spec 016
+  dejó deliberadamente fuera
+* `Agent.escalation_rules` (migración 0007, columna simple sin constraint) — campo separado de
+  `system_prompt`, no porque cambie cómo el modelo las recibe (se concatenan igual al armar el
+  mensaje de sistema: prompt, luego reglas de escalamiento, luego resumen de la conversación),
+  sino porque un administrador editando el prompt necesita distinguir "cómo debe hablar el
+  agente" de "cuándo debe ceder a un humano" sin desenredar un solo bloque de texto
+* `GET`/`PUT /organizations/{slug}/agent`, protegido con `require_role(ADMINISTRATOR)` (mismo
+  criterio que `/users` en spec 014 — cambiar cómo responde la IA no es una acción de asesor).
+  Sin versionado ni historial del prompt — no se pidió
+* `WhatsAppChannelProvider` gana `get_qr_code()`/`disconnect()` — administración de la
+  instancia, deliberadamente fuera del `ChannelProvider` Protocol (mismo criterio que
+  `start()`/`stop()` en spec 016: `TelegramChannelProvider` no los necesita).
+  `GET`/`POST /organizations/{slug}/whatsapp/{status,connect,disconnect}` resuelven el provider
+  del mismo `ChannelProviderRegistry` (spec 015) que ya usan los casos de uso de mensajería
+* Frontend: `/admin` se reorganiza en pestañas (Usuarios sin cambios, nuevas Agente y Canales).
+  Agente: dos `<textarea>` + input de modelo (texto libre — no existe ningún catálogo de modelos
+  definido en el proyecto para justificar un `<select>` con opciones inventadas) + botón
+  "Guardar", sin autoguardado (un prompt mal guardado a mitad de escritura afecta a la IA
+  respondiéndole a clientes reales de inmediato). Canales: Telegram solo lectura
+  ("Configurado"); WhatsApp con insignia Conectado/Desconectado, refresco manual (sin polling,
+  coherente con "nunca reconectar sola"), botón Conectar que muestra el QR devuelto, botón
+  Desconectar con confirmación (es destructivo — corta el servicio real hasta que alguien vuelva
+  a escanear)
+* Validado: `ruff`, `mypy` (5 errores preexistentes en `scripts/seed_dev_data.py`, no
+  relacionados), `pytest` (75 tests, 6 nuevos en `test_admin_panel.py`) en backend; `tsc`,
+  `eslint`, `vitest`, `next build`, y Playwright (22/22, 2 tests nuevos en `admin.spec.ts`) en
+  frontend, más verificación visual con capturas ad-hoc de las tres pestañas contra el backend
+  real. Migración aplicada a la BD de desarrollo real y backend reiniciado; `GET`/`PUT /agent` y
+  `GET /whatsapp/status` probados en vivo contra la BD real (sin instancia real de Evolution API
+  todavía — `/whatsapp/connect` responde el error genérico esperado, mostrado correctamente en
+  la UI sin romper nada)
+
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
 
@@ -863,11 +899,11 @@ Política vigente desde spec 008: toda spec nueva debe incluir tests de lo que i
 modifica comportamiento existente, actualiza los tests afectados (ver
 `03_Engineering_Principles.md`).
 
-**Siguiente acción: specs 011, 012, 013, 013b, 014, 015 y 016 implementadas, validadas y
-committed (eb6071e, 332708c, 7b59e54, 7d1a6a9, 3e8d86a, e1b1482, f5d77db), más dos tandas de
-refinamientos post-014 sobre el panel de administración y el chat (cc33ae7, 6ff94ae, 02c693d,
-68c8b20, 2a866e9 — ver secciones "Admin panel y refinamientos de chat post-014" y "Buscador
-general post-014, segunda ronda" arriba). Sigue spec 017 (Admin Panel).**
+**Siguiente acción: specs 011, 012, 013, 013b, 014, 015, 016 y 017 implementadas, validadas y
+committed (eb6071e, 332708c, 7b59e54, 7d1a6a9, 3e8d86a, e1b1482, f5d77db, 5422047), más dos
+tandas de refinamientos post-014 sobre el panel de administración y el chat (cc33ae7, 6ff94ae,
+02c693d, 68c8b20, 2a866e9 — ver secciones "Admin panel y refinamientos de chat post-014" y
+"Buscador general post-014, segunda ronda" arriba). Sigue spec 018 (Knowledge Base).**
 
 ---
 
@@ -1015,10 +1051,10 @@ plataforma primero (UI rediseñada, WhatsApp, panel de administración, base de 
 multimedia) — specs 011 (Navigation Shell & Theming), 012 (Chat Panel Redesign), 013 (Contact
 Enrichment & Follow-ups), 013b (Design System Alignment, spec correctiva que portó la
 paleta/tipografía/layout reales del mockup — ver esa sección para el porqué), 014 (Admin
-Governance & Access Control), 015 (Channel Provider Routing) y 016 (WhatsApp Integration) ya
-implementadas, validadas y committed, más dos tandas de refinamientos post-014 sobre
-administración y chat (edición de usuarios, notas de sistema en el hilo, conteo real de no
+Governance & Access Control), 015 (Channel Provider Routing), 016 (WhatsApp Integration) y 017
+(Admin Panel) ya implementadas, validadas y committed, más dos tandas de refinamientos post-014
+sobre administración y chat (edición de usuarios, notas de sistema en el hilo, conteo real de no
 leídos, vista previa del último mensaje, buscador con navegación entre coincidencias, apertura
 automática de un único resultado de búsqueda, botón de limpiar que vuelve a la conversación de
-antes). Sigue spec 017 (Admin Panel). Ver sección "Next Step" arriba para el orden completo de
-la nueva tanda de specs.
+antes). Sigue spec 018 (Knowledge Base). Ver sección "Next Step" arriba para el orden completo
+de la nueva tanda de specs.

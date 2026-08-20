@@ -42,7 +42,7 @@ Orden de implementación:
 | 014 Admin Governance & Access Control | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (3e8d86a) |
 | 015 Channel Provider Routing | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (e1b1482) |
 | 016 WhatsApp Integration (Evolution API) | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (f5d77db) |
-| 017 Admin Panel | ✅ spec + ⬜ implementado + ⬜ validado + ⬜ committed |
+| 017 Admin Panel | ✅ spec + ✅ implementado + ✅ validado + ✅ committed (5422047) |
 
 La propuesta original de spec 006 (más abajo, tachada) se dividió en la práctica: la memoria
 conversacional y los providers quedaron en 006, la capa HTTP pasó a un spec 007 separado. Detalle
@@ -66,10 +66,10 @@ partió la propuesta original de spec 006 (ver más abajo). Orden vigente:
 (subida de archivos) → 019 Media Library (almacenamiento e inbound media). No implementar más de
 una a la vez, misma regla de siempre.
 
-**Siguiente acción: specs 011, 012, 013, 013b, 014, 015 y 016 implementadas, validadas y
-committed (eb6071e, 332708c, 7b59e54, 7d1a6a9, 3e8d86a, e1b1482, f5d77db), más dos tandas de
-refinamientos post-014 de administración/chat (cc33ae7, 6ff94ae, 02c693d, 68c8b20, 2a866e9).
-Sigue spec 017 (Admin Panel).**
+**Siguiente acción: specs 011, 012, 013, 013b, 014, 015, 016 y 017 implementadas, validadas y
+committed (eb6071e, 332708c, 7b59e54, 7d1a6a9, 3e8d86a, e1b1482, f5d77db, 5422047), más dos
+tandas de refinamientos post-014 de administración/chat (cc33ae7, 6ff94ae, 02c693d, 68c8b20,
+2a866e9). Sigue spec 018 (Knowledge Base).**
 
 <details>
 <summary>Propuesta original de spec 006 (histórica, no lo que terminó pasando — ver arriba)</summary>
