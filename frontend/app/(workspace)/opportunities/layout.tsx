@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { FilterIcon, SearchIcon, SortIcon } from "@/components/icons";
+import { CloseIcon, FilterIcon, SearchIcon, SortIcon } from "@/components/icons";
 import { ChannelChip, FollowUpChip, StatusChip, initials } from "@/components/status-chips";
 import { useAdvisors } from "@/hooks/use-advisors";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -179,6 +179,15 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
               placeholder="Buscar contacto o mensaje"
               className="w-full bg-transparent text-[13px] outline-none placeholder:text-ink-faint"
             />
+            {query !== "" && (
+              <button
+                onClick={() => setQuery("")}
+                aria-label="Limpiar búsqueda"
+                className="flex-shrink-0 text-ink-faint hover:text-ink-muted"
+              >
+                <CloseIcon className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           <nav className="mb-2.5 flex gap-1.5">

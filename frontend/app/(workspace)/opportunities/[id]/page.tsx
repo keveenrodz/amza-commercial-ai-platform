@@ -45,6 +45,17 @@ export default function OpportunityDetailPage() {
   // mensaje que hizo match, en vez de solo mostrar la conversación desde el principio.
   const [showSearch, setShowSearch] = useState(() => Boolean(searchParams.get("q")));
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("q") ?? "");
+
+  // Re-sincroniza desde ?q= cada vez que cambia la conversación -- /opportunities/[id] es la
+  // misma instancia de componente para cualquier id (rutas hermanas bajo el mismo layout, spec
+  // 013b), así que el useState de arriba solo corre una vez y se queda desactualizado si el
+  // asesor va de un resultado de búsqueda a otro (o de un resultado a una conversación normal
+  // desde la barra lateral, ya sin ?q=) sin desmontar esta página.
+  useEffect(() => {
+    const q = searchParams.get("q");
+    setShowSearch(Boolean(q));
+    setSearchQuery(q ?? "");
+  }, [params.id, searchParams]);
   const [matchCount, setMatchCount] = useState(0);
   const [matchIndex, setMatchIndex] = useState(0);
   const [showContactPanel, setShowContactPanel] = useState(false);
@@ -106,14 +117,17 @@ export default function OpportunityDetailPage() {
     setMatchIndex(0);
   }, [searchQuery]);
 
-  // Auto-scroll al match actual -- NO depende de los mensajes, solo de la búsqueda/índice, para
-  // no arrastrar la vista de vuelta cada vez que un poll trae contenido nuevo mientras el usuario
-  // está leyendo otra parte de la conversación.
+  // Auto-scroll al match actual. Depende también de isLoading: al entrar desde un resultado de
+  // búsqueda general, este efecto corre primero durante el render de "Cargando..." (threadRef
+  // todavía null, no hace nada) y sin esta dependencia nunca se re-ejecutaba una vez el hilo real
+  // se montaba con los <mark> ya en el DOM. isLoading es true->false una sola vez por conversación
+  // (React Query, no por cada poll de refetchInterval con datos ya en caché), así que esto no
+  // arrastra la vista de vuelta en cada mensaje nuevo mientras el usuario lee otra parte del hilo.
   useEffect(() => {
     if (!searchQuery.trim() || !threadRef.current) return;
     const marks = threadRef.current.querySelectorAll("mark");
     marks[matchIndex]?.scrollIntoView({ block: "center" });
-  }, [searchQuery, matchIndex]);
+  }, [searchQuery, matchIndex, isLoading]);
 
   if (!currentUser || isLoading || !history) {
     return <p className="flex-1 p-8">Cargando...</p>;

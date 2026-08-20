@@ -288,6 +288,75 @@ test("buscar dentro de la conversación resalta la coincidencia", async ({ page 
   await expect(page.locator("mark", { hasText: "corrugadas" })).toBeVisible();
 });
 
+test("un resultado de la búsqueda general abre esa conversación y hace scroll al mensaje", async ({
+  page,
+}) => {
+  const MESSAGE_MATCH_CONTACT = { display_name: "Fábrica ABC", phone_number: null, tags: [], is_favorite: false };
+  const MESSAGE_MATCH_OPPORTUNITY = {
+    ...UNASSIGNED_OPPORTUNITY,
+    id: "opp-message-match",
+    contact_id: "contact-3",
+    attention_mode: "human",
+  };
+  // Suficiente relleno para que el mensaje que hace match no esté ya visible sin hacer scroll.
+  const filler = Array.from({ length: 30 }, (_, i) => ({
+    id: `filler-${i}`,
+    sender_role: "user",
+    content: `Mensaje de relleno ${i}`,
+    content_type: "text",
+    sent_at: "2026-01-01T00:00:00Z",
+  }));
+  const matchMessage = {
+    id: "msg-match",
+    sender_role: "user",
+    content: "¿Tienen disponibles guacales de exportación?",
+    content_type: "text",
+    sent_at: "2026-01-01T00:00:00Z",
+  };
+
+  await page.route("**/api/organizations/*/opportunities/opp-mine/history", (route) =>
+    route.fulfill({
+      json: { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null, messages: [] },
+    }),
+  );
+  await page.route("**/api/organizations/*/opportunities/opp-message-match/history", (route) =>
+    route.fulfill({
+      json: {
+        opportunity: MESSAGE_MATCH_OPPORTUNITY,
+        contact: MESSAGE_MATCH_CONTACT,
+        follow_up: null,
+        messages: [...filler, matchMessage],
+      },
+    }),
+  );
+  await page.route("**/api/organizations/*/opportunities/search**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          opportunity: MESSAGE_MATCH_OPPORTUNITY,
+          contact: MESSAGE_MATCH_CONTACT,
+          follow_up: null,
+          last_message_preview: null,
+        },
+      ],
+    }),
+  );
+
+  // Empieza en otra conversación ya abierta -- regresión real: /opportunities/[id] es la misma
+  // instancia de componente para cualquier id, y navegar de una a otra sin desmontarla dejaba el
+  // panel principal mostrando la conversación vieja en vez de la que trae el resultado.
+  await page.goto("/opportunities/opp-mine");
+  await expect(page.getByRole("heading", { name: "Litoempaques S.A.S." })).toBeVisible();
+
+  await page.getByPlaceholder("Buscar contacto o mensaje").fill("guacal");
+  await page.getByText("Fábrica ABC").click();
+
+  await expect(page.getByRole("heading", { name: "Fábrica ABC" })).toBeVisible();
+  const match = page.locator("mark", { hasText: "guacal" });
+  await expect(match).toBeVisible();
+  await expect(match).toBeInViewport();
+});
+
 test("panel de cliente: agregar una etiqueta y una nota", async ({ page }) => {
   let contactTags: string[] = [];
   const notes: { id: string; author_name: string; content: string; created_at: string }[] = [];
