@@ -103,6 +103,71 @@ test("editar un usuario cambia nombre y rol en la tabla", async ({ page }) => {
   await expect(page.getByText("Juan Pérez Editado")).toBeVisible();
 });
 
+test("un administrador edita el prompt del agente y lo ve reflejado tras recargar", async ({
+  page,
+}) => {
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: ADMIN_USER }));
+  await page.route("**/api/organizations/*/users", (route) => route.fulfill({ json: EXISTING_USERS }));
+
+  let agent = {
+    id: "agent-1",
+    name: "Asistente Comercial",
+    system_prompt: "Eres un asistente comercial.",
+    escalation_rules: "",
+    model: "openai/gpt-4.1-nano",
+  };
+  await page.route("**/api/organizations/*/agent", (route) => {
+    if (route.request().method() === "GET") {
+      return route.fulfill({ json: agent });
+    }
+    const body = route.request().postDataJSON();
+    agent = { ...agent, ...body };
+    return route.fulfill({ json: agent });
+  });
+
+  await page.goto("/admin");
+  await page.getByRole("button", { name: "Agente" }).click();
+
+  // El prompt principal es el primer <textarea>/<input> de la pestaña (antes de reglas de
+  // escalamiento y modelo).
+  const promptBox = page.getByRole("textbox").first();
+  await expect(promptBox).toHaveValue("Eres un asistente comercial.");
+  await promptBox.fill("Eres el asistente comercial de Amza Empaques.");
+  await page.getByRole("button", { name: "Guardar" }).click();
+
+  await expect(page.getByText("Guardado.")).toBeVisible();
+
+  // Recarga -- el valor guardado debe venir del backend, no solo quedarse en el estado local.
+  await page.reload();
+  await page.getByRole("button", { name: "Agente" }).click();
+  await expect(page.getByRole("textbox").first()).toHaveValue(
+    "Eres el asistente comercial de Amza Empaques.",
+  );
+});
+
+test("un administrador ve el estado de WhatsApp y el QR al conectar", async ({ page }) => {
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: ADMIN_USER }));
+  await page.route("**/api/organizations/*/users", (route) => route.fulfill({ json: EXISTING_USERS }));
+  await page.route("**/api/organizations/*/whatsapp/status", (route) =>
+    route.fulfill({ json: { connected: false } }),
+  );
+  await page.route("**/api/organizations/*/whatsapp/connect", (route) =>
+    route.fulfill({ json: { qrcode_base64: "iVBORfakebase64==" } }),
+  );
+
+  await page.goto("/admin");
+  await page.getByRole("button", { name: "Canales" }).click();
+
+  await expect(page.getByText("Desconectado")).toBeVisible();
+  await page.getByRole("button", { name: "Conectar" }).click();
+
+  await expect(page.getByAltText("Código QR de WhatsApp")).toBeVisible();
+  await expect(page.getByAltText("Código QR de WhatsApp")).toHaveAttribute(
+    "src",
+    "data:image/png;base64,iVBORfakebase64==",
+  );
+});
+
 test("un asesor no ve 'Administración' y recibe 403 al entrar directo a /admin", async ({
   page,
 }) => {

@@ -48,11 +48,15 @@ class OpenRouterAIProvider:
         if agent is None:
             raise AgentNotFoundError(agent_id)
 
+        # Orden: prompt principal, luego reglas de escalamiento, luego resumen -- el resumen va
+        # al final porque es lo más específico de la conversación actual (spec 017 sección 1).
         system_content = agent.system_prompt
-        if context.summary:
-            system_content = (
-                f"{agent.system_prompt}\n\n---\nResumen de la conversación:\n{context.summary}"
+        if agent.escalation_rules:
+            system_content += (
+                f"\n\n---\nCuándo derivar a un humano:\n{agent.escalation_rules}"
             )
+        if context.summary:
+            system_content += f"\n\n---\nResumen de la conversación:\n{context.summary}"
 
         messages: list[dict[str, str]] = [{"role": "system", "content": system_content}]
         messages.extend(

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { TelegramIcon, WhatsAppIcon } from "@/components/icons";
+import { useAgent, useUpdateAgent } from "@/hooks/use-agent";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   useActivateInternalUser,
@@ -10,12 +12,25 @@ import {
   useInternalUsers,
   useUpdateInternalUser,
 } from "@/hooks/use-internal-users";
+import {
+  useConnectWhatsApp,
+  useDisconnectWhatsApp,
+  useWhatsAppStatus,
+} from "@/hooks/use-whatsapp-status";
 import type { InternalUserSummary } from "@/types/api";
 
 const ROLE_LABELS: Record<InternalUserSummary["role"], string> = {
   advisor: "Asesor",
   administrator: "Administrador",
 };
+
+type Tab = "users" | "agent" | "channels";
+
+const TABS: { value: Tab; label: string }[] = [
+  { value: "users", label: "Usuarios" },
+  { value: "agent", label: "Agente" },
+  { value: "channels", label: "Canales" },
+];
 
 // Solo cortesía de UX -- quien de verdad impide la acción es el backend (spec 014, sección 4).
 // Si este chequeo y el del servidor se desincronizaran, el botón fallaría en el servidor en vez
@@ -110,9 +125,14 @@ function EditUserRow({
   );
 }
 
-export default function AdminPage() {
-  const { data: currentUser } = useCurrentUser();
-  const { data: users, isLoading } = useInternalUsers(currentUser?.organization_slug);
+function UsersTab({
+  orgSlug,
+  currentUser,
+}: {
+  orgSlug: string;
+  currentUser: { id: string; is_primary: boolean };
+}) {
+  const { data: users, isLoading } = useInternalUsers(orgSlug);
   const createUser = useCreateInternalUser();
   const deactivateUser = useDeactivateInternalUser();
   const activateUser = useActivateInternalUser();
@@ -122,23 +142,6 @@ export default function AdminPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"advisor" | "administrator">("advisor");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-
-  if (!currentUser) {
-    return <p className="flex-1 p-8">Cargando...</p>;
-  }
-
-  if (currentUser.role !== "administrator") {
-    return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center text-ink-muted">
-        <h2 className="font-heading text-lg font-bold text-ink">Acceso restringido</h2>
-        <p className="max-w-sm text-sm">
-          Solo un administrador puede ver esta página.
-        </p>
-      </main>
-    );
-  }
-
-  const orgSlug = currentUser.organization_slug;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -157,9 +160,8 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="flex-1 overflow-y-auto p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-heading text-xl font-extrabold text-ink">Administración</h1>
+    <div>
+      <div className="mb-6 flex items-center justify-end">
         {!showCreateForm && (
           <button
             onClick={() => setShowCreateForm(true)}
@@ -272,7 +274,7 @@ export default function AdminPage() {
           {deactivateUser.error?.message ?? activateUser.error?.message}
         </p>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -346,5 +348,276 @@ function UserRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+function AgentTab({ orgSlug }: { orgSlug: string }) {
+  const { data: agent, isLoading } = useAgent(orgSlug);
+  const updateAgent = useUpdateAgent();
+
+  const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
+  const [escalationRules, setEscalationRules] = useState<string | null>(null);
+  const [model, setModel] = useState<string | null>(null);
+
+  if (isLoading || !agent) {
+    return <p className="text-sm text-ink-muted">Cargando agente...</p>;
+  }
+
+  const effectiveSystemPrompt = systemPrompt ?? agent.system_prompt;
+  const effectiveEscalationRules = escalationRules ?? agent.escalation_rules;
+  const effectiveModel = model ?? agent.model;
+
+  function handleSave() {
+    updateAgent.mutate({
+      organizationSlug: orgSlug,
+      systemPrompt: effectiveSystemPrompt,
+      escalationRules: effectiveEscalationRules,
+      model: effectiveModel,
+    });
+  }
+
+  return (
+    <div className="max-w-2xl">
+      <div className="mb-4 flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-ink-muted">Prompt principal</label>
+        <p className="text-xs text-ink-faint">Cómo debe hablar y comportarse el agente.</p>
+        <textarea
+          value={effectiveSystemPrompt}
+          onChange={(e) => setSystemPrompt(e.target.value)}
+          rows={8}
+          className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink"
+        />
+      </div>
+
+      <div className="mb-4 flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-ink-muted">Reglas de escalamiento</label>
+        <p className="text-xs text-ink-faint">Cuándo debe ceder la conversación a un humano.</p>
+        <textarea
+          value={effectiveEscalationRules}
+          onChange={(e) => setEscalationRules(e.target.value)}
+          rows={5}
+          className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink"
+        />
+      </div>
+
+      <div className="mb-6 flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-ink-muted">Modelo</label>
+        <p className="text-xs text-ink-faint">Identificador del modelo en OpenRouter.</p>
+        <input
+          value={effectiveModel}
+          onChange={(e) => setModel(e.target.value)}
+          placeholder="openai/gpt-4.1-nano"
+          className="w-72 rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink"
+        />
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          disabled={updateAgent.isPending}
+          className="rounded-lg bg-accent px-4 py-2 font-heading text-sm font-bold text-white hover:bg-accent-deep disabled:opacity-50"
+        >
+          {updateAgent.isPending ? "Guardando..." : "Guardar"}
+        </button>
+        {updateAgent.isError && (
+          <p className="text-sm text-overdue">{updateAgent.error.message}</p>
+        )}
+        {updateAgent.isSuccess && !updateAgent.isPending && (
+          <p className="text-sm text-accent-deep">Guardado.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WhatsAppChannelCard({ orgSlug }: { orgSlug: string }) {
+  const { data: status, isLoading, refetch, isFetching } = useWhatsAppStatus(orgSlug);
+  const connect = useConnectWhatsApp();
+  const disconnect = useDisconnectWhatsApp();
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+
+  function handleConnect() {
+    connect.mutate(
+      { organizationSlug: orgSlug },
+      { onSuccess: (data) => setQrCode(data.qrcode_base64) },
+    );
+  }
+
+  function handleDisconnect() {
+    disconnect.mutate(
+      { organizationSlug: orgSlug },
+      { onSuccess: () => setShowDisconnectConfirm(false) },
+    );
+  }
+
+  const isConnected = status?.connected ?? false;
+
+  return (
+    <div className="rounded-xl border border-line bg-surface p-4 shadow-card">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <WhatsAppIcon className="h-5 w-5 text-ink-muted" />
+          <span className="font-heading text-sm font-bold text-ink">WhatsApp</span>
+          {!isLoading && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                isConnected ? "bg-accent-soft text-accent-deep" : "bg-surface-2 text-ink-faint"
+              }`}
+            >
+              {isConnected ? "Conectado" : "Desconectado"}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink-muted hover:bg-surface-2 disabled:opacity-50"
+          >
+            {isFetching ? "Consultando..." : "Actualizar estado"}
+          </button>
+          {isConnected ? (
+            <button
+              onClick={() => setShowDisconnectConfirm(true)}
+              className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-overdue hover:bg-surface-2"
+            >
+              Desconectar
+            </button>
+          ) : (
+            <button
+              onClick={handleConnect}
+              disabled={connect.isPending}
+              className="rounded-lg bg-accent px-3 py-1.5 text-xs font-bold text-white hover:bg-accent-deep disabled:opacity-50"
+            >
+              {connect.isPending ? "Generando QR..." : "Conectar"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {connect.isError && (
+        <p className="mt-2 text-xs text-overdue">{connect.error.message}</p>
+      )}
+
+      {qrCode && (
+        <div className="mt-4 flex flex-col items-center gap-3 rounded-lg border border-line bg-paper p-4">
+          <p className="text-xs text-ink-muted">
+            Escanea este código con el WhatsApp que quieres conectar.
+          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element -- data URI generado en tiempo
+              de ejecución, no un asset estático que next/image pueda optimizar */}
+          <img
+            src={`data:image/png;base64,${qrCode}`}
+            alt="Código QR de WhatsApp"
+            className="h-56 w-56"
+          />
+          <button
+            onClick={() => setQrCode(null)}
+            className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink-muted hover:bg-surface-2"
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
+
+      {showDisconnectConfirm && (
+        <div className="mt-4 rounded-lg border border-overdue/30 bg-overdue/5 p-4">
+          <p className="text-sm text-ink">
+            ¿Desconectar WhatsApp? Los clientes de este canal dejarán de recibir respuestas hasta
+            que alguien vuelva a escanear el código QR.
+          </p>
+          {disconnect.isError && (
+            <p className="mt-2 text-xs text-overdue">{disconnect.error.message}</p>
+          )}
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              onClick={handleDisconnect}
+              disabled={disconnect.isPending}
+              className="rounded-lg bg-overdue px-3 py-1.5 text-xs font-bold text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {disconnect.isPending ? "Desconectando..." : "Sí, desconectar"}
+            </button>
+            <button
+              onClick={() => setShowDisconnectConfirm(false)}
+              className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink-muted hover:bg-surface"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChannelsTab({ orgSlug }: { orgSlug: string }) {
+  return (
+    <div className="flex max-w-xl flex-col gap-4">
+      <div className="rounded-xl border border-line bg-surface p-4 shadow-card">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <TelegramIcon className="h-5 w-5 text-ink-muted" />
+            <span className="font-heading text-sm font-bold text-ink">Telegram</span>
+            <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-deep">
+              Configurado
+            </span>
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-ink-faint">
+          El token del bot se administra desde la configuración del servidor, no desde aquí.
+        </p>
+      </div>
+
+      <WhatsAppChannelCard orgSlug={orgSlug} />
+    </div>
+  );
+}
+
+export default function AdminPage() {
+  const { data: currentUser } = useCurrentUser();
+  const [tab, setTab] = useState<Tab>("users");
+
+  if (!currentUser) {
+    return <p className="flex-1 p-8">Cargando...</p>;
+  }
+
+  if (currentUser.role !== "administrator") {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center text-ink-muted">
+        <h2 className="font-heading text-lg font-bold text-ink">Acceso restringido</h2>
+        <p className="max-w-sm text-sm">
+          Solo un administrador puede ver esta página.
+        </p>
+      </main>
+    );
+  }
+
+  const orgSlug = currentUser.organization_slug;
+
+  return (
+    <main className="flex-1 overflow-y-auto p-8">
+      <h1 className="mb-4 font-heading text-xl font-extrabold text-ink">Administración</h1>
+
+      <nav className="mb-6 flex gap-1.5 border-b border-line">
+        {TABS.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setTab(t.value)}
+            className={`px-3 py-2 font-heading text-sm font-bold ${
+              tab === t.value
+                ? "border-b-2 border-accent text-accent-deep"
+                : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "users" && <UsersTab orgSlug={orgSlug} currentUser={currentUser} />}
+      {tab === "agent" && <AgentTab orgSlug={orgSlug} />}
+      {tab === "channels" && <ChannelsTab orgSlug={orgSlug} />}
+    </main>
   );
 }

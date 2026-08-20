@@ -81,3 +81,15 @@ export interface ContactNote {
   content: string;
   created_at: string;
 }
+
+export interface Agent {
+  id: string;
+  name: string;
+  system_prompt: string;
+  escalation_rules: string;
+  model: string;
+}
+
+export interface WhatsAppStatus {
+  connected: boolean;
+}

@@ -13,6 +13,7 @@ from app.use_cases.assign_to_advisor import AssignToAdvisorUseCase
 from app.use_cases.authenticate_with_provider import AuthenticateUseCase
 from app.use_cases.create_internal_user import CreateInternalUserUseCase
 from app.use_cases.deactivate_internal_user import DeactivateInternalUserUseCase
+from app.use_cases.get_agent import GetAgentUseCase
 from app.use_cases.get_conversation_history import GetConversationHistoryUseCase
 from app.use_cases.list_advisors import ListAdvisorsUseCase
 from app.use_cases.list_contact_notes import ListContactNotesUseCase
@@ -27,6 +28,7 @@ from app.use_cases.search_opportunities import SearchOpportunitiesUseCase
 from app.use_cases.send_advisor_reply import SendAdvisorReplyUseCase
 from app.use_cases.set_opportunity_unread import SetOpportunityUnreadUseCase
 from app.use_cases.toggle_contact_favorite import ToggleContactFavoriteUseCase
+from app.use_cases.update_agent import UpdateAgentUseCase
 from app.use_cases.update_internal_user import UpdateInternalUserUseCase
 from core.enums.channel import ChannelType
 from core.interfaces.auth import AuthProvider
@@ -209,3 +211,13 @@ def get_activate_internal_user_use_case() -> ActivateInternalUserUseCase:
 @lru_cache
 def get_update_internal_user_use_case() -> UpdateInternalUserUseCase:
     return UpdateInternalUserUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_get_agent_use_case() -> GetAgentUseCase:
+    return GetAgentUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_update_agent_use_case() -> UpdateAgentUseCase:
+    return UpdateAgentUseCase(session_factory=AsyncSessionFactory)

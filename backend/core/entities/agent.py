@@ -17,3 +17,4 @@ class Agent:
     status: AgentStatus
     created_at: datetime
     updated_at: datetime
+    escalation_rules: str = ""

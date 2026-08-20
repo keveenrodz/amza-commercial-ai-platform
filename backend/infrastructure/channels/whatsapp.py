@@ -102,3 +102,16 @@ class WhatsAppChannelProvider:
             return False
         data: dict[str, Any] = response.json()
         return bool(data.get("instance", {}).get("state") == "open")
+
+    # Administración de la instancia (spec 017), no mensajería -- deliberadamente fuera del
+    # ChannelProvider Protocol, igual que start()/stop() (spec 016): TelegramChannelProvider no
+    # necesita ninguno de los dos, así que no tiene sentido forzarlos en la interfaz genérica.
+
+    async def get_qr_code(self) -> str:
+        response = await self._client.get(f"/instance/connect/{self._instance_name}")
+        response.raise_for_status()
+        return str(response.json()["base64"])
+
+    async def disconnect(self) -> None:
+        response = await self._client.delete(f"/instance/logout/{self._instance_name}")
+        response.raise_for_status()

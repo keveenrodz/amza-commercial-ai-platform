@@ -19,6 +19,7 @@ class AgentModel(Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(sa.Uuid(native_uuid=False), nullable=False)
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     system_prompt: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    escalation_rules: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default="")
     model: Mapped[str] = mapped_column(sa.String(100), nullable=False)
     status: Mapped[str] = mapped_column(sa.String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
