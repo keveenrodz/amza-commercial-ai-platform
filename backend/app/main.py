@@ -4,6 +4,7 @@ from app.api.routers.advisors import router as advisors_router
 from app.api.routers.auth import router as auth_router
 from app.api.routers.contacts import router as contacts_router
 from app.api.routers.health import router as health_router
+from app.api.routers.internal_users import router as internal_users_router
 from app.api.routers.opportunities import router as opportunities_router
 from app.api.routers.telegram_webhook import router as telegram_webhook_router
 from app.config import settings
@@ -32,6 +33,7 @@ def create_application() -> FastAPI:
     application.include_router(opportunities_router)
     application.include_router(contacts_router)
     application.include_router(advisors_router)
+    application.include_router(internal_users_router)
 
     return application
 

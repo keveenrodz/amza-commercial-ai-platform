@@ -160,6 +160,16 @@ class InternalUserRepository(Protocol):
         organization_id: OrganizationId,
     ) -> list[InternalUser]: ...
 
+    async def list_by_organization(self, organization_id: OrganizationId) -> list[InternalUser]:
+        """Todos los InternalUser (cualquier rol, cualquier estado) -- a diferencia de
+        list_advisors_by_organization, esta es para la pantalla de administración."""
+        ...
+
+    async def get_primary_administrator(
+        self,
+        organization_id: OrganizationId,
+    ) -> InternalUser | None: ...
+
     async def save(self, internal_user: InternalUser) -> None: ...
 
 

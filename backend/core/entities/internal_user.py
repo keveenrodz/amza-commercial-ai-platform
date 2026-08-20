@@ -17,3 +17,4 @@ class InternalUser:
     status: InternalUserStatus
     created_at: datetime
     updated_at: datetime
+    is_primary: bool = False

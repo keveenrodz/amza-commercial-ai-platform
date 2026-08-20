@@ -1,0 +1,91 @@
+import { expect, test } from "@playwright/test";
+
+// Cubre spec 014 (Admin Governance & Access Control) del lado del frontend -- las reglas de
+// negocio (quién puede desactivar a quién) ya están probadas a fondo en
+// backend/tests/test_admin_governance.py; este e2e cubre lo que esos tests no pueden: que el
+// frontend muestre/oculte lo correcto según el rol, y que el flujo de crear un usuario funcione.
+
+const ADMIN_USER = {
+  id: "admin-1",
+  organization_id: "org-1",
+  organization_slug: "amza-empaques",
+  full_name: "Admin Principal",
+  email: "admin@gmail.com",
+  role: "administrator",
+  status: "active",
+  is_primary: true,
+};
+
+const ADVISOR_USER = {
+  id: "advisor-1",
+  organization_id: "org-1",
+  organization_slug: "amza-empaques",
+  full_name: "Juan Perez",
+  email: "juan@gmail.com",
+  role: "advisor",
+  status: "active",
+  is_primary: false,
+};
+
+const EXISTING_USERS = [
+  { id: "admin-1", full_name: "Admin Principal", email: "admin@gmail.com", role: "administrator", status: "active", is_primary: true },
+  { id: "advisor-1", full_name: "Juan Perez", email: "juan@gmail.com", role: "advisor", status: "active", is_primary: false },
+];
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/organizations/*/opportunities", (route) => route.fulfill({ json: [] }));
+});
+
+test("un administrador ve /admin, crea un usuario y lo ve aparecer en la tabla", async ({
+  page,
+}) => {
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: ADMIN_USER }));
+
+  let users = [...EXISTING_USERS];
+  await page.route("**/api/organizations/*/users", (route) => {
+    if (route.request().method() === "GET") {
+      return route.fulfill({ json: users });
+    }
+    const body = route.request().postDataJSON();
+    const created = {
+      id: "new-user-1",
+      full_name: body.full_name,
+      email: body.email,
+      role: body.role,
+      status: "active",
+      is_primary: false,
+    };
+    users = [...users, created];
+    return route.fulfill({ status: 201, json: created });
+  });
+
+  await page.goto("/opportunities");
+  await expect(page.getByRole("link", { name: "Administración" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Administración" }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page.getByText("Admin Principal")).toBeVisible();
+  await expect(page.getByText("Principal")).toBeVisible();
+
+  await page.getByPlaceholder("Nombre completo").fill("Andrea Torres");
+  await page.getByPlaceholder("nombre@gmail.com").fill("andrea@gmail.com");
+  await page.getByRole("button", { name: "+ Agregar usuario" }).click();
+
+  await expect(page.getByText("Andrea Torres")).toBeVisible();
+  await expect(page.getByText("andrea@gmail.com")).toBeVisible();
+});
+
+test("un asesor no ve 'Administración' y recibe 403 al entrar directo a /admin", async ({
+  page,
+}) => {
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: ADVISOR_USER }));
+  await page.route("**/api/organizations/*/users", (route) =>
+    route.fulfill({ status: 403, json: { detail: "Insufficient role" } }),
+  );
+
+  await page.goto("/opportunities");
+  await expect(page.getByRole("link", { name: "Administración" })).toHaveCount(0);
+
+  await page.goto("/admin");
+  await expect(page.getByText("Acceso restringido")).toBeVisible();
+});

@@ -23,3 +23,4 @@ class InternalUserModel(Base):
     status: Mapped[str] = mapped_column(sa.String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    is_primary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)

@@ -17,10 +17,10 @@ const ROLE_LABELS: Record<CurrentUser["role"], string> = {
 };
 
 const NAV_ITEMS = [
-  { href: "/opportunities", label: "Conversaciones", Icon: ChatIcon },
-  { href: "/knowledge-base", label: "Base de conocimiento", Icon: BookIcon },
-  { href: "/media", label: "Multimedia", Icon: MediaIcon },
-  { href: "/admin", label: "Administración", Icon: AdminIcon },
+  { href: "/opportunities", label: "Conversaciones", Icon: ChatIcon, adminOnly: false },
+  { href: "/knowledge-base", label: "Base de conocimiento", Icon: BookIcon, adminOnly: false },
+  { href: "/media", label: "Multimedia", Icon: MediaIcon, adminOnly: false },
+  { href: "/admin", label: "Administración", Icon: AdminIcon, adminOnly: true },
 ] as const;
 
 export function WorkspaceShell({
@@ -58,7 +58,9 @@ export function WorkspaceShell({
         </div>
 
         <div className="flex flex-1 flex-col gap-1.5">
-          {NAV_ITEMS.map(({ href, label, Icon }) => (
+          {NAV_ITEMS.filter(
+            (item) => !item.adminOnly || currentUser.role === "administrator",
+          ).map(({ href, label, Icon }) => (
             <Link
               key={href}
               href={href}

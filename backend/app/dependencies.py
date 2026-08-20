@@ -5,13 +5,17 @@ from functools import lru_cache
 from app.config import settings
 from app.services.conversation_context_assembler import ConversationContextAssembler
 from app.services.conversation_summarization_service import ConversationSummarizationService
+from app.use_cases.activate_internal_user import ActivateInternalUserUseCase
 from app.use_cases.add_contact_note import AddContactNoteUseCase
 from app.use_cases.add_contact_tag import AddContactTagUseCase
 from app.use_cases.assign_to_advisor import AssignToAdvisorUseCase
 from app.use_cases.authenticate_with_provider import AuthenticateUseCase
+from app.use_cases.create_internal_user import CreateInternalUserUseCase
+from app.use_cases.deactivate_internal_user import DeactivateInternalUserUseCase
 from app.use_cases.get_conversation_history import GetConversationHistoryUseCase
 from app.use_cases.list_advisors import ListAdvisorsUseCase
 from app.use_cases.list_contact_notes import ListContactNotesUseCase
+from app.use_cases.list_internal_users import ListInternalUsersUseCase
 from app.use_cases.list_open_opportunities import ListOpenOpportunitiesUseCase
 from app.use_cases.receive_incoming_message import ReceiveIncomingMessageUseCase
 from app.use_cases.remove_contact_tag import RemoveContactTagUseCase
@@ -167,3 +171,23 @@ def get_authenticate_use_case() -> AuthenticateUseCase:
         session_factory=AsyncSessionFactory,
         auth_provider=get_google_auth_provider(),
     )
+
+
+@lru_cache
+def get_list_internal_users_use_case() -> ListInternalUsersUseCase:
+    return ListInternalUsersUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_create_internal_user_use_case() -> CreateInternalUserUseCase:
+    return CreateInternalUserUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_deactivate_internal_user_use_case() -> DeactivateInternalUserUseCase:
+    return DeactivateInternalUserUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_activate_internal_user_use_case() -> ActivateInternalUserUseCase:
+    return ActivateInternalUserUseCase(session_factory=AsyncSessionFactory)

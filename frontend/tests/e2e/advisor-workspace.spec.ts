@@ -13,6 +13,7 @@ const CURRENT_USER = {
   email: "juan@gmail.com",
   role: "advisor",
   status: "active",
+  is_primary: false,
 };
 
 const UNASSIGNED_OPPORTUNITY = {

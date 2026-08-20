@@ -11,6 +11,7 @@ const CURRENT_USER = {
   email: "juan@gmail.com",
   role: "advisor",
   status: "active",
+  is_primary: false,
 };
 
 test.beforeEach(async ({ page }) => {

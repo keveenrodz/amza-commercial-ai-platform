@@ -9,6 +9,16 @@ export interface CurrentUser {
   email: string;
   role: "advisor" | "administrator";
   status: "active" | "inactive";
+  is_primary: boolean;
+}
+
+export interface InternalUserSummary {
+  id: string;
+  full_name: string;
+  email: string;
+  role: "advisor" | "administrator";
+  status: "active" | "inactive";
+  is_primary: boolean;
 }
 
 export interface Opportunity {

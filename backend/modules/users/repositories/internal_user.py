@@ -19,6 +19,7 @@ def _to_entity(model: InternalUserModel) -> InternalUser:
         status=InternalUserStatus(model.status),
         created_at=model.created_at,
         updated_at=model.updated_at,
+        is_primary=model.is_primary,
     )
 
 
@@ -32,6 +33,7 @@ def _from_entity(entity: InternalUser) -> InternalUserModel:
         status=entity.status.value,
         created_at=entity.created_at,
         updated_at=entity.updated_at,
+        is_primary=entity.is_primary,
     )
 
 
@@ -70,3 +72,24 @@ class SQLAlchemyInternalUserRepository:
             .order_by(InternalUserModel.full_name.asc())
         )
         return [_to_entity(m) for m in result.scalars().all()]
+
+    async def list_by_organization(self, organization_id: OrganizationId) -> list[InternalUser]:
+        result = await self._session.execute(
+            select(InternalUserModel)
+            .where(InternalUserModel.organization_id == organization_id.value)
+            .order_by(InternalUserModel.full_name.asc())
+        )
+        return [_to_entity(m) for m in result.scalars().all()]
+
+    async def get_primary_administrator(
+        self,
+        organization_id: OrganizationId,
+    ) -> InternalUser | None:
+        result = await self._session.execute(
+            select(InternalUserModel).where(
+                InternalUserModel.organization_id == organization_id.value,
+                InternalUserModel.is_primary == True,  # noqa: E712 -- comparación SQL, no Python
+            )
+        )
+        model = result.scalar_one_or_none()
+        return _to_entity(model) if model else None

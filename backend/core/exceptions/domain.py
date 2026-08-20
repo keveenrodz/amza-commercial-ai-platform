@@ -99,6 +99,24 @@ class FollowUpNotFoundError(DomainError):
         self.opportunity_id = opportunity_id
 
 
+class InternalUserEmailAlreadyExistsError(DomainError):
+    def __init__(self, email: str) -> None:
+        super().__init__(f"An internal user with email {email!r} already exists")
+        self.email = email
+
+
+class CannotRemoveSelfError(DomainError):
+    def __init__(self, user_id: InternalUserId) -> None:
+        super().__init__(f"InternalUser {user_id} cannot deactivate itself")
+        self.user_id = user_id
+
+
+class OnlyPrimaryAdminCanDeactivateAdminsError(DomainError):
+    def __init__(self, target_id: InternalUserId) -> None:
+        super().__init__(f"Only the primary administrator can deactivate {target_id}")
+        self.target_id = target_id
+
+
 class AccessDeniedError(DomainError):
     """Alguien probó con éxito ser dueño de un email vía OAuth, pero no existe ningún
     InternalUser activo para ese email. Distinto de InternalUserNotFoundError -- ese es un lookup
