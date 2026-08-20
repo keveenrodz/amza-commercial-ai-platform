@@ -27,7 +27,7 @@ const UNASSIGNED_OPPORTUNITY = {
   started_at: "2026-01-01T00:00:00Z",
   last_activity_at: "2026-01-01T00:00:00Z",
   closed_at: null,
-  has_unread_messages: false,
+  unread_count: 0,
 };
 
 const MY_OPPORTUNITY = {
@@ -56,8 +56,18 @@ const CONTACT_MINE = {
 };
 
 const OPEN_OPPORTUNITIES = [
-  { opportunity: UNASSIGNED_OPPORTUNITY, contact: CONTACT_UNASSIGNED, follow_up: null },
-  { opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null },
+  {
+    opportunity: UNASSIGNED_OPPORTUNITY,
+    contact: CONTACT_UNASSIGNED,
+    follow_up: null,
+    last_message_preview: null,
+  },
+  {
+    opportunity: MY_OPPORTUNITY,
+    contact: CONTACT_MINE,
+    follow_up: null,
+    last_message_preview: null,
+  },
 ];
 
 test.beforeEach(async ({ page }) => {
@@ -100,7 +110,14 @@ test("buscar por nombre de contacto llama al endpoint de búsqueda", async ({ pa
   await page.route("**/api/organizations/*/opportunities/search**", (route) => {
     searchUrl = route.request().url();
     route.fulfill({
-      json: [{ opportunity: MY_OPPORTUNITY, contact: CONTACT_MINE, follow_up: null }],
+      json: [
+        {
+          opportunity: MY_OPPORTUNITY,
+          contact: CONTACT_MINE,
+          follow_up: null,
+          last_message_preview: null,
+        },
+      ],
     });
   });
 
@@ -135,6 +152,7 @@ test("buscar por una palabra que solo existe en un mensaje encuentra la conversa
           opportunity: MESSAGE_MATCH_OPPORTUNITY,
           contact: MESSAGE_MATCH_CONTACT,
           follow_up: null,
+          last_message_preview: null,
         },
       ],
     }),
@@ -395,7 +413,7 @@ test("marcar una conversación como no leída llama al endpoint correcto", async
   let unreadRequestBody: unknown;
   await page.route("**/api/organizations/*/opportunities/opp-mine/unread", (route) => {
     unreadRequestBody = route.request().postDataJSON();
-    route.fulfill({ json: { ...MY_OPPORTUNITY, has_unread_messages: true } });
+    route.fulfill({ json: { ...MY_OPPORTUNITY, unread_count: 1 } });
   });
 
   await page.goto("/opportunities/opp-mine");

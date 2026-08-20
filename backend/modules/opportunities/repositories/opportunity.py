@@ -43,7 +43,7 @@ def _to_entity(model: OpportunityModel) -> Opportunity:
         started_at=model.started_at,
         last_activity_at=model.last_activity_at,
         closed_at=model.closed_at,
-        has_unread_messages=model.has_unread_messages,
+        unread_count=model.unread_count,
     )
 
 
@@ -62,7 +62,7 @@ def _from_entity(entity: Opportunity) -> OpportunityModel:
         started_at=entity.started_at,
         last_activity_at=entity.last_activity_at,
         closed_at=entity.closed_at,
-        has_unread_messages=entity.has_unread_messages,
+        unread_count=entity.unread_count,
     )
 
 

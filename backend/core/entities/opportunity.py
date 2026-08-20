@@ -72,13 +72,19 @@ class Opportunity:
     started_at: datetime
     last_activity_at: datetime
     closed_at: datetime | None
-    has_unread_messages: bool = False
+    unread_count: int = 0
 
     def mark_unread(self) -> None:
-        self.has_unread_messages = True
+        """Uso manual (menú de tres puntos, 'Marcar como no leída') -- fuerza a 1. No es un
+        conteo real en ese caso, mismo comportamiento que el mockup validado."""
+        self.unread_count = 1
+
+    def increment_unread(self) -> None:
+        """Uso automático: un mensaje entrante nuevo suma uno al conteo real."""
+        self.unread_count += 1
 
     def mark_read(self) -> None:
-        self.has_unread_messages = False
+        self.unread_count = 0
 
     def assign_to_advisor(self, advisor_id: InternalUserId) -> None:
         self.attention_mode = AttentionMode.HUMAN

@@ -84,6 +84,13 @@ class MessageRepository(Protocol):
         """after es exclusivo, mismo criterio que list_since."""
         ...
 
+    async def get_latest_by_opportunity_ids(
+        self,
+        opportunity_ids: list[OpportunityId],
+    ) -> dict[OpportunityId, Message]:
+        """Evita N+1 al armar la vista previa del último mensaje en el listado."""
+        ...
+
     async def save(self, message: Message) -> None: ...
 
 

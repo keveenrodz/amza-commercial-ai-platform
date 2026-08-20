@@ -24,3 +24,6 @@ class InternalUserModel(Base):
     created_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     is_primary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        sa.Uuid(native_uuid=False), sa.ForeignKey("internal_users.id"), nullable=True
+    )

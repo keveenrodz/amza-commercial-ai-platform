@@ -20,6 +20,7 @@ def _to_entity(model: InternalUserModel) -> InternalUser:
         created_at=model.created_at,
         updated_at=model.updated_at,
         is_primary=model.is_primary,
+        created_by=InternalUserId(value=model.created_by) if model.created_by else None,
     )
 
 
@@ -34,6 +35,7 @@ def _from_entity(entity: InternalUser) -> InternalUserModel:
         created_at=entity.created_at,
         updated_at=entity.updated_at,
         is_primary=entity.is_primary,
+        created_by=entity.created_by.value if entity.created_by else None,
     )
 
 

@@ -33,3 +33,9 @@ class CreateInternalUserRequest(BaseModel):
     # Literal, no str -- un valor inválido lo rechaza Pydantic con 422 directo, en vez de que
     # InternalUserRole(role) lance un ValueError sin capturar dentro del caso de uso.
     role: Literal["advisor", "administrator"]
+
+
+class UpdateInternalUserRequest(BaseModel):
+    full_name: str
+    email: str
+    role: Literal["advisor", "administrator"]

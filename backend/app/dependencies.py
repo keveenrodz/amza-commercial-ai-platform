@@ -26,6 +26,7 @@ from app.use_cases.search_opportunities import SearchOpportunitiesUseCase
 from app.use_cases.send_advisor_reply import SendAdvisorReplyUseCase
 from app.use_cases.set_opportunity_unread import SetOpportunityUnreadUseCase
 from app.use_cases.toggle_contact_favorite import ToggleContactFavoriteUseCase
+from app.use_cases.update_internal_user import UpdateInternalUserUseCase
 from core.interfaces.auth import AuthProvider
 from core.interfaces.providers import AIProvider, ChannelProvider
 from infrastructure.ai.openrouter import OpenRouterAIProvider
@@ -191,3 +192,8 @@ def get_deactivate_internal_user_use_case() -> DeactivateInternalUserUseCase:
 @lru_cache
 def get_activate_internal_user_use_case() -> ActivateInternalUserUseCase:
     return ActivateInternalUserUseCase(session_factory=AsyncSessionFactory)
+
+
+@lru_cache
+def get_update_internal_user_use_case() -> UpdateInternalUserUseCase:
+    return UpdateInternalUserUseCase(session_factory=AsyncSessionFactory)

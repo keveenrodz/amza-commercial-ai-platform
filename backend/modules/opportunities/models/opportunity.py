@@ -30,4 +30,4 @@ class OpportunityModel(Base):
     started_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     last_activity_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     closed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
-    has_unread_messages: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    unread_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)

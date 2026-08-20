@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.entities.message import Message
 from core.enums.channel import ChannelType
 from core.enums.message import MessageContentType, MessageRole
-from core.value_objects.identifiers import ConversationId, MessageId
+from core.value_objects.identifiers import ConversationId, MessageId, OpportunityId
+from modules.opportunities.models.conversation import ConversationModel
 from modules.opportunities.models.message import MessageModel
 
 
@@ -90,6 +91,46 @@ class SQLAlchemyMessageRepository:
             stmt = stmt.where(MessageModel.sent_at > after)
         result = await self._session.execute(stmt)
         return result.scalar_one()
+
+    async def get_latest_by_opportunity_ids(
+        self,
+        opportunity_ids: list[OpportunityId],
+    ) -> dict[OpportunityId, Message]:
+        if not opportunity_ids:
+            return {}
+        ids = [o.value for o in opportunity_ids]
+
+        # "Greatest-n-per-group" vía subquery correlacionada (max(sent_at) por conversación) en
+        # vez de ROW_NUMBER() -- más simple de leer, y el volumen por request (una página de
+        # oportunidades) no justifica la sintaxis de window function.
+        latest_per_conversation = (
+            select(
+                MessageModel.conversation_id,
+                func.max(MessageModel.sent_at).label("max_sent_at"),
+            )
+            .join(ConversationModel, ConversationModel.id == MessageModel.conversation_id)
+            .where(ConversationModel.opportunity_id.in_(ids))
+            .group_by(MessageModel.conversation_id)
+            .subquery()
+        )
+
+        result = await self._session.execute(
+            select(MessageModel, ConversationModel.opportunity_id)
+            .join(ConversationModel, ConversationModel.id == MessageModel.conversation_id)
+            .join(
+                latest_per_conversation,
+                and_(
+                    MessageModel.conversation_id == latest_per_conversation.c.conversation_id,
+                    MessageModel.sent_at == latest_per_conversation.c.max_sent_at,
+                ),
+            )
+        )
+        out: dict[OpportunityId, Message] = {}
+        for message_model, opportunity_id_value in result.all():
+            # Si dos mensajes empatan en sent_at exacto (raro), el último gana -- aceptable para
+            # una vista previa, no una fuente de verdad transaccional.
+            out[OpportunityId(value=opportunity_id_value)] = _to_entity(message_model)
+        return out
 
     async def save(self, message: Message) -> None:
         await self._session.merge(_from_entity(message))

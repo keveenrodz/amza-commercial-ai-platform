@@ -33,6 +33,28 @@ export function useCreateInternalUser() {
   });
 }
 
+interface UpdateInternalUserArgs {
+  organizationSlug: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  role: "advisor" | "administrator";
+}
+
+export function useUpdateInternalUser() {
+  const queryClient = useQueryClient();
+  return useMutation<InternalUserSummary, Error, UpdateInternalUserArgs>({
+    mutationFn: ({ organizationSlug, userId, fullName, email, role }) =>
+      apiFetch<InternalUserSummary>(`/api/organizations/${organizationSlug}/users/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify({ full_name: fullName, email, role }),
+      }),
+    onSuccess: (_data, { organizationSlug }) => {
+      queryClient.invalidateQueries({ queryKey: ["internalUsers", organizationSlug] });
+    },
+  });
+}
+
 interface UserActionArgs {
   organizationSlug: string;
   userId: string;

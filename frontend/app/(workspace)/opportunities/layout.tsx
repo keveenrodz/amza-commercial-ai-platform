@@ -79,11 +79,19 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
   const isLoading = usingSearch ? searchLoading : oppsLoading;
   const baseItems = usingSearch ? (searchResults ?? []) : (opportunities ?? []);
 
-  function matchesTab(item: OpenOpportunity): boolean {
-    if (tab === "ai") return item.opportunity.attention_mode === "ai";
-    if (tab === "mine") return item.opportunity.assigned_advisor_id === currentUser!.id;
+  function matchesTabValue(item: OpenOpportunity, t: Tab): boolean {
+    if (t === "ai") return item.opportunity.attention_mode === "ai";
+    if (t === "mine") return item.opportunity.assigned_advisor_id === currentUser!.id;
     return true;
   }
+  function matchesTab(item: OpenOpportunity): boolean {
+    return matchesTabValue(item, tab);
+  }
+  const tabCounts: Record<Tab, number> = {
+    ai: baseItems.filter((i) => matchesTabValue(i, "ai")).length,
+    mine: baseItems.filter((i) => matchesTabValue(i, "mine")).length,
+    all: baseItems.filter((i) => matchesTabValue(i, "all")).length,
+  };
 
   let items = baseItems.filter(matchesTab);
   if (tab === "all") {
@@ -93,7 +101,7 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
       items = items.filter((item) => item.opportunity.assigned_advisor_id === assigneeFilter);
     }
   }
-  if (unreadOnly) items = items.filter((item) => item.opportunity.has_unread_messages);
+  if (unreadOnly) items = items.filter((item) => item.opportunity.unread_count > 0);
   if (followupOnly) items = items.filter((item) => item.follow_up !== null);
   if (tagFilters.size > 0) {
     items = items.filter((item) => item.contact.tags.some((t) => tagFilters.has(t)));
@@ -108,9 +116,7 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
         new Date(a.opportunity.last_activity_at).getTime(),
     );
   } else if (sortMode === "unread") {
-    items.sort(
-      (a, b) => Number(b.opportunity.has_unread_messages) - Number(a.opportunity.has_unread_messages),
-    );
+    items.sort((a, b) => b.opportunity.unread_count - a.opportunity.unread_count);
   } else if (sortMode === "followup") {
     items.sort((a, b) => {
       if (!!a.follow_up === !!b.follow_up) {
@@ -177,11 +183,18 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`flex-1 whitespace-nowrap rounded-lg px-1.5 py-1.5 font-heading text-[11.5px] font-bold ${
+                className={`flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-1.5 font-heading text-[11.5px] font-bold ${
                   tab === t ? "bg-accent text-white" : "bg-surface-2 text-ink-muted"
                 }`}
               >
                 {t === "ai" ? "IA" : t === "mine" ? "Mías" : "Todas"}
+                <span
+                  className={`rounded-[5px] px-[5px] text-[10.5px] tabular-nums ${
+                    tab === t ? "bg-white/25" : "bg-black/[0.08]"
+                  }`}
+                >
+                  {tabCounts[t]}
+                </span>
               </button>
             ))}
           </nav>
@@ -324,7 +337,11 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
             items.map((item) => (
               <Link
                 key={item.opportunity.id}
-                href={`/opportunities/${item.opportunity.id}`}
+                href={
+                  usingSearch
+                    ? `/opportunities/${item.opportunity.id}?q=${encodeURIComponent(trimmedQuery)}`
+                    : `/opportunities/${item.opportunity.id}`
+                }
                 className={`grid grid-cols-[40px_1fr] gap-2.5 border-b border-line px-4 py-[11px] ${
                   item.opportunity.id === selectedId ? "bg-accent-soft" : "hover:bg-surface-2"
                 }`}
@@ -342,11 +359,18 @@ export default function OpportunitiesLayout({ children }: { children: React.Reac
                     <span className="truncate font-heading text-[13.5px] font-bold text-ink">
                       {item.contact.display_name}
                     </span>
-                    {item.opportunity.has_unread_messages && (
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-muted">
+                      {item.last_message_preview ?? "Sin mensajes todavía"}
+                    </span>
+                    {item.opportunity.unread_count > 0 && (
                       <span
-                        aria-label="No leído"
-                        className="ml-auto h-2 w-2 flex-shrink-0 rounded-full bg-accent"
-                      />
+                        aria-label={`${item.opportunity.unread_count} mensajes no leídos`}
+                        className="flex h-[17px] min-w-[17px] flex-shrink-0 items-center justify-center rounded-full bg-accent px-1 text-[10.5px] font-bold tabular-nums text-white"
+                      >
+                        {item.opportunity.unread_count}
+                      </span>
                     )}
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1">

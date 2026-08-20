@@ -67,12 +67,40 @@ test("un administrador ve /admin, crea un usuario y lo ve aparecer en la tabla",
   await expect(page.getByText("Admin Principal")).toBeVisible();
   await expect(page.getByText("Principal")).toBeVisible();
 
+  // El formulario está detrás de un botón -- no visible hasta hacer clic (feedback post-014).
+  await expect(page.getByPlaceholder("Nombre completo")).toHaveCount(0);
+  await page.getByRole("button", { name: "+ Agregar usuario" }).click();
+
   await page.getByPlaceholder("Nombre completo").fill("Andrea Torres");
   await page.getByPlaceholder("nombre@gmail.com").fill("andrea@gmail.com");
-  await page.getByRole("button", { name: "+ Agregar usuario" }).click();
+  await page.getByRole("button", { name: "Agregar", exact: true }).click();
 
   await expect(page.getByText("Andrea Torres")).toBeVisible();
   await expect(page.getByText("andrea@gmail.com")).toBeVisible();
+});
+
+test("editar un usuario cambia nombre y rol en la tabla", async ({ page }) => {
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: ADMIN_USER }));
+
+  let users = [...EXISTING_USERS];
+  await page.route("**/api/organizations/*/users/*", (route) => {
+    const body = route.request().postDataJSON();
+    users = users.map((u) =>
+      u.id === "advisor-1" ? { ...u, full_name: body.full_name, role: body.role } : u,
+    );
+    return route.fulfill({ json: users.find((u) => u.id === "advisor-1") });
+  });
+  await page.route("**/api/organizations/*/users", (route) => route.fulfill({ json: users }));
+
+  await page.goto("/admin");
+  const row = page.locator("tr").filter({ hasText: "Juan Perez" });
+  await row.getByRole("button", { name: "Editar" }).click();
+
+  const editRow = page.locator("tr").filter({ hasText: "Cancelar" });
+  await editRow.locator("input").first().fill("Juan Pérez Editado");
+  await editRow.getByRole("button", { name: "Guardar" }).click();
+
+  await expect(page.getByText("Juan Pérez Editado")).toBeVisible();
 });
 
 test("un asesor no ve 'Administración' y recibe 403 al entrar directo a /admin", async ({

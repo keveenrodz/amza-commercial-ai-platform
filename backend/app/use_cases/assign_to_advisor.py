@@ -6,6 +6,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.services.conversation_summarization_service import ConversationSummarizationService
+from app.services.system_message import record_system_message
 from core.entities.opportunity import Opportunity
 from core.enums.opportunity import OpportunityStatus
 from core.exceptions.domain import (
@@ -42,6 +43,7 @@ class AssignToAdvisorUseCase:
             if advisor is None:
                 raise InternalUserNotFoundError(advisor_id)
 
+            previous_advisor_id = opportunity.assigned_advisor_id
             opportunity.assign_to_advisor(advisor_id)
 
             with contextlib.suppress(InvalidStatusTransitionError):
@@ -49,6 +51,24 @@ class AssignToAdvisorUseCase:
 
             opportunity.record_activity()
             await uow.opportunities.save(opportunity)
+
+            # Nota de sistema en el hilo -- ver mockup validado. No hay "actor" real disponible
+            # aquí (advisor_id es a quién se asigna, no necesariamente quién hizo clic -- spec
+            # 013 sección 6: cualquiera puede reasignar), así que la reasignación se redacta en
+            # voz pasiva en vez de inventar quién la ejecutó.
+            if previous_advisor_id is None:
+                await record_system_message(
+                    uow, opportunity, f"{advisor.full_name} tomó esta conversación.",
+                )
+            elif previous_advisor_id != advisor_id:
+                previous_advisor = await uow.internal_users.get_by_id(previous_advisor_id)
+                previous_name = previous_advisor.full_name if previous_advisor else "otro asesor"
+                await record_system_message(
+                    uow,
+                    opportunity,
+                    f"Conversación reasignada de {previous_name} a {advisor.full_name}.",
+                )
+
             await uow.commit()
 
         # Disparo incondicional: un asesor humano que toma la conversación necesita un resumen

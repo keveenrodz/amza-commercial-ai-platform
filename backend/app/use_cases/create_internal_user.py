@@ -24,7 +24,12 @@ class CreateInternalUserUseCase:
         full_name: str,
         email: str,
         role: InternalUserRole,
+        actor_id: InternalUserId | None = None,
     ) -> InternalUser:
+        # actor_id es None solo para el bootstrap por script (scripts/create_user.py, antes de
+        # que exista ningún administrador que pueda estar "agregando" a alguien) -- cualquier
+        # creación real vía la pantalla de administración siempre lo trae (spec 014 sección 5:
+        # el actor real, no algo que el body pueda declarar).
         async with SQLAlchemyUnitOfWork(self._session_factory) as uow:
             organization = await uow.organizations.get_by_slug(organization_slug)
             if organization is None:
@@ -51,6 +56,7 @@ class CreateInternalUserUseCase:
                 is_primary=is_primary,
                 created_at=now,
                 updated_at=now,
+                created_by=actor_id,
             )
             await uow.internal_users.save(user)
             await uow.commit()

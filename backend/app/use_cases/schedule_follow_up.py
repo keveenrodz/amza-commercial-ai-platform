@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.services.system_message import record_system_message
 from core.entities.follow_up import FollowUp
 from core.exceptions.domain import FollowUpAlreadyScheduledError, OpportunityNotFoundError
 from core.value_objects.identifiers import FollowUpId, InternalUserId, OpportunityId
@@ -39,5 +40,13 @@ class ScheduleFollowUpUseCase:
                 created_at=datetime.now(tz=UTC),
             )
             await uow.follow_ups.save(follow_up)
+
+            advisor = await uow.internal_users.get_by_id(advisor_id)
+            advisor_name = advisor.full_name if advisor else "Un asesor"
+            due_label = due_at.strftime("%d/%m a las %H:%M")
+            await record_system_message(
+                uow, opportunity, f"{advisor_name} programó un seguimiento para el {due_label}.",
+            )
+
             await uow.commit()
         return follow_up

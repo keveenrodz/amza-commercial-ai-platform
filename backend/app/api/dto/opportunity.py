@@ -36,7 +36,7 @@ class OpportunityResponse(BaseModel):
     started_at: datetime
     last_activity_at: datetime
     closed_at: datetime | None
-    has_unread_messages: bool
+    unread_count: int
 
     @classmethod
     def from_domain(cls, opportunity: Opportunity) -> OpportunityResponse:
@@ -55,7 +55,7 @@ class OpportunityResponse(BaseModel):
             started_at=opportunity.started_at,
             last_activity_at=opportunity.last_activity_at,
             closed_at=opportunity.closed_at,
-            has_unread_messages=opportunity.has_unread_messages,
+            unread_count=opportunity.unread_count,
         )
 
 
@@ -63,6 +63,7 @@ class OpenOpportunityResponse(BaseModel):
     opportunity: OpportunityResponse
     contact: ContactSummaryResponse
     follow_up: FollowUpResponse | None
+    last_message_preview: str | None
 
     @classmethod
     def from_domain(cls, item: OpenOpportunity) -> OpenOpportunityResponse:
@@ -70,6 +71,7 @@ class OpenOpportunityResponse(BaseModel):
             opportunity=OpportunityResponse.from_domain(item.opportunity),
             contact=ContactSummaryResponse.from_domain(item.contact),
             follow_up=FollowUpResponse.from_domain(item.follow_up) if item.follow_up else None,
+            last_message_preview=item.last_message_preview,
         )
 
 

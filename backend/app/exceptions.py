@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 
 from core.exceptions.domain import (
     AccessDeniedError,
+    CannotDemotePrimaryAdminError,
     CannotRemoveSelfError,
     ContactNotFoundError,
     DomainError,
@@ -14,6 +15,7 @@ from core.exceptions.domain import (
     InvalidStatusTransitionError,
     NoActiveAgentError,
     OnlyPrimaryAdminCanDeactivateAdminsError,
+    OnlyPrimaryAdminCanEditEmailError,
     OpportunityAlreadyClosedError,
     OpportunityNotAssignedToAdvisorError,
     OpportunityNotFoundError,
@@ -41,6 +43,8 @@ _UNPROCESSABLE_ERRORS = (
     InternalUserEmailAlreadyExistsError,
     CannotRemoveSelfError,
     OnlyPrimaryAdminCanDeactivateAdminsError,
+    OnlyPrimaryAdminCanEditEmailError,
+    CannotDemotePrimaryAdminError,
 )
 
 _FORBIDDEN_ERRORS = (AccessDeniedError,)

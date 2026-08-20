@@ -236,13 +236,15 @@ async def test_resolve_follow_up_without_active_returns_404(client: AsyncClient)
     await _seed_organization()
     await create_user(_ORG_SLUG, "juan@gmail.com", "Juan Perez", "advisor")
     await _login(client, "juan@gmail.com")
+    advisor_id = (await client.get("/auth/me")).json()["id"]
 
     opportunity_id, _ = await _seed_opportunity_with_contact(
         organization_slug=_ORG_SLUG, display_name="Cliente Cinco"
     )
 
     response = await client.post(
-        f"/organizations/{_ORG_SLUG}/opportunities/{opportunity_id}/follow-up/resolve"
+        f"/organizations/{_ORG_SLUG}/opportunities/{opportunity_id}/follow-up/resolve",
+        json={"advisor_id": advisor_id},
     )
     assert response.status_code == 404
 
@@ -269,7 +271,8 @@ async def test_resolve_follow_up_removes_it_from_opportunity_list(client: AsyncC
     assert item_before["follow_up"] is not None
 
     resolve = await client.post(
-        f"/organizations/{_ORG_SLUG}/opportunities/{opportunity_id}/follow-up/resolve"
+        f"/organizations/{_ORG_SLUG}/opportunities/{opportunity_id}/follow-up/resolve",
+        json={"advisor_id": advisor_id},
     )
     assert resolve.status_code == 200
 
@@ -327,7 +330,7 @@ async def test_receive_incoming_message_marks_opportunity_unread() -> None:
         )
     )
 
-    assert opportunity.has_unread_messages is True
+    assert opportunity.unread_count == 1
 
 
 async def test_get_conversation_history_marks_opportunity_read(client: AsyncClient) -> None:
@@ -345,14 +348,14 @@ async def test_get_conversation_history_marks_opportunity_read(client: AsyncClie
                 select(OpportunityModel).where(OpportunityModel.id == opportunity_id)
             )
         ).scalar_one()
-        model.has_unread_messages = True
+        model.unread_count = 3
         await session.commit()
 
     response = await client.get(
         f"/organizations/{_ORG_SLUG}/opportunities/{opportunity_id}/history"
     )
     assert response.status_code == 200, response.text
-    assert response.json()["opportunity"]["has_unread_messages"] is False
+    assert response.json()["opportunity"]["unread_count"] == 0
 
     async with AsyncSessionFactory() as session:
         model = (
@@ -360,7 +363,7 @@ async def test_get_conversation_history_marks_opportunity_read(client: AsyncClie
                 select(OpportunityModel).where(OpportunityModel.id == opportunity_id)
             )
         ).scalar_one()
-        assert model.has_unread_messages is False
+        assert model.unread_count == 0
 
 
 async def test_assign_advisor_reassigns_from_one_advisor_to_another(client: AsyncClient) -> None:

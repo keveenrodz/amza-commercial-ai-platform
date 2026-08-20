@@ -32,7 +32,7 @@ export interface Opportunity {
   started_at: string;
   last_activity_at: string;
   closed_at: string | null;
-  has_unread_messages: boolean;
+  unread_count: number;
 }
 
 export interface ContactSummary {
@@ -52,6 +52,7 @@ export interface OpenOpportunity {
   opportunity: Opportunity;
   contact: ContactSummary;
   follow_up: FollowUp | null;
+  last_message_preview: string | null;
 }
 
 export interface Message {

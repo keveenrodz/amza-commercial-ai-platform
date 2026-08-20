@@ -13,6 +13,10 @@ class ScheduleFollowUpRequest(BaseModel):
     reason: str
 
 
+class ResolveFollowUpRequest(BaseModel):
+    advisor_id: str
+
+
 class FollowUpResponse(BaseModel):
     id: str
     due_at: datetime

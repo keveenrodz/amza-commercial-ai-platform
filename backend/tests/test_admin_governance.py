@@ -12,6 +12,12 @@ Cubre spec 014 (Admin Governance & Access Control):
 9. Un Advisor autenticado llama cualquier endpoint de /users -> 403.
 10. Backfill de la migración 0005: deja exactamente un is_primary=True por organización cuando ya
     existía al menos un Administrator antes de aplicarla.
+
+Extendido con la auditoría de creación y la edición de usuarios (feedback post-014, migración
+0006): quién creó a cada InternalUser queda registrado (created_by) pero no se expone en la
+respuesta; editar nombre/rol lo puede hacer cualquier admin, el email solo el principal; el
+principal no puede perder el rol Administrator vía edición (dejaría el índice único de 0005 sin
+nadie que represente).
 """
 
 from __future__ import annotations
@@ -162,6 +168,109 @@ async def test_advisor_gets_403_on_users_endpoints(client: AsyncClient) -> None:
         json={"full_name": "Otro", "email": "otro@gmail.com", "role": "advisor"},
     )
     assert create_response.status_code == 403
+
+
+async def test_created_by_is_recorded_for_audit(client: AsyncClient) -> None:
+    await _seed_organization()
+    await create_user(_ORG_SLUG, "principal@gmail.com", "Admin Principal", "administrator")
+    await _login(client, "principal@gmail.com")
+    principal_id = (await client.get("/auth/me")).json()["id"]
+
+    response = await client.post(
+        _USERS_URL,
+        json={"full_name": "Nuevo Asesor", "email": "nuevo@gmail.com", "role": "advisor"},
+    )
+    assert response.status_code == 201, response.text
+
+    async with AsyncSessionFactory() as session:
+        created = (
+            await session.execute(
+                select(InternalUserModel).where(InternalUserModel.email == "nuevo@gmail.com")
+            )
+        ).scalar_one()
+        assert str(created.created_by) == principal_id
+
+    # No se expone en la respuesta -- es solo para auditoría, no algo que la UI necesite mostrar.
+    assert "created_by" not in response.json()
+
+
+async def test_created_by_is_null_for_bootstrap_script_users() -> None:
+    await _seed_organization()
+    await create_user(_ORG_SLUG, "bootstrap@gmail.com", "Bootstrap Admin", "administrator")
+
+    async with AsyncSessionFactory() as session:
+        user = (
+            await session.execute(
+                select(InternalUserModel).where(InternalUserModel.email == "bootstrap@gmail.com")
+            )
+        ).scalar_one()
+        assert user.created_by is None
+
+
+async def test_update_internal_user_changes_name_and_role(client: AsyncClient) -> None:
+    await _seed_organization()
+    await create_user(_ORG_SLUG, "principal@gmail.com", "Admin Principal", "administrator")
+    await create_user(_ORG_SLUG, "asesor@gmail.com", "Asesor Viejo", "advisor")
+    await _login(client, "principal@gmail.com")
+
+    async with AsyncSessionFactory() as session:
+        advisor = (
+            await session.execute(
+                select(InternalUserModel).where(InternalUserModel.email == "asesor@gmail.com")
+            )
+        ).scalar_one()
+
+    response = await client.put(
+        f"{_USERS_URL}/{advisor.id}",
+        json={
+            "full_name": "Asesor Nuevo Nombre",
+            "email": "asesor@gmail.com",
+            "role": "administrator",
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["full_name"] == "Asesor Nuevo Nombre"
+    assert body["role"] == "administrator"
+
+
+async def test_only_primary_admin_can_edit_email(client: AsyncClient) -> None:
+    await _seed_organization()
+    await create_user(_ORG_SLUG, "principal@gmail.com", "Admin Principal", "administrator")
+    await create_user(_ORG_SLUG, "segundo@gmail.com", "Segundo Admin", "administrator")
+    await _login(client, "segundo@gmail.com")
+
+    async with AsyncSessionFactory() as session:
+        target = (
+            await session.execute(
+                select(InternalUserModel).where(InternalUserModel.email == "segundo@gmail.com")
+            )
+        ).scalar_one()
+
+    # segundo (no principal) intenta cambiar su propio email
+    response = await client.put(
+        f"{_USERS_URL}/{target.id}",
+        json={
+            "full_name": "Segundo Admin",
+            "email": "nuevo-email@gmail.com",
+            "role": "administrator",
+        },
+    )
+    assert response.status_code == 422
+    assert "email" in response.json()["detail"].lower()
+
+
+async def test_cannot_demote_primary_admin_role(client: AsyncClient) -> None:
+    await _seed_organization()
+    await create_user(_ORG_SLUG, "principal@gmail.com", "Admin Principal", "administrator")
+    await _login(client, "principal@gmail.com")
+    principal_id = (await client.get("/auth/me")).json()["id"]
+
+    response = await client.put(
+        f"{_USERS_URL}/{principal_id}",
+        json={"full_name": "Admin Principal", "email": "principal@gmail.com", "role": "advisor"},
+    )
+    assert response.status_code == 422
 
 
 async def test_migration_backfill_leaves_exactly_one_primary_per_organization() -> None:

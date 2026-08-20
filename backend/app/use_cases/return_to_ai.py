@@ -6,6 +6,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.services.conversation_summarization_service import ConversationSummarizationService
+from app.services.system_message import record_system_message
 from core.entities.opportunity import Opportunity
 from core.enums.opportunity import OpportunityStatus
 from core.exceptions.domain import (
@@ -33,6 +34,7 @@ class ReturnToAIUseCase:
             if opportunity is None:
                 raise OpportunityNotFoundError(opportunity_id)
 
+            previous_advisor_id = opportunity.assigned_advisor_id
             opportunity.return_to_ai()
 
             with contextlib.suppress(InvalidStatusTransitionError):
@@ -40,6 +42,14 @@ class ReturnToAIUseCase:
 
             opportunity.record_activity()
             await uow.opportunities.save(opportunity)
+
+            if previous_advisor_id is not None:
+                previous_advisor = await uow.internal_users.get_by_id(previous_advisor_id)
+                previous_name = previous_advisor.full_name if previous_advisor else "El asesor"
+                await record_system_message(
+                    uow, opportunity, f"{previous_name} devolvió la conversación a la IA.",
+                )
+
             await uow.commit()
 
         # Disparo incondicional: el agente de IA que retoma la conversación necesita un resumen

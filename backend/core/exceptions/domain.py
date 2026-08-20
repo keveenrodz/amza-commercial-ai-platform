@@ -117,6 +117,21 @@ class OnlyPrimaryAdminCanDeactivateAdminsError(DomainError):
         self.target_id = target_id
 
 
+class OnlyPrimaryAdminCanEditEmailError(DomainError):
+    def __init__(self, target_id: InternalUserId) -> None:
+        super().__init__(f"Only the primary administrator can edit the email of {target_id}")
+        self.target_id = target_id
+
+
+class CannotDemotePrimaryAdminError(DomainError):
+    def __init__(self, target_id: InternalUserId) -> None:
+        super().__init__(
+            f"Cannot change the role of {target_id} away from administrator while it is the "
+            "primary administrator"
+        )
+        self.target_id = target_id
+
+
 class AccessDeniedError(DomainError):
     """Alguien probó con éxito ser dueño de un email vía OAuth, pero no existe ningún
     InternalUser activo para ese email. Distinto de InternalUserNotFoundError -- ese es un lookup

@@ -1,11 +1,18 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { ChatBubble } from "@/components/chat-bubble";
 import { ContactPanel } from "@/components/contact-panel";
-import { DotsIcon, SearchIcon, StarIcon } from "@/components/icons";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  DotsIcon,
+  LockIcon,
+  SearchIcon,
+  StarIcon,
+} from "@/components/icons";
 import { MessageComposer } from "@/components/message-composer";
 import { ChannelChip, FollowUpChip, StatusChip, initials } from "@/components/status-chips";
 import { useAdvisors } from "@/hooks/use-advisors";
@@ -20,6 +27,7 @@ import { groupMessagesByDay } from "@/lib/date-groups";
 export default function OpportunityDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: currentUser } = useCurrentUser();
   const { data: history, isLoading } = useConversationHistory(
     currentUser?.organization_slug,
@@ -32,9 +40,13 @@ export default function OpportunityDetailPage() {
   const toggleFavorite = useToggleFavorite();
   const { data: advisors } = useAdvisors(currentUser?.organization_slug);
   const [draft, setDraft] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  // Precargado desde ?q= -- así un resultado de la búsqueda general (spec 013b/refinamientos)
+  // abre la conversación con la búsqueda interna ya activa, resaltando y haciendo scroll al
+  // mensaje que hizo match, en vez de solo mostrar la conversación desde el principio.
+  const [showSearch, setShowSearch] = useState(() => Boolean(searchParams.get("q")));
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("q") ?? "");
   const [matchCount, setMatchCount] = useState(0);
+  const [matchIndex, setMatchIndex] = useState(0);
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [showReassignMenu, setShowReassignMenu] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
@@ -79,9 +91,7 @@ export default function OpportunityDetailPage() {
   }, [messages]);
 
   // Cuenta coincidencias cada vez que cambia la búsqueda o llegan mensajes nuevos (el historial
-  // se refresca solo, spec 013b) -- pero el auto-scroll de abajo NO depende de los mensajes, solo
-  // de la búsqueda, para no arrastrar la vista de vuelta al primer match cada vez que un poll trae
-  // contenido nuevo mientras el usuario está leyendo otra parte de la conversación.
+  // se refresca solo, spec 013b).
   useEffect(() => {
     if (!threadRef.current || !searchQuery.trim()) {
       setMatchCount(0);
@@ -90,10 +100,20 @@ export default function OpportunityDetailPage() {
     setMatchCount(threadRef.current.querySelectorAll("mark").length);
   }, [searchQuery, messages?.length]);
 
+  // Vuelve al primer match cada vez que cambia la búsqueda -- el efecto de abajo hace el scroll
+  // real, este solo reinicia el índice.
+  useEffect(() => {
+    setMatchIndex(0);
+  }, [searchQuery]);
+
+  // Auto-scroll al match actual -- NO depende de los mensajes, solo de la búsqueda/índice, para
+  // no arrastrar la vista de vuelta cada vez que un poll trae contenido nuevo mientras el usuario
+  // está leyendo otra parte de la conversación.
   useEffect(() => {
     if (!searchQuery.trim() || !threadRef.current) return;
-    threadRef.current.querySelector("mark")?.scrollIntoView({ block: "center" });
-  }, [searchQuery]);
+    const marks = threadRef.current.querySelectorAll("mark");
+    marks[matchIndex]?.scrollIntoView({ block: "center" });
+  }, [searchQuery, matchIndex]);
 
   if (!currentUser || isLoading || !history) {
     return <p className="flex-1 p-8">Cargando...</p>;
@@ -104,6 +124,16 @@ export default function OpportunityDetailPage() {
   const isAI = opportunity.attention_mode === "ai";
   const dayGroups = groupMessagesByDay(history.messages);
   const orgSlug = currentUser.organization_slug;
+  const hasUnread = opportunity.unread_count > 0;
+
+  const assignedAdvisorName = isMine
+    ? currentUser.full_name
+    : (advisors ?? []).find((a) => a.id === opportunity.assigned_advisor_id)?.full_name;
+
+  function goToMatch(delta: number) {
+    if (matchCount === 0) return;
+    setMatchIndex((i) => (i + delta + matchCount) % matchCount);
+  }
 
   return (
     <div className="flex min-w-0 flex-1">
@@ -137,7 +167,17 @@ export default function OpportunityDetailPage() {
             </div>
             <div className="mt-[3px] flex flex-wrap items-center gap-1.5">
               <ChannelChip channelType={opportunity.channel_type} />
-              <StatusChip opportunity={opportunity} currentUserId={currentUser.id} />
+              {isAI ? (
+                <StatusChip opportunity={opportunity} currentUserId={currentUser.id} />
+              ) : (
+                // Nombre real del asesor asignado (con puntico verde), no "Mía"/"Asignada" --
+                // así se ve en el mockup: el chip siempre muestra a quién está asignada, sin
+                // distinguir si ese "quién" es el usuario actual.
+                <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-1.5 py-0.5 font-heading text-[9.5px] font-bold tracking-wide text-ink">
+                  <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent" />
+                  {assignedAdvisorName ?? "Asesor"}
+                </span>
+              )}
               {followUp && <FollowUpChip followUp={followUp} />}
             </div>
           </div>
@@ -244,13 +284,13 @@ export default function OpportunityDetailPage() {
                         setUnread.mutate({
                           organizationSlug: orgSlug,
                           opportunityId: opportunity.id,
-                          unread: !opportunity.has_unread_messages,
+                          unread: !hasUnread,
                         });
                         setShowChatMenu(false);
                       }}
                       className="w-full px-3 py-2 text-left text-sm text-ink hover:bg-surface-2"
                     >
-                      {opportunity.has_unread_messages ? "Marcar como leída" : "Marcar como no leída"}
+                      {hasUnread ? "Marcar como leída" : "Marcar como no leída"}
                     </button>
                   </div>
                 )}
@@ -279,13 +319,29 @@ export default function OpportunityDetailPage() {
               className="w-full bg-transparent text-[13px] outline-none placeholder:text-ink-faint"
             />
             {searchQuery.trim() && (
-              <span className="flex-shrink-0 whitespace-nowrap text-[11.5px] text-ink-faint">
-                {matchCount === 0
-                  ? "Sin coincidencias"
-                  : matchCount === 1
-                    ? "1 coincidencia"
-                    : `${matchCount} coincidencias`}
-              </span>
+              <div className="flex flex-shrink-0 items-center gap-1">
+                <span className="whitespace-nowrap text-[11.5px] text-ink-faint">
+                  {matchCount === 0 ? "Sin coincidencias" : `${matchIndex + 1}/${matchCount}`}
+                </span>
+                {matchCount > 1 && (
+                  <>
+                    <button
+                      onClick={() => goToMatch(-1)}
+                      aria-label="Coincidencia anterior"
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-ink-muted hover:bg-surface-2"
+                    >
+                      <ChevronUpIcon className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => goToMatch(1)}
+                      aria-label="Siguiente coincidencia"
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-ink-muted hover:bg-surface-2"
+                    >
+                      <ChevronDownIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -310,7 +366,7 @@ export default function OpportunityDetailPage() {
         </div>
 
         <div className="border-t border-line bg-surface px-5 py-3">
-          {isMine && (
+          {isMine ? (
             <MessageComposer
               value={draft}
               onChange={setDraft}
@@ -328,6 +384,18 @@ export default function OpportunityDetailPage() {
               isSending={sendMessage.isPending}
               placeholder="Escribe tu respuesta..."
             />
+          ) : (
+            <div className="flex items-center gap-2 text-[12.5px] text-ink-muted">
+              <LockIcon className="h-4 w-4 flex-shrink-0" />
+              {isAI ? (
+                <span>La IA está respondiendo. Toma la conversación para responder tú mismo.</span>
+              ) : (
+                <span>
+                  Asignada a {assignedAdvisorName ?? "otro asesor"} — solo esa persona puede
+                  responder.
+                </span>
+              )}
+            </div>
           )}
 
           {sendMessage.isError && (

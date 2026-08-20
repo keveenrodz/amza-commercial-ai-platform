@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.use_cases.list_open_opportunities import OpenOpportunity
+from app.use_cases.list_open_opportunities import OpenOpportunity, build_message_preview
 from core.exceptions.domain import OrganizationSlugNotFoundError
 from infrastructure.database.unit_of_work import SQLAlchemyUnitOfWork
 
@@ -31,12 +31,20 @@ class SearchOpportunitiesUseCase:
                     [o.id for o in opportunities]
                 )
             }
+            latest_message_by_opportunity = await uow.messages.get_latest_by_opportunity_ids(
+                [o.id for o in opportunities]
+            )
 
             return [
                 OpenOpportunity(
                     opportunity=o,
                     contact=contacts_by_id[o.contact_id],
                     follow_up=follow_ups_by_opportunity.get(o.id),
+                    last_message_preview=(
+                        build_message_preview(latest_message_by_opportunity[o.id])
+                        if o.id in latest_message_by_opportunity
+                        else None
+                    ),
                 )
                 for o in opportunities
             ]

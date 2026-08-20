@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from app.api.dto.follow_up import FollowUpResponse, ScheduleFollowUpRequest
+from app.api.dto.follow_up import FollowUpResponse, ResolveFollowUpRequest, ScheduleFollowUpRequest
 from app.api.dto.opportunity import (
     AssignAdvisorRequest,
     ConversationHistoryResponse,
@@ -145,7 +145,11 @@ async def schedule_follow_up(
 async def resolve_follow_up(
     organization_slug: str,
     opportunity_id: str,
+    body: ResolveFollowUpRequest,
     use_case: ResolveFollowUpUseCase = Depends(get_resolve_follow_up_use_case),
 ) -> FollowUpResponse:
-    follow_up = await use_case.execute(OpportunityId.from_string(opportunity_id))
+    follow_up = await use_case.execute(
+        OpportunityId.from_string(opportunity_id),
+        InternalUserId.from_string(body.advisor_id),
+    )
     return FollowUpResponse.from_domain(follow_up)

@@ -18,3 +18,4 @@ class InternalUser:
     created_at: datetime
     updated_at: datetime
     is_primary: bool = False
+    created_by: InternalUserId | None = None

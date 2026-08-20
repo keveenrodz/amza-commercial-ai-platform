@@ -56,7 +56,7 @@ class GetConversationHistoryUseCase:
 
             # Excepción deliberada a "las lecturas no escriben" (spec 013, sección 5): abrir la
             # conversación *es* la señal de "ya lo vi", igual que en cualquier cliente de chat.
-            if opportunity.has_unread_messages:
+            if opportunity.unread_count > 0:
                 opportunity.mark_read()
                 await uow.opportunities.save(opportunity)
                 await uow.commit()
