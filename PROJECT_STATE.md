@@ -103,7 +103,7 @@ They must NOT be modified unless a formal architecture decision is made.
 | 012 Chat Panel Redesign | ✅ | ✅ | ✅ | ✅ |
 | 013 Contact Enrichment & Follow-ups | ✅ | ✅ | ✅ | ✅ |
 | 013b Design System Alignment | ✅ | ✅ | ✅ | ✅ |
-| 014 Admin Governance & Access Control | ✅ | ⬜ | ⬜ | ⬜ |
+| 014 Admin Governance & Access Control | ✅ | ✅ | ✅ | ✅ |
 | 015 Channel Provider Routing | ✅ | ⬜ | ⬜ | ⬜ |
 | 016 WhatsApp Integration (Evolution API) | ✅ | ⬜ | ⬜ | ⬜ |
 | 017 Admin Panel | ✅ | ⬜ | ⬜ | ⬜ |
@@ -544,6 +544,54 @@ They must NOT be modified unless a formal architecture decision is made.
      primer match cada vez que cambia la búsqueda (no en cada refresco del polling, para no
      arrastrar la vista mientras el asesor lee otra parte del hilo)
 
+**Admin Governance & Access Control (spec 014) ya implementado:**
+
+* Reglas de gobernanza ya acordadas antes de escribir el spec: un administrador **principal**
+  (el primer Administrator creado por organización); cualquier administrador puede crear
+  administradores o asesores; **solo** el principal puede desactivar a otro administrador; nadie
+  puede desactivarse a sí mismo, ni siquiera el principal
+* Migración `0005_add_admin_governance` — `internal_users.is_primary` (bool) + un índice único
+  parcial (`sqlite_where=is_primary=1`) por organización, la red de seguridad real contra la
+  condición de carrera de crear dos administradores "principales" a la vez — el caso de uso no
+  llega a comprobarlo a tiempo, la BD sí lo rechaza. Incluye backfill: si ya existía un
+  Administrator (ej. el sembrado en spec 008 para validar OAuth), el más antiguo por organización
+  queda marcado principal
+* `CreateInternalUserUseCase`/`DeactivateInternalUserUseCase`/`ActivateInternalUserUseCase`/
+  `ListInternalUsersUseCase` nuevos; **primer uso real de `require_role()`** (spec 008, nunca
+  conectado a ningún endpoint hasta ahora) protegiendo `/organizations/{slug}/users`
+* Detalle deliberado, distinto a todos los endpoints anteriores del proyecto: el actor de
+  `deactivate` viene de `current_user` (la sesión autenticada real vía `Depends`), nunca del
+  body — a diferencia de `advisor_id` en assign-advisor/messages (sin implicación de privilegios
+  ahí). Dejar que el frontend declarara quién actúa permitiría que cualquier administrador se
+  hiciera pasar por el principal
+* Las tres excepciones nuevas (`InternalUserEmailAlreadyExistsError`, `CannotRemoveSelfError`,
+  `OnlyPrimaryAdminCanDeactivateAdminsError`) van a 422, no 403, aunque dos son reglas de permiso
+  — mismo criterio que `OpportunityNotAssignedToAdvisorError` (spec 010): el handler de 403
+  siempre devuelve "Access denied" genérico, perdiendo el motivo; 422 conserva el mensaje
+  específico
+* `scripts/create_user.py` reescrito para llamar al mismo caso de uso que el endpoint (evita que
+  la lógica de `is_primary` viva en dos lugares); `scripts/reassign_primary_admin.py` (nuevo) —
+  única forma de mover la insignia de principal, deliberadamente sin endpoint (caso raro y de
+  alto riesgo)
+* Frontend: `/admin` deja de ser el placeholder de spec 011 — tabla de usuarios, formulario
+  "Agregar usuario", botón activar/desactivar por fila (deshabilitado en el cliente cuando la
+  fila es uno mismo o es un Administrator y el usuario actual no es principal — solo cortesía de
+  UX, quien de verdad lo impide es el backend); el ítem "Administración" del rail nav solo se
+  renderiza para `role === "administrator"`
+* **Bug real, no relacionado con este spec, encontrado por el usuario al intentar validar en el
+  navegador justo cuando arrancaba esta implementación**: login con Google fallando con 500
+  genérico. Causa real en el log: `jwt.exceptions.ImmatureSignatureError` — `PyJWT.decode()`
+  valida `iat` con cero tolerancia de desfase de reloj por defecto, y unos pocos segundos de
+  diferencia entre la emisión del token por Google y su validación aquí (red, no necesariamente
+  reloj desincronizado) ya lo rechaza. Fix: `leeway=10` en `infrastructure/auth/google.py`.
+  Corregido y el backend reiniciado de inmediato, sin esperar a terminar spec 014, porque
+  bloqueaba al usuario por completo
+* Validado: `ruff`, `mypy`, `pytest` (39 tests, 9 nuevos en `test_admin_governance.py`, incluido
+  un test que ejecuta la sentencia SQL de backfill de la migración de forma aislada — los tests
+  usan `Base.metadata.create_all`, no Alembic de verdad) en backend; `tsc`, `eslint`, `vitest`,
+  `next build`, y Playwright (15/15, 2 tests nuevos en `admin.spec.ts`) en frontend, más
+  verificación visual con un script de Playwright ad-hoc (claro/oscuro)
+
 **Production Risks** (decisiones conscientes, no pendientes a resolver ahora — visibles antes de
 preparar un despliegue más robusto):
 
@@ -679,8 +727,8 @@ Política vigente desde spec 008: toda spec nueva debe incluir tests de lo que i
 modifica comportamiento existente, actualiza los tests afectados (ver
 `03_Engineering_Principles.md`).
 
-**Siguiente acción: specs 011, 012, 013 y 013b implementadas, validadas y committed (eb6071e,
-332708c, 7b59e54, 7d1a6a9). Sigue spec 014 (Admin Governance & Access Control).**
+**Siguiente acción: specs 011, 012, 013, 013b y 014 implementadas, validadas y committed (eb6071e,
+332708c, 7b59e54, 7d1a6a9, 3e8d86a). Sigue spec 015 (Channel Provider Routing).**
 
 ---
 
@@ -824,7 +872,8 @@ Workspace) donde un asesor humano puede tomar una conversación, **responderle a
 devolverla a IA — validado manualmente con login real y Telegram real, sin bugs conocidos.
 Siguiente: se pospuso el piloto operativo para completar más la plataforma primero (UI rediseñada,
 WhatsApp, panel de administración, base de conocimiento, multimedia) — specs 011 (Navigation Shell
-& Theming), 012 (Chat Panel Redesign), 013 (Contact Enrichment & Follow-ups) y 013b (Design System
+& Theming), 012 (Chat Panel Redesign), 013 (Contact Enrichment & Follow-ups), 013b (Design System
 Alignment, spec correctiva que portó la paleta/tipografía/layout reales del mockup — ver esa
-sección para el porqué) ya implementadas, validadas y committed. Sigue spec 014 (Admin Governance &
-Access Control). Ver sección "Next Step" arriba para el orden completo de la nueva tanda de specs.
+sección para el porqué) y 014 (Admin Governance & Access Control) ya implementadas, validadas y
+committed. Sigue spec 015 (Channel Provider Routing). Ver sección "Next Step" arriba para el orden
+completo de la nueva tanda de specs.
