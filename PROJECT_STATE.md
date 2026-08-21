@@ -775,6 +775,7 @@ preparar un despliegue más robusto):
 | Sin cola de reintentos para fallos de infraestructura | Aceptado para MVP |
 | Sin revocación explícita de JWT | Mitigado — `get_current_user()` valida contra BD en cada request |
 | Protección CSRF pendiente | Mitigación parcial — cookies `HttpOnly` + `SameSite=Lax` |
+| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **Aceptado, no resuelto — limitación real de WhatsApp/Baileys, no de este proyecto.** Confirmado en vivo con el número real (+57 301 509 2386): el mensaje del cliente entra bien, `POST /message/sendText` responde 201, pero WhatsApp bloquea la entrega en silencio (`status: 0`, `messageStubParameters: ["463"]`) por un rate-limit del lado de WhatsApp a "contactos en frío" (falta de tokens `tctoken`/`cstoken` en Baileys). Confirmado contra los issues reales de los mantenedores ([WhiskeySockets/Baileys#2441](https://github.com/WhiskeySockets/Baileys/issues/2441): fix parcial, no resuelto del todo; [evolution-foundation/evolution-api#2653](https://github.com/evolution-foundation/evolution-api/issues/2653): mismo síntoma exacto en v2.3.7). Se probó subir a `2.4.0-rc2` (requiere activación gratuita vía `/manager`) esperando que incluyera el fix parcial de Baileys — **mismo error, sin mejora** — se revirtió a `v2.3.7` (estable, sin beneficio real en el RC que justificara el riesgo de usar un release candidate). Sin ETA de solución real del lado de Baileys/Evolution API; revisitar si en la práctica bloquea el piloto. |
 
 **What does NOT exist yet:**
 
