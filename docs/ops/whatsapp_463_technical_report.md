@@ -521,32 +521,95 @@ commit es 100% público, del repositorio oficial, con diff visible línea por l�
 y aprobado por un mantenedor humano independiente — el riesgo de cadena de suministro es
 comparable al de cualquier release oficial, no al de una imagen de origen desconocido.
 
+## 5g. Se construyó la imagen y se probó de verdad — primera entrega confirmada a un contacto frío
+
+Se construyó una imagen Docker propia desde el commit exacto del PR #2608
+(`45d3122ca998b7d26b5153cb97984509e3289b92`, usando el `Dockerfile` real del repositorio, sin
+modificarlo) y se probó en el mismo estilo de entorno aislado usado en toda esta investigación
+(Postgres desechable, red Docker propia).
+
+1. **`prisma.config.ts` ya viene incluido en la imagen final** (ese era precisamente el fix #5 del
+   PR) — no hizo falta ningún parche adicional de nuestra parte. Migraciones corrieron limpio.
+2. **Activación de licencia**, mismo mecanismo que en 5d (`EVOLUTION_OPERATOR_EMAIL`,
+   `/v1/register/auto`) — funcionó igual, gratuita, con el mismo `customer_id` ya conocido.
+3. **`POST /instance/create` con `integration: "WHATSAPP-BAILEYS"` respondió `201 Created`** —
+   el bug de la sección 5e/5f **queda confirmado como arreglado** en este commit, no solo en
+   teoría. Instancia creada, QR generado sin problema.
+4. **Con autorización explícita, se conectó el número real de negocio** (+57 301 509 2386) vía
+   QR. Efecto secundario real: la sesión de producción (`v2.3.7`) quedó desconectada
+   (`connectionStatus: "close"`) — no fue un dispositivo vinculado en paralelo, sustituyó la
+   sesión activa. Recuperable (se puede reconectar `v2.3.7` volviendo a escanear ahí), pero
+   importante dejarlo documentado como el costo real de esta prueba, no algo gratis.
+5. **Un contacto que nunca le había escrito antes a este número envió un mensaje real**
+   (dirección LID: `128849086042212@lid` / `573116387935@s.whatsapp.net` — el propio formato de
+   direccionamiento que Baileys ≥ rc.10 maneja distinto, ver sección 2). Se respondió manualmente
+   vía `POST /message/sendText` (sin backend/IA de por medio — la prueba mide el comportamiento
+   del protocolo, no nuestra integración).
+6. **Resultado: `HTTP 201`, `status: 1` (PENDING) sin `messageStubParameters` — nunca apareció el
+   463 en los logs, ni error de ningún tipo, en los más de dos minutos que se esperó.** Y lo más
+   importante: **la persona que envió el mensaje original confirmó directamente que el mensaje
+   de respuesta le llegó a su teléfono.** Es la primera entrega real confirmada a un contacto
+   frío en toda esta investigación.
+
+Tabla comparativa final, con el formato pedido:
+
+| | `v2.3.7` (producción, evidencia sección 5) | Build `45d3122` (PR #2608, este intento) |
+|---|---|---|
+| Baileys | `7.0.0-rc.9` | `7.0.0-rc13` |
+| Licencia requerida | No aplica (< 2.4.0) | Sí — superada |
+| `instance/create` | ✅ | ✅ (antes fallaba en `homolog`, aquí ya arreglado) |
+| QR / conexión | ✅ | ✅ |
+| Contacto frío → respuesta | ❌ (463) | **✅ entregado, confirmado por el receptor** |
+| HTTP de `/message/sendText` | 201 | 201 |
+| `status`/`messageStubParameters` | `0` / `["463"]` | `1` (PENDING) / `[]` (vacío) |
+| Entrega física al teléfono | ❌ | **✅ confirmada** |
+
+**Esto es evidencia real, no solo de logs, de que el cambio de versión de Baileys (rc9→rc13, que
+incluye el manejo de TC token/Reachout Timelock y direccionamiento LID) está causalmente
+relacionado con la resolución del 463** para este escenario concreto de contacto frío. Sigue
+siendo **una sola prueba, un solo contacto** — antes de considerar esto validado para producción,
+la recomendación (propia y del equipo técnico externo) es repetir con 2-3 contactos fríos más,
+una conversación de varias vueltas, un reinicio del contenedor (confirmar que la sesión
+sobrevive), y verificar el comportamiento tras una reconexión — recién después de eso evaluar
+migrar la instancia real, con backup previo. Ninguna de esas rondas adicionales se ha hecho
+todavía.
+
 ## 6. Conclusión y lo que se necesita del equipo técnico
 
 Es una restricción del lado de los servidores de WhatsApp contra clientes no oficiales que
 intentan responder a contactos nuevos/en frío, expuesta por un hueco de implementación
 (persistencia/reenvío de `tctoken`/`cstoken`) presente en **las tres librerías/motores no
 oficiales investigados** (Baileys, whatsmeow, whatsapp-web.js) — pero con una precisión
-importante confirmada el 21 de agosto: **ninguna versión de Evolution API que hemos podido
-probar hasta ahora incluye el Baileys posterior al fix** (todas empaquetan `rc.6`-`rc.9`; el
-fix llegó en `rc.10`). La única oficial que sí lo trae (`homolog`) resultó tener tres bugs de
-release independientes; el tercero (creación de instancia rota, ver 5d/5e) **ya es un issue
-público** ([#2631](https://github.com/evolution-foundation/evolution-api/issues/2631)) con **un
-fix ya escrito, revisado y aprobado por un mantenedor** ([PR #2608](https://github.com/evolution-foundation/evolution-api/pull/2608)) — pero
-sin mergear desde hace casi dos meses, bloqueado por un problema de CI no relacionado con el
-código. **El commit exacto de ese PR** (`45d3122ca998b7d26b5153cb97984509e3289b92`) **trae a la
-vez el fix de creación de instancia y Baileys `7.0.0-rc13`** — es, hoy, la única combinación
-conocida de "funciona" + "tiene el fix de TC token", aunque no existe como imagen Docker
-publicada, solo como código fuente auditable en GitHub. **El 463 sigue sin confirmarse resuelto
-ni descartado con Baileys ≥ rc.10** — la única vía para probarlo hoy es construir una imagen
-nosotros mismos desde ese commit específico, o esperar a que el PR se mergee.
+importante confirmada el 21 de agosto: **ninguna versión de Evolution API previamente probada
+incluía el Baileys posterior al fix** (todas empaquetan `rc.6`-`rc.9`; el fix llegó en `rc.10`).
 
-**Decisión tomada:** se deja de intentar parchar `homolog` más allá de este punto (tres bugs de
-release independientes en la misma imagen ya no da buen retorno seguir parcheando). El foco pasa
-a escalar el hallazgo puntual (ya con el issue/PR identificados, no hace falta reportarlo desde
-cero) y a evaluar construir nuestra propia imagen desde el commit del PR #2608 — opción
-sustancialmente menos riesgosa que `deployfybr` porque es código público, auditable, del
-repositorio oficial, y ya revisado por un mantenedor humano independiente.
+**Actualización final — probado de verdad, con resultado positivo (ver sección 5g).** Se
+construyó una imagen propia desde el commit exacto de
+[PR #2608](https://github.com/evolution-foundation/evolution-api/pull/2608)
+(`45d3122ca998b7d26b5153cb97984509e3289b92`, fix ya escrito, revisado y aprobado por un
+mantenedor, solo sin mergear por un problema de CI no relacionado con el código) — un commit que
+trae a la vez el fix de creación de instancia (issue
+[#2631](https://github.com/evolution-foundation/evolution-api/issues/2631)) y Baileys
+`7.0.0-rc13`. Con autorización explícita, se conectó el número real de negocio y se probó contra
+un contacto genuinamente frío: **`HTTP 201`, sin error 463 en los logs, y la persona que envió el
+mensaje original confirmó directamente que la respuesta le llegó a su teléfono.** Es la primera
+entrega real confirmada a un contacto frío en toda esta investigación.
+
+**Esto es evidencia real y positiva de que el cambio de versión de Baileys está causalmente
+relacionado con el 463** — pero sigue siendo una sola prueba con un solo contacto. Antes de
+considerar esto resuelto para producción, falta repetir con 2-3 contactos más, una conversación
+de varias vueltas, un reinicio del contenedor, y verificar el comportamiento tras una
+reconexión — ninguna de esas rondas se ha hecho todavía. Efecto secundario real ya documentado:
+conectar el número real a esta instancia de prueba desconectó la sesión de producción
+(`v2.3.7`), recuperable pero no gratis.
+
+**Decisión tomada:** se deja de intentar parchar `homolog` (ya no es necesario, la build propia
+del commit del PR #2608 lo reemplaza con una base sin esos tres bugs). El foco pasa a: (a)
+completar las rondas de validación adicionales sobre esta misma build antes de decidir sobre
+producción, y (b) escalar el hallazgo y este resultado positivo al equipo técnico/Evolution
+Foundation — con evidencia real de que su propio fix (PR #2608) + Baileys rc13 resuelve el
+problema que motivó todo este reporte, es un dato valioso para que ellos también prioricen
+mergearlo.
 
 Preguntas concretas para el equipo técnico:
 1. Sobre [PR #2608](https://github.com/evolution-foundation/evolution-api/pull/2608) — ¿alguien

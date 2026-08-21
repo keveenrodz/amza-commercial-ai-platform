@@ -775,7 +775,7 @@ preparar un despliegue más robusto):
 | Sin cola de reintentos para fallos de infraestructura | Aceptado para MVP |
 | Sin revocación explícita de JWT | Mitigado — `get_current_user()` valida contra BD en cada request |
 | Protección CSRF pendiente | Mitigación parcial — cookies `HttpOnly` + `SameSite=Lax` |
-| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **🔴 CRÍTICO, no resuelto — ver detalle abajo. No es un riesgo aceptable-y-listo como los demás de esta tabla: sin esto, el canal que en la práctica más le importa al piloto (WhatsApp, no Telegram) queda inservible para el caso de uso real — un cliente nuevo escribiéndole por primera vez a la empresa. Pendiente de resolución, no cerrado.** |
+| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **🟡 EN VALIDACIÓN — primera entrega real confirmada a un contacto frío (21 de agosto, ver sección 13 más abajo), probando Baileys `7.0.0-rc13` vía una imagen propia construida desde `evolution-foundation/evolution-api` PR #2608. Un solo contacto probado hasta ahora, sesión de producción (`v2.3.7`) temporalmente desconectada por la prueba (recuperable). Faltan rondas adicionales (2-3 contactos, conversación de varias vueltas, reinicio, reconexión) antes de considerar esto resuelto y migrar producción. Ya no es "sin resolver" a secas — sigue siendo la prioridad de la próxima sesión.** |
 
 **Detalle del error 463 (WhatsApp/Evolution API/Baileys), por qué se acepta como riesgo (por
 ahora) en vez de seguir invirtiendo tiempo en resolverlo:**
@@ -964,18 +964,32 @@ commit exacto del PR (`45d3122ca998b7d26b5153cb97984509e3289b92`) declara
 `"baileys": "7.0.0-rc13"` — **tiene a la vez el fix de instancia y Baileys posterior al fix de TC
 token**, pero no existe como imagen Docker publicada, solo como código fuente en GitHub.
 
-**Conclusión final (sigue sin resolverse, pero con un camino concreto identificado):** de tres
+**14. Actualización 21 de agosto (misma sesión) — se construyó la imagen, se probó de verdad, y
+por primera vez se confirmó una entrega real a un contacto frío.** Con autorización explícita, se
+construyó la imagen Docker propia desde el commit del PR #2608
+(`45d3122ca998b7d26b5153cb97984509e3289b92`) y se probó en el mismo estilo de entorno aislado: el
+bug de instancia quedó confirmado como arreglado (`POST /instance/create` → `201`), se conectó el
+número real de negocio (+57 301 509 2386) vía QR — lo que desconectó temporalmente la sesión de
+producción `v2.3.7` (`connectionStatus: close`, recuperable) — y un contacto genuinamente nuevo
+envió un mensaje de prueba. Se respondió manualmente (`POST /message/sendText`, sin backend/IA de
+por medio): `HTTP 201`, sin error 463 en más de dos minutos de logs, y **la persona que envió el
+mensaje confirmó directamente que la respuesta le llegó a su teléfono.** Primera entrega real
+confirmada a un contacto frío en toda esta investigación. Tabla comparativa completa (`v2.3.7`
+rc9 vs. build `45d3122` rc13) en `docs/ops/whatsapp_463_technical_report.md`, sección 5g.
+
+**Conclusión final (evidencia real y positiva, pero validación incompleta):** de tres
 motores/librerías completamente distintos investigados (Baileys, whatsmeow/Evolution Go,
-whatsapp-web.js/OpenWA), los tres tienen alguna forma del mismo problema del lado de WhatsApp, y
-ya se confirmó que no se resuelve con tiempo ni cambiaría con un número nuevo. **El 463 sigue sin
-confirmarse resuelto ni descartado con Baileys ≥ rc.10** — la única vía conocida hoy para probarlo
-es construir una imagen propia desde el commit del PR #2608 (código público, auditado, aprobado
-por un mantenedor — perfil de riesgo mucho menor que `deployfybr`) o esperar a que el PR se
-mergee. Detalle completo en `docs/ops/whatsapp_463_technical_report.md`, secciones 5f, 6 y 7. Si
-esa vía tampoco resuelve el 463, la alternativa de fondo sigue siendo la API oficial de WhatsApp
-Business de Meta (de pago, requiere aprobación) — una decisión de producto/costo mayor. Dado que
-WhatsApp es el canal que de verdad le importa al piloto (no Telegram), esta decisión se retoma
-como prioridad en la próxima sesión, no se archiva.
+whatsapp-web.js/OpenWA), los tres tenían alguna forma del mismo problema del lado de WhatsApp —
+pero con Baileys `rc13` + el fix de instancia del PR #2608, **por primera vez se confirmó una
+entrega real, no solo ausencia de error en los logs**. Es evidencia fuerte de que el cambio de
+versión de Baileys es la causa, pero es una sola prueba con un solo contacto — antes de considerar
+esto resuelto para producción faltan rondas adicionales (2-3 contactos fríos más, conversación de
+varias vueltas, reinicio del contenedor, comportamiento tras reconexión) y luego, solo si eso se
+sostiene, migrar la instancia real con backup previo. Si en cambio alguna de esas rondas revela
+que el 463 vuelve a aparecer, la alternativa de fondo sigue siendo la API oficial de WhatsApp
+Business de Meta (de pago, requiere aprobación). Dado que WhatsApp es el canal que de verdad le
+importa al piloto (no Telegram), completar esta validación se retoma como prioridad en la próxima
+sesión.
 
 **What does NOT exist yet:**
 
