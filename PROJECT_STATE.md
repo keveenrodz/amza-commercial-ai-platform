@@ -775,10 +775,10 @@ preparar un despliegue más robusto):
 | Sin cola de reintentos para fallos de infraestructura | Aceptado para MVP |
 | Sin revocación explícita de JWT | Mitigado — `get_current_user()` valida contra BD en cada request |
 | Protección CSRF pendiente | Mitigación parcial — cookies `HttpOnly` + `SameSite=Lax` |
-| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **Aceptado, no resuelto — limitación real de WhatsApp/Baileys, no de este proyecto. Probado exhaustivamente, ver detalle abajo.** |
+| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **🔴 CRÍTICO, no resuelto — ver detalle abajo. No es un riesgo aceptable-y-listo como los demás de esta tabla: sin esto, el canal que en la práctica más le importa al piloto (WhatsApp, no Telegram) queda inservible para el caso de uso real — un cliente nuevo escribiéndole por primera vez a la empresa. Pendiente de resolución, no cerrado.** |
 
-**Detalle del error 463 (WhatsApp/Evolution API/Baileys), por qué se acepta como riesgo en vez de
-seguir invirtiendo tiempo en resolverlo:**
+**Detalle del error 463 (WhatsApp/Evolution API/Baileys), por qué se acepta como riesgo (por
+ahora) en vez de seguir invirtiendo tiempo en resolverlo:**
 
 El mensaje del cliente entra perfecto (webhook, contacto, oportunidad, respuesta de la IA — todo
 funciona y se ve en la app). `POST /message/sendText` responde 201, pero WhatsApp bloquea la
@@ -808,11 +808,49 @@ Se probó, con evidencia empírica real en cada caso (no solo teoría):
    instancia. Guardar el contacto en el teléfono y volver a escribir tampoco cambió nada
    (confirma que es del lado del servidor de WhatsApp, no algo que un truco del cliente resuelva).
 
-**Conclusión:** límite real y actualmente sin solución de la ruta Evolution API/Baileys no
-oficial para responder automáticamente a contactos nuevos — no es un bug de este proyecto, y no
-hay más ajuste de configuración razonable que probar. Si en la práctica esto bloquea el piloto,
-la alternativa real es la API oficial de WhatsApp Business de Meta (de pago, requiere
-aprobación) — decisión de producto/costo, no una tarea de ingeniería más.
+**Se evaluó cambiar de motor por completo, con evidencia real en cada caso, no solo teoría:**
+
+6. **Evolution Go** (`evolution-foundation/evolution-go`, motor en Go con `whatsmeow` en vez de
+   Baileys/Node.js) — se investigó como posible alternativa completa de motor. Descartado antes
+   de migrar nada: [evolution-foundation/evolution-go#50](https://github.com/evolution-foundation/evolution-go/issues/50)
+   reporta el **mismo error 463 exacto**, sin fix del mantenedor, causa idéntica (tokens
+   `tctoken`/`cstoken` no persistidos). Confirmado además en el propio tracker de `whatsmeow`
+   ([tulir/whatsmeow#1074](https://github.com/tulir/whatsmeow/issues/1074)) — el problema no es
+   de Baileys específicamente, es de cómo WhatsApp trata a *cualquier* librería no oficial que
+   hable el protocolo de WhatsApp Web directamente.
+7. **OpenWA** (`rmyndharis/OpenWA`, gateway con dos motores seleccionables) — descartado también
+   sin migrar nada. Motor Baileys: literalmente la misma librería que ya usamos, mismo bug,
+   cero beneficio. Motor `whatsapp-web.js` (navegador headless real en vez de reimplementar el
+   protocolo): su propio historial de issues
+   ([wwebjs/whatsapp-web.js#3250](https://github.com/wwebjs/whatsapp-web.js/issues/3250),
+   [#1909](https://github.com/pedroslopez/whatsapp-web.js/issues/1909),
+   [#1872](https://github.com/pedroslopez/whatsapp-web.js/issues/1872),
+   [#532](https://github.com/pedroslopez/whatsapp-web.js/issues/532)) muestra el mismo problema
+   de fondo (WhatsApp restringiendo el contacto con desconocidos) manifestándose **peor**: no un
+   mensaje rechazado limpio (463), sino **el número completo bloqueado/bloqueado por WhatsApp**.
+   Cambiar de motor no resuelve nada aquí — es la misma restricción de la plataforma de
+   WhatsApp contra clientes no oficiales, no un defecto de una librería en particular.
+
+**⚠️ Precaución activa, no solo nota histórica:** una fuente encontrada durante esta
+investigación (documentación de seguridad de un proyecto de gateway de terceros) describe este
+"reach-out time-lock" como una medida de *enforcement* de WhatsApp que **se levanta sola con el
+tiempo**, y advierte explícitamente que **reintentar contra el mismo destinatario en bucle es
+justo lo que escala el enforcement hacia un bloqueo permanente real de la cuenta**. Ya se le
+mandaron bastantes intentos fallidos a los mismos 2-3 números durante todo este debugging.
+**Decisión tomada: dejar de mandar mensajes de prueba a esos números por ahora** — no hay
+confirmación de daño hecho, pero seguir insistiendo es justo lo que la evidencia dice que lo
+empeora. Si se retoma la investigación, usar números frescos, no los ya usados.
+
+**Conclusión actual (pendiente, no cerrada):** de tres motores/librerías completamente distintos
+investigados (Baileys, whatsmeow/Evolution Go, whatsapp-web.js/OpenWA), los tres tienen alguna
+forma del mismo problema — es una restricción real de la plataforma de WhatsApp contra clientes
+no oficiales hablándole a desconocidos, no un bug de una librería específica que resolver
+cambiando de proveedor. **Plan:** darle tiempo (el mecanismo se describe como algo que se
+levanta solo) y reintentar más adelante con números que no se hayan usado en este debugging. Si
+después de eso sigue fallando, la alternativa real de fondo es la API oficial de WhatsApp
+Business de Meta (de pago, requiere aprobación por Meta) — una decisión de producto/costo mayor,
+no una tarea de ingeniería más. Dado que WhatsApp es el canal que de verdad le importa al piloto
+(no Telegram), esto se retoma como prioridad en la próxima sesión, no se archiva.
 
 **What does NOT exist yet:**
 
@@ -941,7 +979,11 @@ modifica comportamiento existente, actualiza los tests afectados (ver
 committed (eb6071e, 332708c, 7b59e54, 7d1a6a9, 3e8d86a, e1b1482, f5d77db, 5422047), más dos
 tandas de refinamientos post-014 sobre el panel de administración y el chat (cc33ae7, 6ff94ae,
 02c693d, 68c8b20, 2a866e9 — ver secciones "Admin panel y refinamientos de chat post-014" y
-"Buscador general post-014, segunda ronda" arriba). Sigue spec 018 (Knowledge Base).**
+"Buscador general post-014, segunda ronda" arriba). **Antes de spec 018 (Knowledge Base):
+retomar el error 463 de WhatsApp (tabla de Production Risks arriba) — crítico, no un riesgo
+aceptado y cerrado, sin esto el canal real que le importa al piloto queda inservible. Plan:
+esperar (el time-lock se levanta solo) y reintentar con números frescos, no los ya usados en el
+debugging.**
 
 ---
 
@@ -1094,5 +1136,10 @@ Governance & Access Control), 015 (Channel Provider Routing), 016 (WhatsApp Inte
 sobre administración y chat (edición de usuarios, notas de sistema en el hilo, conteo real de no
 leídos, vista previa del último mensaje, buscador con navegación entre coincidencias, apertura
 automática de un único resultado de búsqueda, botón de limpiar que vuelve a la conversación de
-antes). Sigue spec 018 (Knowledge Base). Ver sección "Next Step" arriba para el orden completo
-de la nueva tanda de specs.
+antes). **🔴 Bloqueador crítico activo, no cerrado:** las respuestas automáticas de WhatsApp a
+contactos nuevos fallan con error 463 de WhatsApp (rate-limit "reach-out time-lock", confirmado
+como limitación real de la plataforma tras investigar tres motores/librerías distintos —
+Baileys, whatsmeow/Evolution Go, whatsapp-web.js/OpenWA — ver tabla de Production Risks para el
+detalle completo). Sin resolver esto, WhatsApp (el canal que de verdad le importa al piloto) no
+sirve para su caso de uso real. Se retoma en la próxima sesión antes de spec 018 (Knowledge
+Base). Ver sección "Next Step" arriba para el orden completo de la nueva tanda de specs.
