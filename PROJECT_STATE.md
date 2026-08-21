@@ -775,7 +775,44 @@ preparar un despliegue más robusto):
 | Sin cola de reintentos para fallos de infraestructura | Aceptado para MVP |
 | Sin revocación explícita de JWT | Mitigado — `get_current_user()` valida contra BD en cada request |
 | Protección CSRF pendiente | Mitigación parcial — cookies `HttpOnly` + `SameSite=Lax` |
-| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **Aceptado, no resuelto — limitación real de WhatsApp/Baileys, no de este proyecto.** Confirmado en vivo con el número real (+57 301 509 2386): el mensaje del cliente entra bien, `POST /message/sendText` responde 201, pero WhatsApp bloquea la entrega en silencio (`status: 0`, `messageStubParameters: ["463"]`) por un rate-limit del lado de WhatsApp a "contactos en frío" (falta de tokens `tctoken`/`cstoken` en Baileys). Confirmado contra los issues reales de los mantenedores ([WhiskeySockets/Baileys#2441](https://github.com/WhiskeySockets/Baileys/issues/2441): fix parcial, no resuelto del todo; [evolution-foundation/evolution-api#2653](https://github.com/evolution-foundation/evolution-api/issues/2653): mismo síntoma exacto en v2.3.7). Se probó subir a `2.4.0-rc2` (requiere activación gratuita vía `/manager`) esperando que incluyera el fix parcial de Baileys — **mismo error, sin mejora** — se revirtió a `v2.3.7` (estable, sin beneficio real en el RC que justificara el riesgo de usar un release candidate). Sin ETA de solución real del lado de Baileys/Evolution API; revisitar si en la práctica bloquea el piloto. |
+| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **Aceptado, no resuelto — limitación real de WhatsApp/Baileys, no de este proyecto. Probado exhaustivamente, ver detalle abajo.** |
+
+**Detalle del error 463 (WhatsApp/Evolution API/Baileys), por qué se acepta como riesgo en vez de
+seguir invirtiendo tiempo en resolverlo:**
+
+El mensaje del cliente entra perfecto (webhook, contacto, oportunidad, respuesta de la IA — todo
+funciona y se ve en la app). `POST /message/sendText` responde 201, pero WhatsApp bloquea la
+entrega en silencio: `"status": 0, "messageStubParameters": ["463"]`. Confirmado contra los
+issues reales de los mantenedores, no adivinado: [WhiskeySockets/Baileys#2441](https://github.com/WhiskeySockets/Baileys/issues/2441)
+(fix parcial, no resuelto del todo) y [evolution-foundation/evolution-api#2653](https://github.com/evolution-foundation/evolution-api/issues/2653)
+(mismo síntoma exacto en v2.3.7, sin solución del mantenedor). Es un rate-limit del lado de
+WhatsApp contra contactos "en frío", por falta de tokens `tctoken`/`cstoken` en la implementación
+actual de Baileys.
+
+Se probó, con evidencia empírica real en cada caso (no solo teoría):
+1. Subir a `2.4.0-rc2` (requiere activación gratuita vía `/manager`, completada) — mismo error,
+   sin mejora. Revertido a `v2.3.7`.
+2. Mitigaciones sugeridas en foros de la comunidad: marcar el mensaje entrante como leído +
+   mostrar "escribiendo..." antes de responder (`mark_as_read`/`send_presence_composing`, nuevos
+   en `WhatsAppChannelProvider`, llamados desde `whatsapp_webhook.py`); variables
+   `DATABASE_SAVE_DATA_NEW_MESSAGE`/`DATABASE_SAVE_MESSAGE_UPDATE` — ninguna cambió el resultado.
+3. El "truco de la reacción" (enviar un 👍 antes del texto, sugerido como forma de "desbloquear"
+   el canal de privacidad) — probado directo contra la instancia real: la reacción en sí también
+   falló con 463, lo cual además descarta la teoría de que fuera una condición de carrera de
+   caché local (llegó bien después de que cualquier escritura async ya hubiera terminado).
+4. Downgrade a `v2.3.6` — mismo error exacto. Revertido a `v2.3.7` (sin diferencia real entre
+   ambas).
+5. **La prueba más determinante:** un número que nunca le había escrito a este WhatsApp también
+   falló con el mismo 463 — descarta que fuera un bloqueo específico al contacto ya sobre-probado
+   durante el debugging; es un bloqueo general contra cualquier contacto nuevo/en frío desde esta
+   instancia. Guardar el contacto en el teléfono y volver a escribir tampoco cambió nada
+   (confirma que es del lado del servidor de WhatsApp, no algo que un truco del cliente resuelva).
+
+**Conclusión:** límite real y actualmente sin solución de la ruta Evolution API/Baileys no
+oficial para responder automáticamente a contactos nuevos — no es un bug de este proyecto, y no
+hay más ajuste de configuración razonable que probar. Si en la práctica esto bloquea el piloto,
+la alternativa real es la API oficial de WhatsApp Business de Meta (de pago, requiere
+aprobación) — decisión de producto/costo, no una tarea de ingeniería más.
 
 **What does NOT exist yet:**
 
