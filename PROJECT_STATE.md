@@ -910,19 +910,39 @@ licencia impidió llegar a probar el envío de un mensaje real. La instancia de 
 con logs y las opciones propuestas, en `docs/ops/whatsapp_463_technical_report.md` (secciones 5c
 y 7).
 
-**Conclusión final (revisada, sigue sin resolverse):** de tres motores/librerías completamente
-distintos investigados (Baileys, whatsmeow/Evolution Go, whatsapp-web.js/OpenWA), los tres tienen
-alguna forma del mismo problema del lado de WhatsApp, y ya se confirmó que no se resuelve con
-tiempo ni cambiaría con un número nuevo. El camino de ingeniería que se identificó (Baileys ≥
-`rc.10` vía `homolog`) ya no está bloqueado por el bug de Prisma, pero sigue sin poder probarse
-de verdad por el muro de activación de licencia — no se ha confirmado ni descartado que resuelva
-el 463. Antes de avanzar más (completar la activación real contra el servidor de Evolution
-Foundation) se prefiere esperar confirmación del equipo técnico externo, dado que implica volver
-a interactuar con un servicio de un tercero. Si finalmente se confirma que ni con el fix de
-Baileys se resuelve, la alternativa de fondo sigue siendo la API oficial de WhatsApp Business de
-Meta (de pago, requiere aprobación por Meta) — una decisión de producto/costo mayor. Dado que
-WhatsApp es el canal que de verdad le importa al piloto (no Telegram), esta decisión se retoma
-como prioridad en la próxima sesión, no se archiva.
+**11. Actualización 21 de agosto (continuación, misma sesión) — se pasó el muro de licencia, pero
+un tercer bug en `homolog` impidió llegar a probar el 463.** Con autorización explícita, se
+completó la activación de licencia contra el servidor real de Evolution Foundation
+(`EVOLUTION_OPERATOR_EMAIL=keveenrodriguez@gmail.com`, entorno de prueba aislado, nunca contra la
+instancia real): funcionó al primer intento, gratuita, sin necesitar el flujo manual de
+navegador — `GET /instance/fetchInstances` pasó de `503 LICENSE_REQUIRED` a `200 []`.
+
+Justo después, `POST /instance/create` con `integration: "WHATSAPP-BAILEYS"` falló de forma
+100% reproducible (3 intentos, distintos payloads) con un error de foreign key
+(`Setting_instanceId_fkey`) dentro del código ya compilado de `homolog` — confirmado en la base
+de datos de prueba que la instancia nunca llega a crearse, ni parcialmente. Es un tercer bug de
+release independiente de los otros dos (Prisma, licencia), y a diferencia de esos, **no es
+parchable desde afuera** (vive en el bundle minificado, no en un archivo de config o variable de
+entorno). Se detuvo el experimento ahí: nunca se generó un QR, nunca se conectó una sesión, nunca
+se probó un mensaje real. Entorno de prueba desmontado por completo; la instancia de producción
+(`v2.3.7`) nunca se tocó, sesión real intacta durante todo el proceso. Detalle completo (incluida
+la tabla comparativa que se iba a usar para el 463, con `homolog` en blanco porque no se alcanzó
+esa etapa) en `docs/ops/whatsapp_463_technical_report.md`, sección 5d.
+
+**Conclusión final (revisada de nuevo, sigue sin resolverse):** de tres motores/librerías
+completamente distintos investigados (Baileys, whatsmeow/Evolution Go, whatsapp-web.js/OpenWA),
+los tres tienen alguna forma del mismo problema del lado de WhatsApp, y ya se confirmó que no se
+resuelve con tiempo ni cambiaría con un número nuevo. El camino de ingeniería identificado
+(Baileys ≥ `rc.10` vía `homolog`) ya superó dos de sus tres bloqueadores (Prisma, licencia), pero
+el tercero (creación de instancia rota) sigue sin resolverse y no depende de nuestro código — es
+un bug del propio release de `homolog`. **El 463 sigue sin confirmarse resuelto ni descartado**,
+no porque el fix de Baileys no sirva, sino porque el canal que lo trae está roto en un punto
+anterior. Próximos pasos posibles (ver reporte, sección 7): intentar un workaround al bug de FK,
+escalarlo directamente al soporte de Evolution Foundation, o esperar una release más estable. Si
+ninguna vía da una imagen `WHATSAPP-BAILEYS` funcional en un tiempo razonable, la alternativa de
+fondo sigue siendo la API oficial de WhatsApp Business de Meta (de pago, requiere aprobación) —
+una decisión de producto/costo mayor. Dado que WhatsApp es el canal que de verdad le importa al
+piloto (no Telegram), esta decisión se retoma como prioridad en la próxima sesión, no se archiva.
 
 **What does NOT exist yet:**
 

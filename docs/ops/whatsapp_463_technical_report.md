@@ -327,11 +327,75 @@ usando `EVOLUTION_OPERATOR_EMAIL` con ese email ya conocido — no confirmado to
 intentó porque implica volver a interactuar con el servidor real de un tercero y se decidió
 pausar para reportar este hallazgo primero.
 
-**Estado real al día de hoy: NO confirmado que Baileys `rc13` resuelva el 463.** Se demostró que
+**Estado real al cierre de 5c: NO confirmado que Baileys `rc13` resuelva el 463.** Se demostró que
 `homolog` puede arrancar y correr migraciones correctamente con el parche de Prisma, pero nunca
 se llegó a probar el envío de un mensaje real — el muro de licencia lo impide. No se ha tocado la
 instancia de producción (`v2.3.7`, sesión de WhatsApp real intacta) en ningún momento de esta
 prueba; todo lo anterior se hizo contra un Postgres/red Docker completamente desechables.
+
+## 5d. Continuación — se pasó el muro de licencia, pero un bug distinto en la creación de la instancia impidió llegar a probar el 463
+
+Con autorización explícita para continuar, se completó la activación de licencia (en el mismo
+entorno aislado, Postgres/red Docker desechables, sin tocar la instancia real) y se intentó llegar
+hasta el punto de conectar una sesión real y probar el 463 con Baileys `rc13`.
+
+**Activación de licencia — funcionó, más simple de lo esperado.** Se llamó directamente al
+endpoint de activación automática del servidor de licencias
+(`POST https://license.evolutionfoundation.com.br/v1/register/auto`, con `email`, `tier`,
+`version`, `instance_id`) usando `EVOLUTION_OPERATOR_EMAIL=keveenrodriguez@gmail.com`. Respondió
+`200 OK` con una API key de licencia activa en el primer intento — no fue necesario el flujo
+manual de navegador que la documentación describe como obligatorio para un email nuevo (`tier:
+"community"`, gratuito, sin límite de instancias ni mensajes). Se reinició el contenedor de
+prueba con esa API key como `AUTHENTICATION_API_KEY`; el log confirmó
+`"Global API key accepted — license saved and activated"`, y `GET /instance/fetchInstances`
+respondió `200 []` en vez del `503 LICENSE_REQUIRED` anterior. **El muro de licencia queda
+confirmado como superable**, sin fricción real en este caso puntual.
+
+**Bloqueador nuevo, un cuarto bug independiente — la creación de la instancia con
+`integration: "WHATSAPP-BAILEYS"` falla siempre, desde el primer intento:**
+
+```
+POST /instance/create
+{"instanceName": "...", "integration": "WHATSAPP-BAILEYS", "qrcode": true}
+
+→ HTTP 400
+"Invalid `r.integrationSession.update()` invocation ... Foreign key constraint violated
+ on the constraint: `Setting_instanceId_fkey`"
+```
+
+Reproducido de forma **100% consistente**, tres veces, con nombres de instancia distintos y con
+variaciones del payload (sin `qrcode`, con los campos de `settings` — `rejectCall`,
+`groupsIgnore`, `alwaysOnline`, `readMessages`, `readStatus`, `syncFullHistory` — pasados
+explícitamente): siempre el mismo error. Confirmado directo en la base de datos de prueba
+(`SELECT * FROM "Instance"` → 0 filas después de cada intento) que la instancia **nunca llega a
+crearse**, ni parcialmente — no es un estado corrupto dejado por un intento anterior, falla desde
+cero cada vez. El stack trace apunta a `saveInstance()` (llamado desde `createInstance()`)
+intentando escribir un registro relacionado (`Setting`, que tiene `instanceId` como FK `NOT NULL`
++ `UNIQUE`) antes de que el `Instance` referenciado exista — un bug de orden de escritura dentro
+del código ya compilado (`dist/main.js`) de esta imagen, no algo influenciable desde el payload de
+la petición, variables de entorno, o un archivo de configuración montado. A diferencia de los
+otros dos bugs de `homolog` (Prisma, licencia), este vive dentro del bundle minificado de la
+aplicación — no hay una forma razonable de parchearlo desde afuera sin recompilar el proyecto
+desde su código fuente real.
+
+**Se detuvo el experimento en este punto.** No se llegó a generar ningún QR, no se llegó a
+conectar ninguna sesión de WhatsApp, y por lo tanto **tampoco se llegó a probar el envío de un
+mensaje real**. La tabla comparativa que tiene más valor informativo, siguiendo el formato
+sugerido, queda así — con `homolog` en blanco porque el experimento nunca llegó a esa etapa:
+
+| | `v2.3.7` (evidencia ya existente, sección 5) | `homolog` (este intento) |
+|---|---|---|
+| Baileys | `7.0.0-rc.9` | `7.0.0-rc13` |
+| Licencia requerida | No aplica (< 2.4.0) | Sí — superada |
+| Instancia WHATSAPP-BAILEYS creada | Sí | **No — falla siempre, bug de FK en `Setting`** |
+| Contacto frío → respuesta | ❌ (463) | No alcanzado |
+| HTTP de `/message/sendText` | 201 | No alcanzado |
+| `status`/`messageStubParameters` | `0` / `["463"]` | No alcanzado |
+| Entrega física al teléfono | ❌ | No alcanzado |
+
+Entorno de prueba desmontado por completo al terminar (contenedores, red, volumen — todo
+desechable). La instancia de producción (`v2.3.7`) nunca se tocó, sesión real intacta durante
+todo el proceso.
 
 ## 6. Conclusión y lo que se necesita del equipo técnico
 
@@ -342,65 +406,70 @@ oficiales investigados** (Baileys, whatsmeow, whatsapp-web.js) — pero con una 
 importante confirmada el 21 de agosto: **ninguna versión de Evolution API que hemos podido
 probar hasta ahora incluye el Baileys posterior al fix** (todas empaquetan `rc.6`-`rc.9`; el
 fix llegó en `rc.10`). La única que sí lo trae (`homolog`, oficial, internamente versión
-`2.4.0`) tenía un bug de empaquetado de Prisma que **ya se logró arreglar** con un
-`prisma.config.ts` propio — pero justo detrás de ese arreglo apareció un segundo bloqueador,
-independiente: activación de licencia obligatoria (`LICENSE_REQUIRED`, HTTP 503 en todos los
-endpoints funcionales) para cualquier versión ≥ 2.4.0, gratuita pero que exige registrar un email
-de operador contra el servidor de Evolution Foundation y acepta telemetría periódica obligatoria.
-**Todavía no se ha logrado probar el envío de un mensaje real con Baileys ≥ rc.10** — el 463
-sigue sin confirmarse resuelto ni descartado en la práctica.
+`2.4.0`) resultó tener **tres bugs de release independientes**, encontrados uno tras otro al ir
+resolviendo cada uno: (1) Prisma sin `datasource.url`/`prisma.config.ts` — **arreglado** con un
+`prisma.config.ts` propio; (2) activación de licencia obligatoria — **superada**, activación
+gratuita exitosa vía `EVOLUTION_OPERATOR_EMAIL`; (3) `POST /instance/create` con
+`integration: "WHATSAPP-BAILEYS"` falla siempre con un error de foreign key
+(`Setting_instanceId_fkey`) dentro del código ya compilado — **sin arreglar, no hay forma
+razonable de parchearlo desde afuera del contenedor**. Este tercer bug es, hoy, el que
+efectivamente bloquea la prueba: nunca se llegó a crear una instancia, generar un QR, conectar
+una sesión, ni enviar un mensaje real. **El 463 sigue sin confirmarse resuelto ni descartado con
+Baileys ≥ rc.10** — no por el 463 mismo, sino porque el canal (`homolog`) que lo trae está roto
+en un punto anterior y no relacionado.
 
 Preguntas concretas para el equipo técnico:
-1. ¿Alguien del equipo ya pasó por el flujo de activación de licencia de Evolution API (`≥
-   2.4.0`) antes? ¿Vale la pena que nosotros lo hagamos ahora (dar un email real, aceptar la
-   telemetría descrita en 5c) solo para confirmar si Baileys `rc13` sí resuelve el 463, o
-   preferirían que esperemos una versión estable (no pre-release) con el fix ya integrado y sin
-   depender de `homolog`?
-2. ¿Conocen alguna forma de conseguir una imagen de Evolution API funcional con Baileys ≥
-   `7.0.0-rc.10` que **no** dependa de `homolog` ni de este muro de licencia — build propio,
-   otro tag, o un release estable más reciente que no hayamos visto?
-3. ¿Hay alguna otra integración/gateway de WhatsApp (fuera de Baileys/whatsmeow/whatsapp-web.js)
+1. ¿Alguien del equipo tiene acceso a una imagen o build de Evolution API con Baileys ≥
+   `7.0.0-rc.10` en la que `POST /instance/create` con `integration: "WHATSAPP-BAILEYS"` **sí
+   funcione**? Con tres bugs de release distintos ya encontrados en `homolog` (Prisma, licencia,
+   y ahora la creación de instancia), ¿es este canal realmente usable para pruebas, o es
+   demasiado inestable incluso para eso?
+2. Específicamente sobre el bug de la sección 5d (`Setting_instanceId_fkey`) — ¿es un bug conocido
+   del equipo de Evolution Foundation? ¿Hay un issue público o un workaround (una tabla `Setting`
+   que se pueda pre-poblar a mano, una migración pendiente, un flag que desactive esa escritura)?
+3. ¿Conocen alguna forma de conseguir una imagen de Evolution API funcional con Baileys ≥
+   `7.0.0-rc.10` que **no** sea `homolog` — build propio, otro tag, o un release estable más
+   reciente que no hayamos visto?
+4. ¿Hay alguna otra integración/gateway de WhatsApp (fuera de Baileys/whatsmeow/whatsapp-web.js)
    con historial confirmado de **no** tener este problema?
-4. ¿Vale la pena evaluar otras alternativas de API como openWA (https://github.com/rmyndharis/OpenWA), WAHA (https://github.com/devlikeapro/waha - https://waha.devlike.pro/), Evolution API Go (https://github.com/evolution-foundation/evolution-go)?
-5. Sobre `deployfybr/evolution:latest` (sugerida por un compañero): ¿alguien puede confirmar el
+5. ¿Vale la pena evaluar otras alternativas de API como openWA (https://github.com/rmyndharis/OpenWA), WAHA (https://github.com/devlikeapro/waha - https://waha.devlike.pro/), Evolution API Go (https://github.com/evolution-foundation/evolution-go)?
+6. Sobre `deployfybr/evolution:latest` (sugerida por un compañero): ¿alguien puede confirmar el
    repositorio fuente real detrás de esa imagen? Sin eso no es prudente correrla contra
    credenciales reales — ver sección 5b para el detalle de por qué.
 
 ## 7. Posibles soluciones — propuestas nuestras, ninguna confirmada aún
 
-Ninguna de las siguientes se ha probado contra el escenario real (mensaje de un contacto nuevo).
-Se listan en el orden en que las probaríamos, de menor a mayor costo/riesgo:
+Ninguna de las siguientes se ha probado contra el escenario real (mensaje de un contacto nuevo) —
+el bug de la sección 5d lo impidió. Se listan en el orden en que las probaríamos:
 
-**A. Completar la activación de licencia de `homolog` en un entorno aislado y probar el 463 de
-verdad, antes de decidir nada más.** Es el paso lógico siguiente a lo ya hecho en 5c: ya se
-resolvió el bug de Prisma, solo falta pasar la activación (gratuita) para poder probar si Baileys
-`rc13` de verdad resuelve el 463. Se haría igual que hasta ahora — Postgres/red Docker
-desechables, nunca contra la sesión real — usando `EVOLUTION_OPERATOR_EMAIL` con el mismo email
-que ya se usó al activar `2.4.0-rc2` (probablemente evita el flujo manual de navegador, ver 5c).
-Solo si el 463 realmente se resuelve ahí, se replicaría el patch (`prisma.config.ts` + activación)
-contra la instancia real. Riesgo: se vuelve a interactuar con el servidor de licencias de un
-tercero (email + telemetría, ver 5c) — antes de hacerlo preferimos confirmar con el equipo que no
-hay objeción.
+**A. Intentar entender/parchar el bug de `Setting_instanceId_fkey` sin recompilar `homolog`
+desde cero.** Por ejemplo, insertando a mano en la base de prueba una fila `Setting` con el
+`instanceId` esperado justo antes de llamar `/instance/create` (si el flujo interno hace un
+`UPDATE` en vez de un `INSERT` cuando la fila ya existe, esto podría rodear el bug sin tocar el
+binario). No confirmado, es una hipótesis a probar en el mismo entorno aislado.
 
-**B. Esperar (o pedirle al equipo técnico que confirme) una versión estable de Evolution API ≥
-2.4.0 que no sea un canal pre-release**, una vez que Evolution Foundation publique una release
-"real" con Baileys ≥ rc.10 — evita depender de `homolog` para producción, que por definición no
-tiene garantías de estabilidad. El costo es tiempo de espera, no ingeniería.
+**B. Pedirle directamente al equipo de Evolution Foundation (vía su Discord/soporte oficial, no
+solo a este equipo técnico externo) que confirme si `homolog` es realmente usable hoy, o esperar
+una build más estable del mismo canal.** Dado que ya son tres bugs distintos en la misma imagen,
+es razonable sospechar que este tag específico está roto más allá de lo que vale la pena
+parchear nosotros mismos.
 
-**C. Si (A) confirma que Baileys `rc13` sí resuelve el 463, evaluar migrar la instancia real de
-`v2.3.7` a esa versión** (con el mismo patch de `prisma.config.ts` mientras no exista una release
-estable), aceptando como parte del trade-off: la telemetría obligatoria descrita en 5c (que según
-su propia documentación no incluye contenido de mensajes ni números de contacto) y la activación
-de licencia por email.
+**C. Esperar una versión estable de Evolution API ≥ 2.4.0** (no pre-release) una vez que
+Evolution Foundation publique una con Baileys ≥ rc.10 y sin estos bugs — evita depender de
+`homolog` para cualquier cosa, prueba o producción. El costo es tiempo de espera, no ingeniería.
 
-**D. Si (A) NO resuelve el 463** (es decir, ni siquiera con Baileys ≥ rc.10 desaparece el
-bloqueo), eso cerraría definitivamente la vía Evolution API/Baileys como arreglable con una
-actualización de versión, y la alternativa de fondo pasa a ser la API oficial de WhatsApp
-Business de Meta (de pago, requiere aprobación) — o revisar de nuevo whatsmeow/whatsapp-web.js
-por si alguno de los dos también corrigió esto en una versión más nueva de la que se investigó en
-la sección 5.
+**D. Si (A) o (B) logran una instancia `WHATSAPP-BAILEYS` funcional con Baileys ≥ rc.10, retomar
+el plan original:** conectar la sesión real, probar con un contacto genuinamente frío, y llenar
+la tabla comparativa de la sección 5d. Solo si eso confirma que el 463 se resuelve, evaluar migrar
+la instancia real de `v2.3.7`.
 
-**E. Alternativa de bajo riesgo mientras se decide lo anterior:** seguir operando con `v2.3.7`
+**E. Si ninguna vía anterior da una imagen funcional en un tiempo razonable**, esto empieza a leer
+como que la ruta Evolution API/Baileys — incluso con el fix de Baileys existiendo en teoría — no
+es viable en la práctica por la calidad del empaquetado del proyecto, y la alternativa de fondo
+pasa a ser la API oficial de WhatsApp Business de Meta (de pago, requiere aprobación) o revisar de
+nuevo whatsmeow/whatsapp-web.js por si tienen una versión más nueva sin este problema.
+
+**F. Alternativa de bajo riesgo mientras se decide lo anterior:** seguir operando con `v2.3.7`
 tal como está hoy (sin cambios, sesión real intacta) y tratar el 463 como un riesgo conocido y
 aceptado a corto plazo — ya está así en `PROJECT_STATE.md`, no requiere ninguna acción adicional.
 
