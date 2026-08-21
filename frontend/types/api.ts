@@ -92,4 +92,5 @@ export interface Agent {
 
 export interface WhatsAppStatus {
   connected: boolean;
+  phone_number: string | null;
 }

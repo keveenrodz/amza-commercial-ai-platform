@@ -149,7 +149,7 @@ test("un administrador ve el estado de WhatsApp y el QR al conectar", async ({ p
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: ADMIN_USER }));
   await page.route("**/api/organizations/*/users", (route) => route.fulfill({ json: EXISTING_USERS }));
   await page.route("**/api/organizations/*/whatsapp/status", (route) =>
-    route.fulfill({ json: { connected: false } }),
+    route.fulfill({ json: { connected: false, phone_number: null } }),
   );
   await page.route("**/api/organizations/*/whatsapp/connect", (route) =>
     route.fulfill({ json: { qrcode_base64: "iVBORfakebase64==" } }),
@@ -159,6 +159,7 @@ test("un administrador ve el estado de WhatsApp y el QR al conectar", async ({ p
   await page.getByRole("button", { name: "Canales" }).click();
 
   await expect(page.getByText("Desconectado")).toBeVisible();
+  await expect(page.getByText("Sin sesión activa")).toBeVisible();
   await page.getByRole("button", { name: "Conectar" }).click();
 
   await expect(page.getByAltText("Código QR de WhatsApp")).toBeVisible();
@@ -174,7 +175,9 @@ test("el QR se cierra solo en cuanto el estado detecta que ya se conectó", asyn
 
   let connected = false;
   await page.route("**/api/organizations/*/whatsapp/status", (route) =>
-    route.fulfill({ json: { connected } }),
+    route.fulfill({
+      json: { connected, phone_number: connected ? "573015092386" : null },
+    }),
   );
   await page.route("**/api/organizations/*/whatsapp/connect", (route) =>
     route.fulfill({ json: { qrcode_base64: "iVBORfakebase64==" } }),
@@ -192,6 +195,7 @@ test("el QR se cierra solo en cuanto el estado detecta que ya se conectó", asyn
 
   await expect(page.getByAltText("Código QR de WhatsApp")).toBeHidden({ timeout: 6000 });
   await expect(page.getByText("Conectado")).toBeVisible();
+  await expect(page.getByText("Número vinculado: +573015092386")).toBeVisible();
 });
 
 test("un asesor no ve 'Administración' y recibe 403 al entrar directo a /admin", async ({

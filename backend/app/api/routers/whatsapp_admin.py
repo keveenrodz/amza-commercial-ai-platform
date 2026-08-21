@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Response
 
+from app.api.dto.whatsapp import WhatsAppStatusResponse
 from app.dependencies import get_channel_provider_registry
 from app.security import require_role
 from app.services.channel_provider_registry import ChannelProviderRegistry
@@ -31,9 +32,10 @@ def _get_whatsapp_provider(registry: ChannelProviderRegistry) -> WhatsAppChannel
 async def get_whatsapp_status(
     organization_slug: str,
     registry: ChannelProviderRegistry = Depends(get_channel_provider_registry),
-) -> dict[str, bool]:
+) -> WhatsAppStatusResponse:
     provider = _get_whatsapp_provider(registry)
-    return {"connected": await provider.health()}
+    info = await provider.get_connection_info()
+    return WhatsAppStatusResponse.from_domain(info)
 
 
 @router.post("/connect")

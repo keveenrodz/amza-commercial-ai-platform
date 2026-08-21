@@ -470,23 +470,31 @@ function WhatsAppChannelCard({ orgSlug }: { orgSlug: string }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4 shadow-card">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <WhatsAppIcon className="h-5 w-5 text-ink-muted" />
-          <span className="font-heading text-sm font-bold text-ink">WhatsApp</span>
-          {!isLoading && (
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                isConnected ? "bg-accent-soft text-accent-deep" : "bg-surface-2 text-ink-faint"
-              }`}
-            >
-              {isConnected ? "Conectado" : "Desconectado"}
-            </span>
-          )}
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2.5">
+            <WhatsAppIcon className="h-5 w-5 text-ink-muted" />
+            <span className="font-heading text-sm font-bold text-ink">WhatsApp</span>
+            {!isLoading && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  isConnected ? "bg-accent-soft text-accent-deep" : "bg-surface-2 text-ink-faint"
+                }`}
+              >
+                {isConnected ? "Conectado" : "Desconectado"}
+              </span>
+            )}
+          </div>
+          <p className="pl-7 text-xs text-ink-faint">
+            {isConnected && status?.phone_number
+              ? `Número vinculado: +${status.phone_number}`
+              : "Sin sesión activa -- escanea un código QR para conectar un número."}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => refetch()}
             disabled={isFetching}
+            title="Este panel no comprueba la conexión solo -- pulsa esto después de escanear el QR desde otra pantalla, o si sospechas que la sesión se cayó."
             className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink-muted hover:bg-surface-2 disabled:opacity-50"
           >
             {isFetching ? "Consultando..." : "Actualizar estado"}

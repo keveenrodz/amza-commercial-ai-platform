@@ -2,6 +2,17 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
+from infrastructure.channels.whatsapp import WhatsAppConnectionInfo
+
+
+class WhatsAppStatusResponse(BaseModel):
+    connected: bool
+    phone_number: str | None
+
+    @classmethod
+    def from_domain(cls, info: WhatsAppConnectionInfo) -> WhatsAppStatusResponse:
+        return cls(connected=info.connected, phone_number=info.phone_number)
+
 
 class WhatsAppMessageKey(BaseModel):
     model_config = ConfigDict(extra="ignore")

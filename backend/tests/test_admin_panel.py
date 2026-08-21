@@ -176,7 +176,7 @@ async def test_generate_includes_escalation_rules_and_summary_in_order() -> None
     assert "El cliente busca vasos desechables." in system_content
 
 
-async def test_whatsapp_status_reflects_provider_health(client: AsyncClient) -> None:
+async def test_whatsapp_status_reflects_connection_and_phone_number(client: AsyncClient) -> None:
     from app.main import app
 
     await _seed_organization()
@@ -184,7 +184,10 @@ async def test_whatsapp_status_reflects_provider_health(client: AsyncClient) -> 
     await _login(client, "admin@gmail.com")
 
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"instance": {"state": "open"}})
+        return httpx.Response(
+            200,
+            json=[{"connectionStatus": "open", "ownerJid": "573015092386@s.whatsapp.net"}],
+        )
 
     provider = _make_whatsapp_provider(httpx.MockTransport(handler))
     app.dependency_overrides[get_channel_provider_registry] = lambda: ChannelProviderRegistry(
@@ -193,7 +196,27 @@ async def test_whatsapp_status_reflects_provider_health(client: AsyncClient) -> 
 
     response = await client.get(f"{_WHATSAPP_URL}/status")
     assert response.status_code == 200
-    assert response.json() == {"connected": True}
+    assert response.json() == {"connected": True, "phone_number": "573015092386"}
+
+
+async def test_whatsapp_status_when_no_instance_exists_yet(client: AsyncClient) -> None:
+    from app.main import app
+
+    await _seed_organization()
+    await create_user(_ORG_SLUG, "admin@gmail.com", "Admin Principal", "administrator")
+    await _login(client, "admin@gmail.com")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[])
+
+    provider = _make_whatsapp_provider(httpx.MockTransport(handler))
+    app.dependency_overrides[get_channel_provider_registry] = lambda: ChannelProviderRegistry(
+        {ChannelType.WHATSAPP: provider}
+    )
+
+    response = await client.get(f"{_WHATSAPP_URL}/status")
+    assert response.status_code == 200
+    assert response.json() == {"connected": False, "phone_number": None}
 
 
 async def test_whatsapp_connect_returns_qrcode_base64(client: AsyncClient) -> None:

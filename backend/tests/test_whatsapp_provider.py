@@ -7,6 +7,7 @@ el worker en segundo plano.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from datetime import UTC, datetime
 
@@ -105,6 +106,58 @@ async def test_worker_waits_the_minimum_gap_between_two_consecutive_sends() -> N
 
     assert len(sent_at) == 2
     assert sent_at[1] - sent_at[0] >= 0.04
+
+
+async def test_send_now_posts_text_at_the_root_not_nested_under_text_message() -> None:
+    # Regresión real: v2.3.7 responde 400 "instance requires property \"text\"" con el body
+    # tentativo original ({"textMessage": {"text": ...}}) -- confirmado contra una instancia
+    # real. "text" debe viajar en la raíz del body.
+    provider = _make_provider()
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(201, json={"key": {"id": "abc"}})
+
+    provider._client = httpx.AsyncClient(  # noqa: SLF001
+        base_url="https://evolution.test", transport=httpx.MockTransport(handler)
+    )
+
+    await provider._send_now(_make_message(MessageRole.ADVISOR, "hola"), _make_contact())  # noqa: SLF001
+
+    assert captured == {"number": "573015092386", "text": "hola"}
+
+
+async def test_worker_survives_a_failed_send_and_keeps_processing_the_queue() -> None:
+    # Regresión real: sin un try/except alrededor de _send_now, un solo envío fallido (un 400
+    # de Evolution API, confirmado en vivo) se escapaba del `while True` y mataba el worker
+    # para siempre -- todo lo encolado después nunca se procesaba hasta reiniciar el proceso.
+    provider = _make_provider()
+    provider._MIN_GAP_RANGE = (0.01, 0.01)  # noqa: SLF001
+
+    call_count = 0
+
+    async def flaky_send_now(message: Message, contact: Contact) -> None:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise httpx.HTTPStatusError(
+                "boom",
+                request=httpx.Request("POST", "http://x"),
+                response=httpx.Response(400),
+            )
+
+    provider._send_now = flaky_send_now  # type: ignore[method-assign]  # noqa: SLF001
+
+    contact = _make_contact()
+    await provider.send(_make_message(MessageRole.ADVISOR, "uno"), contact)
+    await provider.send(_make_message(MessageRole.ADVISOR, "dos"), contact)
+
+    worker = asyncio.create_task(provider._run_worker())  # noqa: SLF001
+    await asyncio.sleep(0.3)
+    worker.cancel()
+
+    assert call_count == 2
 
 
 async def test_health_is_true_only_when_state_is_open() -> None:
