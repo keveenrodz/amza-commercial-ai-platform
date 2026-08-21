@@ -7,14 +7,16 @@ from fastapi import APIRouter, Depends, Response
 from pydantic import ValidationError
 
 from app.api.dto.whatsapp import WhatsAppWebhookEvent
-from app.dependencies import get_receive_incoming_message_use_case
+from app.dependencies import get_channel_provider_registry, get_receive_incoming_message_use_case
 from app.security import verify_whatsapp_secret
+from app.services.channel_provider_registry import ChannelProviderRegistry
 from app.use_cases.receive_incoming_message import (
     IncomingMessageInput,
     ReceiveIncomingMessageUseCase,
 )
 from core.enums.channel import ChannelType
 from core.enums.message import MessageContentType
+from infrastructure.channels.whatsapp import WhatsAppChannelProvider
 
 router = APIRouter(prefix="/webhooks/whatsapp", tags=["whatsapp"])
 logger = structlog.get_logger()
@@ -25,6 +27,7 @@ async def receive_whatsapp_event(
     organization_slug: str,
     payload: dict[str, Any],
     use_case: ReceiveIncomingMessageUseCase = Depends(get_receive_incoming_message_use_case),
+    channel_registry: ChannelProviderRegistry = Depends(get_channel_provider_registry),
 ) -> Response:
     try:
         event = WhatsAppWebhookEvent.model_validate(payload)
@@ -42,6 +45,21 @@ async def receive_whatsapp_event(
         # fromMe=True es un mensaje que salió de este mismo número (ej. enviado manualmente
         # desde el teléfono vinculado) -- no es un mensaje del cliente, se ignora en silencio.
         return Response(status_code=200)
+
+    # Mitigación probada (no confirmada) contra el error 463 -- marcar el mensaje como leído y
+    # mostrar "escribiendo..." antes de procesar la respuesta. Best-effort: si Evolution API
+    # está caído o esto falla por cualquier motivo, el mensaje del cliente igual se procesa --
+    # nunca debe ser esto lo que bloquee la conversación real.
+    whatsapp_provider = channel_registry.get(ChannelType.WHATSAPP)
+    if isinstance(whatsapp_provider, WhatsAppChannelProvider):
+        try:
+            await whatsapp_provider.mark_as_read(event.data.key.remoteJid, event.data.key.id)
+            await whatsapp_provider.send_presence_composing(event.data.key.remoteJid)
+        except Exception:
+            logger.warning(
+                "whatsapp.webhook.read_receipt_failed",
+                organization_slug=organization_slug,
+            )
 
     if event.data.message.conversation is None:
         # Multimedia (foto, audio, documento, ubicación) -- distinguir el tipo real necesita el

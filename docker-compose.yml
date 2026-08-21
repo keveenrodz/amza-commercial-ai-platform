@@ -31,6 +31,12 @@ services:
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://evolution:evolution@evolution-postgres:5432/evolution_db?schema=public
       - DATABASE_SAVE_DATA_INSTANCE=true
+      # Mitigación probada contra el error 463 ("reach-out time-lock") -- sin garantía de que
+      # sea la causa real (no confirmado contra los issues oficiales de Baileys/Evolution API,
+      # solo sugerido en foros), pero es de bajo riesgo y estas dos sí son variables reales
+      # documentadas. Ver PROJECT_STATE.md, tabla de Production Risks, para el detalle completo.
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
       - CACHE_REDIS_ENABLED=false
       - CACHE_LOCAL_ENABLED=true
     volumes:

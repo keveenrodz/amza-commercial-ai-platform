@@ -128,6 +128,48 @@ async def test_send_now_posts_text_at_the_root_not_nested_under_text_message() -
     assert captured == {"number": "573015092386", "text": "hola"}
 
 
+async def test_mark_as_read_posts_the_expected_shape() -> None:
+    provider = _make_provider()
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(201, json={"read": "success"})
+
+    provider._client = httpx.AsyncClient(  # noqa: SLF001
+        base_url="https://evolution.test", transport=httpx.MockTransport(handler)
+    )
+
+    await provider.mark_as_read("573015092386@s.whatsapp.net", "ABC123")
+
+    assert captured == {
+        "readMessages": [
+            {"remoteJid": "573015092386@s.whatsapp.net", "id": "ABC123", "fromMe": False}
+        ]
+    }
+
+
+async def test_send_presence_composing_posts_the_expected_shape() -> None:
+    provider = _make_provider()
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(201, json={"presence": "composing"})
+
+    provider._client = httpx.AsyncClient(  # noqa: SLF001
+        base_url="https://evolution.test", transport=httpx.MockTransport(handler)
+    )
+
+    await provider.send_presence_composing("573015092386@s.whatsapp.net")
+
+    assert captured == {
+        "number": "573015092386@s.whatsapp.net",
+        "delay": 2000,
+        "presence": "composing",
+    }
+
+
 async def test_worker_survives_a_failed_send_and_keeps_processing_the_queue() -> None:
     # Regresión real: sin un try/except alrededor de _send_now, un solo envío fallido (un 400
     # de Evolution API, confirmado en vivo) se escapaba del `while True` y mataba el worker

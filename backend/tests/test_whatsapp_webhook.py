@@ -8,12 +8,15 @@ del secreto.
 
 from __future__ import annotations
 
+import httpx
 from httpx import AsyncClient
 
-from app.dependencies import get_receive_incoming_message_use_case
+from app.dependencies import get_channel_provider_registry, get_receive_incoming_message_use_case
+from app.services.channel_provider_registry import ChannelProviderRegistry
 from app.use_cases.receive_incoming_message import IncomingMessageInput
 from core.enums.channel import ChannelType
 from core.enums.message import MessageContentType
+from infrastructure.channels.whatsapp import WhatsAppChannelProvider
 
 
 class _SpyUseCase:
@@ -121,6 +124,71 @@ async def test_malformed_payload_returns_200_without_raising(client: AsyncClient
 
     assert response.status_code == 200
     assert spy.calls == []
+
+
+async def test_valid_message_marks_as_read_and_sends_composing_presence(
+    client: AsyncClient,
+) -> None:
+    from app.main import app
+
+    spy = _SpyUseCase()
+    app.dependency_overrides[get_receive_incoming_message_use_case] = lambda: spy
+
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        return httpx.Response(201, json={})
+
+    provider = WhatsAppChannelProvider(
+        base_url="https://evolution.test", api_key="test-key", instance_name="test-instance"
+    )
+    provider._client = httpx.AsyncClient(  # noqa: SLF001
+        base_url="https://evolution.test", transport=httpx.MockTransport(handler)
+    )
+    app.dependency_overrides[get_channel_provider_registry] = lambda: ChannelProviderRegistry(
+        {ChannelType.WHATSAPP: provider}
+    )
+
+    response = await client.post(
+        "/webhooks/whatsapp/test-org",
+        json=_valid_payload(),
+        headers={"X-Webhook-Secret": "test-whatsapp-secret"},
+    )
+
+    assert response.status_code == 200
+    assert len(spy.calls) == 1
+    assert any("markMessageAsRead" in url for url in calls)
+    assert any("sendPresence" in url for url in calls)
+
+
+async def test_read_receipt_failure_does_not_block_the_use_case(client: AsyncClient) -> None:
+    from app.main import app
+
+    spy = _SpyUseCase()
+    app.dependency_overrides[get_receive_incoming_message_use_case] = lambda: spy
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, json={"error": "boom"})
+
+    provider = WhatsAppChannelProvider(
+        base_url="https://evolution.test", api_key="test-key", instance_name="test-instance"
+    )
+    provider._client = httpx.AsyncClient(  # noqa: SLF001
+        base_url="https://evolution.test", transport=httpx.MockTransport(handler)
+    )
+    app.dependency_overrides[get_channel_provider_registry] = lambda: ChannelProviderRegistry(
+        {ChannelType.WHATSAPP: provider}
+    )
+
+    response = await client.post(
+        "/webhooks/whatsapp/test-org",
+        json=_valid_payload(),
+        headers={"X-Webhook-Secret": "test-whatsapp-secret"},
+    )
+
+    assert response.status_code == 200
+    assert len(spy.calls) == 1
 
 
 async def test_invalid_secret_returns_401(client: AsyncClient) -> None:

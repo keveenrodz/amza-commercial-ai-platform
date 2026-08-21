@@ -158,3 +158,23 @@ class WhatsAppChannelProvider:
     async def disconnect(self) -> None:
         response = await self._client.delete(f"/instance/logout/{self._instance_name}")
         response.raise_for_status()
+
+    # Mitigación probada contra el error 463 ("reach-out time-lock") sugerida en la comunidad --
+    # marcar como leído el mensaje entrante y mostrar "escribiendo..." antes de responder. No
+    # confirmado contra los issues oficiales de Baileys/Evolution API (a diferencia de los otros
+    # hallazgos de este archivo, este es un intento de mitigación, no un hecho verificado), pero
+    # de bajo riesgo y ya humaniza el flujo de todos modos -- ver PROJECT_STATE.md.
+
+    async def mark_as_read(self, remote_jid: str, message_id: str) -> None:
+        response = await self._client.post(
+            f"/chat/markMessageAsRead/{self._instance_name}",
+            json={"readMessages": [{"remoteJid": remote_jid, "id": message_id, "fromMe": False}]},
+        )
+        response.raise_for_status()
+
+    async def send_presence_composing(self, remote_jid: str, delay_ms: int = 2000) -> None:
+        response = await self._client.post(
+            f"/chat/sendPresence/{self._instance_name}",
+            json={"number": remote_jid, "delay": delay_ms, "presence": "composing"},
+        )
+        response.raise_for_status()

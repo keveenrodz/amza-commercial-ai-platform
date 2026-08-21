@@ -66,3 +66,12 @@ async def client() -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
         yield ac
+
+    # app.dependency_overrides es un dict global de la app -- muchos tests lo mutan
+    # (app.dependency_overrides[...] = ...) sin nunca limpiarlo. Sin este reset, un override
+    # que un test dejó puesto (ej. un ChannelProviderRegistry sin WhatsApp) se filtra a
+    # cualquier test posterior que dependa de lo mismo, aunque viva en otro archivo -- bug real
+    # encontrado al agregar un nuevo consumidor de get_channel_provider_registry en
+    # whatsapp_webhook.py: un test sin ninguna relación con WhatsApp rompía con 400 solo por el
+    # orden en que pytest recolectó los archivos.
+    app.dependency_overrides.clear()
