@@ -397,6 +397,81 @@ Entorno de prueba desmontado por completo al terminar (contenedores, red, volume
 desechable). La instancia de producción (`v2.3.7`) nunca se tocó, sesión real intacta durante
 todo el proceso.
 
+## 5e. Causa raíz exacta del bug de 5d — no es solo el FK, es un filtro anti-tampering mal aplicado
+
+Antes de intentar cualquier workaround "a ciegas" (como pre-crear una fila `Setting`), se
+inspeccionó el código fuente real dentro del bundle compilado (`/evolution/dist/main.js`, de
+solo lectura, sin ejecutar nada inseguro) para entender exactamente qué falla. Esto reveló que
+el error de foreign key visible en el response **no es el error real** — es un efecto
+secundario de un error anterior que la aplicación captura y solo registra en el log, sin
+propagarlo:
+
+```js
+async saveInstance(t){
+  try{
+    let A = await this.configService.get("DATABASE").CONNECTION.CLIENT_NAME;
+    await this.prismaRepository.instance.create({data:{
+      id: t.instanceId, name: t.instanceName, ownerJid: t.ownerJid, ...
+    }})
+  } catch(A) { this.logger.error(A) }   // <- el error real se traga aquí, solo se loguea
+}
+```
+
+El log completo (no visible en la respuesta HTTP, solo en `docker logs`) mostró el error real:
+
+```
+PrismaClientValidationError
+Invalid `this.prismaRepository.instance.create()` invocation
+data: { id: "...", ownerJid: undefined, ..., integration: "WHATSAPP-BAILEYS", ...,
++   name: String }
+Argument `name` is missing.
+```
+
+Es decir: `t.instanceName` llegó `undefined` a `saveInstance()`, así que la fila `Instance`
+**nunca se crea** (el error se traga y el código sigue adelante como si hubiera funcionado).
+El siguiente paso, `settingsService.create()`, intenta escribir un `Setting` apuntando a un
+`instanceId` que nunca llegó a existir — de ahí el error de foreign key que sí llega al cliente.
+(Nota aparte: el mensaje de ese segundo error dice que la llamada que falló fue
+`integrationSession.update()`, en una ubicación de código totalmente distinta — casi seguro un
+bug del propio formateador de errores de Prisma 7.8.0 con este bundle sin sourcemaps correctos,
+no algo en lo que vale la pena profundizar más; el error de FK en sí, y su causa real, están
+confirmados igual con el log completo).
+
+**¿Por qué llega `undefined`?** Justo antes del error, en cada uno de los 3 intentos, apareció
+este log: `WARN [Validate] Ignoring attempt to override protected field "instanceName" via
+untrusted input` — buscando esa cadena literal en el bundle se encontró la función responsable:
+
+```js
+var Cd = ["instanceName", "instanceId"];   // campos "protegidos"
+function ug(o) {
+  // filtra estos campos de cualquier objeto de entrada, avisando por log
+  for (let [A, e] of Object.entries(o)) {
+    if (Cd.includes(A)) { Ze.warn(`Ignoring attempt to override protected field "${A}"...`); continue }
+    t[A] = e
+  }
+  return t
+}
+// dentro de dataValidate():
+A.originalUrl.includes("/instance/create") && Object.assign(r, ug(i))   // i = A.body
+```
+
+Esta protección tiene sentido para rutas que identifican la instancia por la URL (ej.
+`/instance/connect/:instanceName`) — evita que alguien mande un `instanceName` distinto en el
+body para intentar operar sobre otra instancia. **El bug es que esta misma regla se aplica
+también a `/instance/create`**, la única ruta donde el cliente **tiene que** poder mandar
+`instanceName` — es el único lugar donde se define, no hay ningún otro valor "legítimo" que
+proteger todavía. Aplicar ahí ese filtro parece un error de alcance (código pensado para otras
+rutas, aplicado también a esta por descuido), no una decisión de diseño.
+
+**No es parchable desde afuera del contenedor.** A diferencia del bug de Prisma (un archivo de
+config faltante) y del muro de licencia (una llamada HTTP a un servidor externo), esto vive
+dentro de la lógica de validación ya compilada — no hay una variable de entorno, un archivo
+montado, ni una forma distinta de armar la petición HTTP que lo evite (se confirmó que tanto
+mandar `instanceName` normal como agregar los campos de `settings` explícitos producen el mismo
+resultado). Arreglarlo requeriría modificar el código fuente real de Evolution API y
+recompilar — algo que está fuera de lo razonable para nuestro equipo hacer sobre un canal
+pre-release de un tercero.
+
 ## 6. Conclusión y lo que se necesita del equipo técnico
 
 Es una restricción del lado de los servidores de WhatsApp contra clientes no oficiales que
@@ -410,55 +485,64 @@ fix llegó en `rc.10`). La única que sí lo trae (`homolog`, oficial, intername
 resolviendo cada uno: (1) Prisma sin `datasource.url`/`prisma.config.ts` — **arreglado** con un
 `prisma.config.ts` propio; (2) activación de licencia obligatoria — **superada**, activación
 gratuita exitosa vía `EVOLUTION_OPERATOR_EMAIL`; (3) `POST /instance/create` con
-`integration: "WHATSAPP-BAILEYS"` falla siempre con un error de foreign key
-(`Setting_instanceId_fkey`) dentro del código ya compilado — **sin arreglar, no hay forma
-razonable de parchearlo desde afuera del contenedor**. Este tercer bug es, hoy, el que
-efectivamente bloquea la prueba: nunca se llegó a crear una instancia, generar un QR, conectar
-una sesión, ni enviar un mensaje real. **El 463 sigue sin confirmarse resuelto ni descartado con
-Baileys ≥ rc.10** — no por el 463 mismo, sino porque el canal (`homolog`) que lo trae está roto
-en un punto anterior y no relacionado.
+`integration: "WHATSAPP-BAILEYS"` falla siempre porque un filtro anti-tampering
+(`ug()`/`Cd=["instanceName","instanceId"]`, ver sección 5e) se aplica también a la única ruta
+donde el cliente necesita mandar `instanceName` — la fila `Instance` nunca se crea, y el error
+de foreign key visible es solo el efecto secundario. **Confirmado con el código fuente real
+dentro del bundle, no una hipótesis** — y, a diferencia de los otros dos, no parchable desde
+afuera del contenedor sin modificar y recompilar el código fuente de Evolution API. Este tercer
+bug es, hoy, el que efectivamente bloquea la prueba: nunca se llegó a crear una instancia,
+generar un QR, conectar una sesión, ni enviar un mensaje real. **El 463 sigue sin confirmarse
+resuelto ni descartado con Baileys ≥ rc.10** — no por el 463 mismo, sino porque el canal
+(`homolog`) que lo trae está roto en un punto anterior y no relacionado, y de una forma que ya no
+es razonable seguir parchando nosotros mismos desde afuera.
+
+**Decisión tomada:** se deja de intentar parchar `homolog` más allá de este punto. Los primeros
+dos bugs (Prisma, licencia) eran de configuración/infraestructura, razonables de resolver desde
+afuera; este tercero vive en la lógica de validación ya compilada del propio proyecto —
+seguir acumulando parches sobre un pre-release con tres bugs de release independientes ya no
+tiene buen retorno. El foco pasa a: escalar este hallazgo puntual (es información valiosa incluso
+para el propio equipo de Evolution Foundation), y evaluar alternativas con evidencia verificable
+en vez de seguir invirtiendo tiempo en este canal específico.
 
 Preguntas concretas para el equipo técnico:
-1. ¿Alguien del equipo tiene acceso a una imagen o build de Evolution API con Baileys ≥
+1. Sobre el bug de la sección 5e (filtro `ug()` aplicado también a `/instance/create`) — ¿es un
+   bug conocido? ¿Alguien puede confirmarlo/reportarlo directamente al repositorio o Discord
+   oficial de Evolution Foundation? Tenemos el fragmento de código exacto y la reproducción
+   100% consistente, es un reporte de bug completo y verificable, no una sospecha.
+2. ¿Alguien del equipo tiene acceso a una imagen o build de Evolution API con Baileys ≥
    `7.0.0-rc.10` en la que `POST /instance/create` con `integration: "WHATSAPP-BAILEYS"` **sí
-   funcione**? Con tres bugs de release distintos ya encontrados en `homolog` (Prisma, licencia,
-   y ahora la creación de instancia), ¿es este canal realmente usable para pruebas, o es
-   demasiado inestable incluso para eso?
-2. Específicamente sobre el bug de la sección 5d (`Setting_instanceId_fkey`) — ¿es un bug conocido
-   del equipo de Evolution Foundation? ¿Hay un issue público o un workaround (una tabla `Setting`
-   que se pueda pre-poblar a mano, una migración pendiente, un flag que desactive esa escritura)?
-3. ¿Conocen alguna forma de conseguir una imagen de Evolution API funcional con Baileys ≥
-   `7.0.0-rc.10` que **no** sea `homolog` — build propio, otro tag, o un release estable más
-   reciente que no hayamos visto?
-4. ¿Hay alguna otra integración/gateway de WhatsApp (fuera de Baileys/whatsmeow/whatsapp-web.js)
+   funcione** — sin depender de `homolog`, dado que ya se decidió no seguir parchándolo?
+3. ¿Hay alguna otra integración/gateway de WhatsApp (fuera de Baileys/whatsmeow/whatsapp-web.js)
    con historial confirmado de **no** tener este problema?
-5. ¿Vale la pena evaluar otras alternativas de API como openWA (https://github.com/rmyndharis/OpenWA), WAHA (https://github.com/devlikeapro/waha - https://waha.devlike.pro/), Evolution API Go (https://github.com/evolution-foundation/evolution-go)?
-6. Sobre `deployfybr/evolution:latest` (sugerida por un compañero): ¿alguien puede confirmar el
-   repositorio fuente real detrás de esa imagen? Sin eso no es prudente correrla contra
-   credenciales reales — ver sección 5b para el detalle de por qué.
+4. ¿Vale la pena evaluar otras alternativas de API como openWA (https://github.com/rmyndharis/OpenWA), WAHA (https://github.com/devlikeapro/waha - https://waha.devlike.pro/), Evolution API Go (https://github.com/evolution-foundation/evolution-go)?
+5. Sobre `deployfybr/evolution:latest` (sugerida por un compañero) — con el criterio más estricto
+   que ya acordamos: si el compañero puede indicar el repositorio/commit/Dockerfile exacto y la
+   versión de Baileys que trae, lo evaluamos con esa evidencia. Sin eso, sigue sin ser prudente
+   correrla contra credenciales reales — ver sección 5b para el detalle de por qué.
 
 ## 7. Posibles soluciones — propuestas nuestras, ninguna confirmada aún
 
 Ninguna de las siguientes se ha probado contra el escenario real (mensaje de un contacto nuevo) —
-el bug de la sección 5d lo impidió. Se listan en el orden en que las probaríamos:
+el bug de la sección 5e lo impidió. Ya se descartó seguir parchando `homolog` (no tiene sentido
+seguir invirtiendo en un canal con tres bugs de release independientes, el tercero no reparable
+desde afuera). Orden recomendado:
 
-**A. Intentar entender/parchar el bug de `Setting_instanceId_fkey` sin recompilar `homolog`
-desde cero.** Por ejemplo, insertando a mano en la base de prueba una fila `Setting` con el
-`instanceId` esperado justo antes de llamar `/instance/create` (si el flujo interno hace un
-`UPDATE` en vez de un `INSERT` cuando la fila ya existe, esto podría rodear el bug sin tocar el
-binario). No confirmado, es una hipótesis a probar en el mismo entorno aislado.
+**A. Reportar el bug de la sección 5e al canal oficial de Evolution Foundation** (issue en su
+repositorio, o su Discord/soporte) — es información concreta y verificable, con el fragmento de
+código exacto y la reproducción, útil incluso para ellos. Preguntar directamente si hay un tag
+o build donde esto no ocurra.
 
-**B. Pedirle directamente al equipo de Evolution Foundation (vía su Discord/soporte oficial, no
-solo a este equipo técnico externo) que confirme si `homolog` es realmente usable hoy, o esperar
-una build más estable del mismo canal.** Dado que ya son tres bugs distintos en la misma imagen,
-es razonable sospechar que este tag específico está roto más allá de lo que vale la pena
-parchear nosotros mismos.
+**B. Pedirle al compañero que sugirió `deployfybr/evolution:latest` el repositorio/commit/
+Dockerfile exacto y la versión de Baileys que contiene.** Solo con esa evidencia se evalúa —
+sin ella, sigue descartada por el mismo riesgo de cadena de suministro ya documentado (188
+descargas, 0 estrellas, cuenta reciente, sin fuente pública).
 
 **C. Esperar una versión estable de Evolution API ≥ 2.4.0** (no pre-release) una vez que
-Evolution Foundation publique una con Baileys ≥ rc.10 y sin estos bugs — evita depender de
-`homolog` para cualquier cosa, prueba o producción. El costo es tiempo de espera, no ingeniería.
+Evolution Foundation publique una con Baileys ≥ rc.10 y sin estos bugs. El costo es tiempo de
+espera, no ingeniería.
 
-**D. Si (A) o (B) logran una instancia `WHATSAPP-BAILEYS` funcional con Baileys ≥ rc.10, retomar
+**D. Si (A) o (B) dan una instancia `WHATSAPP-BAILEYS` funcional con Baileys ≥ rc.10, retomar
 el plan original:** conectar la sesión real, probar con un contacto genuinamente frío, y llenar
 la tabla comparativa de la sección 5d. Solo si eso confirma que el 463 se resuelve, evaluar migrar
 la instancia real de `v2.3.7`.

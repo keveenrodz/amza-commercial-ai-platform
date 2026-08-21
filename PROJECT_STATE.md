@@ -929,20 +929,40 @@ se probó un mensaje real. Entorno de prueba desmontado por completo; la instanc
 la tabla comparativa que se iba a usar para el 463, con `homolog` en blanco porque no se alcanzó
 esa etapa) en `docs/ops/whatsapp_463_technical_report.md`, sección 5d.
 
-**Conclusión final (revisada de nuevo, sigue sin resolverse):** de tres motores/librerías
-completamente distintos investigados (Baileys, whatsmeow/Evolution Go, whatsapp-web.js/OpenWA),
-los tres tienen alguna forma del mismo problema del lado de WhatsApp, y ya se confirmó que no se
-resuelve con tiempo ni cambiaría con un número nuevo. El camino de ingeniería identificado
-(Baileys ≥ `rc.10` vía `homolog`) ya superó dos de sus tres bloqueadores (Prisma, licencia), pero
-el tercero (creación de instancia rota) sigue sin resolverse y no depende de nuestro código — es
-un bug del propio release de `homolog`. **El 463 sigue sin confirmarse resuelto ni descartado**,
-no porque el fix de Baileys no sirva, sino porque el canal que lo trae está roto en un punto
-anterior. Próximos pasos posibles (ver reporte, sección 7): intentar un workaround al bug de FK,
-escalarlo directamente al soporte de Evolution Foundation, o esperar una release más estable. Si
-ninguna vía da una imagen `WHATSAPP-BAILEYS` funcional en un tiempo razonable, la alternativa de
-fondo sigue siendo la API oficial de WhatsApp Business de Meta (de pago, requiere aprobación) —
-una decisión de producto/costo mayor. Dado que WhatsApp es el canal que de verdad le importa al
-piloto (no Telegram), esta decisión se retoma como prioridad en la próxima sesión, no se archiva.
+**12. Actualización 21 de agosto (cierre de esta línea de investigación) — causa raíz exacta
+encontrada, se decide dejar de parchar `homolog`.** Se inspeccionó el código fuente real dentro
+del bundle compilado (solo lectura) y se encontró la causa exacta del bug de la sección 11: un
+filtro anti-tampering (`ug()`, lista `Cd=["instanceName","instanceId"]`) pensado para rutas que
+identifican la instancia por la URL se aplica también, por error de alcance, a
+`POST /instance/create` — la única ruta donde el cliente necesita mandar `instanceName`. El
+resultado: `saveInstance()` recibe `instanceName` vacío, su `try/catch` traga el error real
+(`Argument "name" is missing`) y solo lo loguea, y el código sigue adelante como si la instancia
+ya existiera — el error de foreign key visible es solo el efecto secundario de ese primer fallo
+silencioso. Confirmado con el código fuente, no una hipótesis. A diferencia de los otros dos bugs
+de `homolog`, **este no es parchable desde afuera sin recompilar el proyecto**.
+
+**Decisión: se deja de intentar parchar `homolog`.** Con tres bugs de release independientes
+encontrados en el mismo canal (Prisma, licencia, y ahora este), seguir invirtiendo tiempo en
+parchear un pre-release ya no tiene buen retorno. El foco pasa a: escalar este hallazgo puntual
+al equipo técnico externo/Evolution Foundation directamente (es un reporte de bug completo y
+verificable), y aplicar el mismo criterio más estricto a `deployfybr/evolution:latest` (solo se
+evalúa si el compañero que la sugirió puede dar repositorio/commit/versión de Baileys exacta).
+Detalle completo con el fragmento de código real en
+`docs/ops/whatsapp_463_technical_report.md`, secciones 5e, 6 y 7.
+
+**Conclusión final (sigue sin resolverse, pero con una causa raíz clara):** de tres motores/
+librerías completamente distintos investigados (Baileys, whatsmeow/Evolution Go, whatsapp-web.js/
+OpenWA), los tres tienen alguna forma del mismo problema del lado de WhatsApp, y ya se confirmó
+que no se resuelve con tiempo ni cambiaría con un número nuevo. El camino de ingeniería
+identificado (Baileys ≥ `rc.10` vía `homolog`) sigue bloqueado — no por el 463, sino porque el
+canal que trae el fix está roto en un punto anterior, de una forma que ya no es razonable seguir
+parchando nosotros mismos. **El 463 sigue sin confirmarse resuelto ni descartado.** Próximos
+pasos: escalar el bug exacto a Evolution Foundation, pedir evidencia verificable sobre
+`deployfybr`, o esperar una release estable ≥ 2.4.0 sin estos bugs. Si ninguna vía da una imagen
+`WHATSAPP-BAILEYS` funcional en un tiempo razonable, la alternativa de fondo sigue siendo la API
+oficial de WhatsApp Business de Meta (de pago, requiere aprobación) — una decisión de
+producto/costo mayor. Dado que WhatsApp es el canal que de verdad le importa al piloto (no
+Telegram), esta decisión se retoma como prioridad en la próxima sesión, no se archiva.
 
 **What does NOT exist yet:**
 
