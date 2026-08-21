@@ -176,20 +176,90 @@ El mensaje nunca llega al teléfono del cliente.
 | ¿Ayudaría cambiar de número (SIM nueva)? | No verificado con una SIM real todavía, pero descartado por razonamiento fuerte: la falla es 100% reproducible e instantánea en todos los casos probados — patrón consistente con un hueco de implementación del cliente (no envía el campo que exige WhatsApp), no con una restricción específica de cuenta. Cualquier número corriendo este mismo software probablemente fallaría igual en su primer intento con un contacto nuevo. |
 | ¿Es específico de Baileys? ¿Cambiar de motor ayudaría? | Descartado — investigado a fondo. **Evolution Go** (motor en Go, librería `whatsmeow`) tiene el mismo issue abierto y sin resolver: [evolution-go#50](https://github.com/evolution-foundation/evolution-go/issues/50), causa raíz idéntica confirmada también en [whatsmeow#1074](https://github.com/tulir/whatsmeow/issues/1074). **OpenWA** con motor `whatsapp-web.js` (navegador real en vez de reimplementar el protocolo) tiene el mismo problema de fondo manifestándose peor: bloqueos de cuenta completos en vez de un mensaje rechazado limpio ([whatsapp-web.js#3250](https://github.com/wwebjs/whatsapp-web.js/issues/3250), [#1872](https://github.com/pedroslopez/whatsapp-web.js/issues/1872)). |
 
+## 5b. Actualización — comparación real de versiones de Baileys (21 de agosto)
+
+Un colega del equipo técnico contrastó el diagnóstico contra el estado actual de Baileys en
+GitHub y señaló algo importante: el manejo de TC tokens/Reachout Timelock se agregó
+específicamente en `v7.0.0-rc.10` (mayo 2025), y no hay garantía de que las versiones de
+Evolution API probadas incluyan esa versión de Baileys o una posterior. Se verificó
+directamente, revisando el `package.json` de Baileys empaquetado dentro de cada imagen (sin
+correr ninguna, solo inspección de archivos):
+
+| Imagen de Evolution API | Baileys empaquetado | ¿Incluye el fix de TC token (rc.10+)? |
+|---|---|---|
+| `v2.3.6` | `7.0.0-rc.6` | ❌ No |
+| `v2.3.7` (la que usamos) | `7.0.0-rc.9` | ❌ No — justo la versión anterior al fix |
+| `2.4.0-rc2` | `7.0.0-rc.9` | ❌ No — Evolution ni siquiera actualizó Baileys en este bump |
+| `latest` | `7.0.0-rc.9` | ❌ No |
+| `homolog` (canal de pre-lanzamiento oficial) | `7.0.0-rc13` | ✅ Sí |
+
+**Confirmado: ninguna de las versiones estables/RC probadas hasta ahora incluye el fix real.**
+Esto valida la hipótesis del colega — nunca se descartó el fix en sí, se descartaron versiones
+de Evolution API que nunca lo tuvieron empaquetado.
+
+### Intento con `evoapicloud/evolution-api:homolog`
+
+Se hizo backup de la base de datos de Postgres y del volumen de instancias antes de tocar nada.
+Al intentar levantar `homolog`, la imagen entra en bucle de reinicio por un **problema de
+empaquetado distinto y no relacionado con Baileys/463**: incluye Prisma `7.8.0` (salto de
+versión mayor), pero el archivo `prisma/postgresql-schema.prisma` empaquetado no tiene la línea
+`url = env(...)` en el bloque `datasource`, y tampoco existe un `prisma.config.ts` — Prisma 7.x
+exige uno de los dos para `migrate deploy`. Confirmado inspeccionando los archivos dentro de la
+imagen directamente:
+
+```
+datasource db {
+  provider = "postgresql"
+}
+```
+
+(sin `url`). Se probó pasar `DATABASE_URL`/`DATABASE_CONNECTION_URI` de varias formas
+(`environment:` de compose, archivo `.env` real vía `--env-file`) — la variable sí llega
+correctamente al proceso (confirmado en el log: `Database URL: postgresql://...`), pero Prisma
+igual falla porque el schema empaquetado no la referencia. Es un bug de empaquetado de este tag
+específico, no algo resoluble desde afuera del contenedor sin parchear el archivo del schema.
+
+**Se revirtió a `v2.3.7` de inmediato** (sesión de WhatsApp intacta, sin pérdida de datos — la
+migración nunca llegó a tocar la base de datos real porque falló antes de ejecutarse).
+
+### Sobre la imagen `deployfybr/evolution:latest` sugerida por un compañero
+
+Se verificó la información pública del publicador antes de considerar ejecutarla contra el
+número real:
+
+- **188 descargas totales, 0 estrellas**, cuenta de Docker Hub registrada el 2026-07-28 (menos
+  de un mes).
+- `"source": null` — no vinculada a ningún repositorio público. No hay Dockerfile ni build
+  auditable visible en ningún lado.
+- Sin descripción, sin discusión pública encontrada sobre esta imagen específica en ningún
+  issue tracker o foro.
+
+**No se ejecutó.** El perfil de riesgo (publicador desconocido, cero transparencia sobre el
+contenido real, recomendada solo de oídas) no se justifica todavía frente al riesgo de correrla
+con las credenciales reales de WhatsApp de la empresa. Si se quiere insistir en esta vía, lo
+mínimo indispensable sería conseguir el repositorio fuente real (si existe) y revisar el diff
+contra `evoapicloud/evolution-api` antes de correrla, nunca a ciegas.
+
 ## 6. Conclusión y lo que se necesita del equipo técnico
 
 Es una restricción del lado de los servidores de WhatsApp contra clientes no oficiales que
 intentan responder a contactos nuevos/en frío, expuesta por un hueco de implementación
-(persistencia/reenvío de `tctoken`/`cstoken`) presente — confirmado — en **las tres
-librerías/motores no oficiales investigados** (Baileys, whatsmeow, whatsapp-web.js). No parece
-ser algo que se resuelva ajustando configuración de nuestro despliegue.
+(persistencia/reenvío de `tctoken`/`cstoken`) presente en **las tres librerías/motores no
+oficiales investigados** (Baileys, whatsmeow, whatsapp-web.js) — pero con una precisión
+importante confirmada el 21 de agosto: **ninguna versión de Evolution API que hemos podido
+probar hasta ahora incluye el Baileys posterior al fix** (todas empaquetan `rc.6`-`rc.9`; el
+fix llegó en `rc.10`). La única que sí lo trae (`homolog`, oficial) tiene un bug de empaquetado
+distinto (Prisma 7.8.0 sin `datasource.url` configurado) que impide siquiera arrancarla en este
+momento. Así que la pregunta correcta ya no es "¿el fix de Baileys sirve?" sino "¿cómo llegamos
+a una imagen de Evolution API que (a) traiga Baileys ≥ rc.10 y (b) arranque correctamente?".
 
 Preguntas concretas para el equipo técnico:
-1. ¿Conocen alguna versión de Evolution API/Baileys donde el fix de `tctoken`/`cstoken` (PRs
-   #2257/#2339/#2438 de Baileys) esté realmente completo y probado contra este escenario
-   exacto (responder a un contacto que nos escribió por primera vez)?
+1. ¿Conocen alguna forma de conseguir una imagen de Evolution API funcional con Baileys ≥
+   `7.0.0-rc.10` — ya sea arreglando el bug de Prisma en `homolog`, u otra vía (build propio
+   apuntando a un Baileys más nuevo, por ejemplo)?
 2. ¿Hay alguna otra integración/gateway de WhatsApp (fuera de Baileys/whatsmeow/whatsapp-web.js)
    con historial confirmado de **no** tener este problema?
-3. ¿Vale la pena evaluar la API oficial de WhatsApp Business Cloud de Meta (de pago, requiere
-   aprobación) como la única ruta con garantía real, dado que es la implementación oficial del
-   protocolo?
+3. ¿Vale la pena evaluar otras alternativas de API como openWA (https://github.com/rmyndharis/OpenWA), WAHA (https://github.com/devlikeapro/waha - https://waha.devlike.pro/), Evolution API Go (https://github.com/evolution-foundation/evolution-go)?
+4. Sobre `deployfybr/evolution:latest` (sugerida por un compañero): ¿alguien puede confirmar el
+   repositorio fuente real detrás de esa imagen? Sin eso no es prudente correrla contra
+   credenciales reales — ver sección 5b para el detalle de por qué.

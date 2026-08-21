@@ -859,14 +859,44 @@ intento de responder a un contacto nuevo. Un número nuevo, además, sin histori
 un cliente no oficial, es si acaso un perfil *más* sospechoso para la detección de spam de
 WhatsApp, no menos.
 
-**Conclusión final:** de tres motores/librerías completamente distintos investigados (Baileys,
-whatsmeow/Evolution Go, whatsapp-web.js/OpenWA), los tres tienen alguna forma del mismo
-problema, y ahora se confirmó que tampoco se resuelve con tiempo ni cambiaría con un número
-nuevo — es un límite estructural, no temporal ni específico de esta cuenta, de la ruta Evolution
-API/Baileys no oficial para responder a contactos nuevos. **La única alternativa real que queda
-sin probar es la API oficial de WhatsApp Business de Meta** (de pago, requiere aprobación por
-Meta, arquitectura distinta — no reimplementa el protocolo, lo habla oficialmente) — una decisión
-de producto/costo mayor, no una tarea de ingeniería más sobre lo que ya existe. Dado que WhatsApp
+**9. Actualización 21 de agosto — sí hay un camino de ingeniería concreto, pero bloqueado por
+otro bug distinto.** Un colega del equipo técnico externo señaló, con razón, que el fix real de
+`tctoken`/Reachout Timelock en Baileys se agregó específicamente en `v7.0.0-rc.10` (mayo 2025),
+y que nunca se había confirmado qué versión de Baileys viene empaquetada dentro de cada imagen
+de Evolution API probada. Se verificó inspeccionando el `package.json` de Baileys dentro de cada
+imagen (sin ejecutar ninguna insegura, solo lectura de archivos):
+
+| Imagen | Baileys empaquetado | ¿Tiene el fix (rc.10+)? |
+|---|---|---|
+| `v2.3.6` | `7.0.0-rc.6` | ❌ |
+| `v2.3.7` (la actual) | `7.0.0-rc.9` | ❌ — justo la anterior al fix |
+| `2.4.0-rc2` | `7.0.0-rc.9` | ❌ — ni siquiera se actualizó en este bump |
+| `latest` | `7.0.0-rc.9` | ❌ |
+| `homolog` (oficial, pre-lanzamiento) | `7.0.0-rc13` | ✅ |
+
+**Nunca se había probado una versión con el fix real** — las tres que sí se probaron nunca lo
+tuvieron empaquetado. Se intentó `homolog` (con backup previo de BD y volumen): entra en bucle
+de reinicio por un **bug de empaquetado distinto y no relacionado**, Prisma `7.8.0` sin
+`datasource.url` configurado en el schema ni un `prisma.config.ts` — confirmado inspeccionando
+el schema empaquetado directamente. No es algo resoluble solo con variables de entorno desde
+afuera. Se revirtió a `v2.3.7` de inmediato, sesión intacta, sin pérdida de datos.
+
+También se evaluó `deployfybr/evolution:latest` (sugerida por un tercero) — **no se ejecutó**:
+publicador de Docker Hub sin repositorio fuente visible (`source: null`), 188 descargas, 0
+estrellas, cuenta de menos de un mes. Riesgo real de cadena de suministro al correrla contra
+credenciales reales de WhatsApp sin poder auditar qué contiene — no se justifica todavía.
+Detalle completo, con logs, en `docs/ops/whatsapp_463_technical_report.md`.
+
+**Conclusión final (revisada):** de tres motores/librerías completamente distintos investigados
+(Baileys, whatsmeow/Evolution Go, whatsapp-web.js/OpenWA), los tres tienen alguna forma del mismo
+problema del lado de WhatsApp, y ahora se confirmó que tampoco se resuelve con tiempo ni
+cambiaría con un número nuevo — pero a diferencia de la conclusión anterior, **sí existe un
+camino de ingeniería concreto sin resolver todavía**: conseguir una imagen de Evolution API que
+traiga Baileys ≥ `rc.10` y arranque correctamente (arreglar el bug de Prisma en `homolog`, o
+alguna otra vía). Si eso tampoco resuelve el 463 en el escenario real (contacto que ya escribió,
+ver Baileys#2698), la alternativa de fondo sigue siendo la API oficial de WhatsApp Business de
+Meta (de pago, requiere aprobación por Meta, arquitectura distinta — no reimplementa el
+protocolo, lo habla oficialmente) — una decisión de producto/costo mayor. Dado que WhatsApp
 es el canal que de verdad le importa al piloto (no Telegram), esta decisión (evaluar la API
 oficial, o aceptar que WhatsApp vía este stack solo sirve para contactos que ya escribieron antes
 y no para clientes nuevos) se retoma como prioridad en la próxima sesión, no se archiva.
