@@ -841,16 +841,35 @@ mandaron bastantes intentos fallidos a los mismos 2-3 números durante todo este
 confirmación de daño hecho, pero seguir insistiendo es justo lo que la evidencia dice que lo
 empeora. Si se retoma la investigación, usar números frescos, no los ya usados.
 
-**Conclusión actual (pendiente, no cerrada):** de tres motores/librerías completamente distintos
-investigados (Baileys, whatsmeow/Evolution Go, whatsapp-web.js/OpenWA), los tres tienen alguna
-forma del mismo problema — es una restricción real de la plataforma de WhatsApp contra clientes
-no oficiales hablándole a desconocidos, no un bug de una librería específica que resolver
-cambiando de proveedor. **Plan:** darle tiempo (el mecanismo se describe como algo que se
-levanta solo) y reintentar más adelante con números que no se hayan usado en este debugging. Si
-después de eso sigue fallando, la alternativa real de fondo es la API oficial de WhatsApp
-Business de Meta (de pago, requiere aprobación por Meta) — una decisión de producto/costo mayor,
-no una tarea de ingeniería más. Dado que WhatsApp es el canal que de verdad le importa al piloto
-(no Telegram), esto se retoma como prioridad en la próxima sesión, no se archiva.
+**8. Prueba de "¿se levanta solo con el tiempo?" — falsada.** Más de 12 horas después del último
+intento, sin cambiar nada, un cliente real volvió a escribir y la IA volvió a intentar
+responder: **mismo error 463 exacto, idéntico**. Esto descarta la teoría de "es un enforcement
+temporal que se levanta solo" — si fuera así, 12+ horas debería haber sido más que suficiente.
+La naturaleza 100% reproducible, instantánea y ahora también persistente-en-el-tiempo del fallo
+(nunca intermitente, nunca "a veces sí") apunta a algo más simple y más duro: **un hueco de
+implementación en el código de Baileys/Evolution API que nunca envía el campo que WhatsApp
+exige, en ningún intento, sin importar cuánto tiempo pase.** No es un castigo temporal de la
+cuenta — es que el software nunca hace lo que hace falta.
+
+**Esto también responde una pregunta razonable que surgió:** ¿ayudaría cambiar de número (SIM
+nueva)? No, por el mismo motivo — el defecto vive en cómo el cliente (Baileys/Evolution API)
+maneja el token de privacidad de *cualquier* mensaje entrante, no en la reputación de una cuenta
+en particular. Cualquier número corriendo este mismo software fallaría igual en su primer
+intento de responder a un contacto nuevo. Un número nuevo, además, sin historial y vinculado vía
+un cliente no oficial, es si acaso un perfil *más* sospechoso para la detección de spam de
+WhatsApp, no menos.
+
+**Conclusión final:** de tres motores/librerías completamente distintos investigados (Baileys,
+whatsmeow/Evolution Go, whatsapp-web.js/OpenWA), los tres tienen alguna forma del mismo
+problema, y ahora se confirmó que tampoco se resuelve con tiempo ni cambiaría con un número
+nuevo — es un límite estructural, no temporal ni específico de esta cuenta, de la ruta Evolution
+API/Baileys no oficial para responder a contactos nuevos. **La única alternativa real que queda
+sin probar es la API oficial de WhatsApp Business de Meta** (de pago, requiere aprobación por
+Meta, arquitectura distinta — no reimplementa el protocolo, lo habla oficialmente) — una decisión
+de producto/costo mayor, no una tarea de ingeniería más sobre lo que ya existe. Dado que WhatsApp
+es el canal que de verdad le importa al piloto (no Telegram), esta decisión (evaluar la API
+oficial, o aceptar que WhatsApp vía este stack solo sirve para contactos que ya escribieron antes
+y no para clientes nuevos) se retoma como prioridad en la próxima sesión, no se archiva.
 
 **What does NOT exist yet:**
 
