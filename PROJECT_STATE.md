@@ -775,7 +775,7 @@ preparar un despliegue más robusto):
 | Sin cola de reintentos para fallos de infraestructura | Aceptado para MVP |
 | Sin revocación explícita de JWT | Mitigado — `get_current_user()` valida contra BD en cada request |
 | Protección CSRF pendiente | Mitigación parcial — cookies `HttpOnly` + `SameSite=Lax` |
-| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **🟡 EN VALIDACIÓN — primera entrega real confirmada a un contacto frío (21 de agosto, ver sección 13 más abajo), probando Baileys `7.0.0-rc13` vía una imagen propia construida desde `evolution-foundation/evolution-api` PR #2608. Un solo contacto probado hasta ahora, sesión de producción (`v2.3.7`) temporalmente desconectada por la prueba (recuperable). Faltan rondas adicionales (2-3 contactos, conversación de varias vueltas, reinicio, reconexión) antes de considerar esto resuelto y migrar producción. Ya no es "sin resolver" a secas — sigue siendo la prioridad de la próxima sesión.** |
+| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **🟡 EN VALIDACIÓN — Gates 1 y 2 completos (transporte + estabilidad de sesión), Gate 3 mayoritariamente completo (falta solo ampliar a contactos fríos distintos). Ver `docs/ops/whatsapp_evolution_maintenance.md` para el estado exacto por gate y el plan de la próxima sesión (Gate 4: integración real con backend+IA; Gate 5: artefacto reproducible; Gate 6: promoción formal). Detalle de toda la investigación en `docs/ops/whatsapp_463_technical_report.md`. Sigue siendo la prioridad de la próxima sesión — el backend real de la app todavía no está conectado a la build validada.** |
 
 **Detalle del error 463 (WhatsApp/Evolution API/Baileys), por qué se acepta como riesgo (por
 ahora) en vez de seguir invirtiendo tiempo en resolverlo:**
@@ -990,6 +990,17 @@ que el 463 vuelve a aparecer, la alternativa de fondo sigue siendo la API oficia
 Business de Meta (de pago, requiere aprobación). Dado que WhatsApp es el canal que de verdad le
 importa al piloto (no Telegram), completar esta validación se retoma como prioridad en la próxima
 sesión.
+
+**15. Cierre de esta sesión de investigación (21 de agosto) — ver `docs/ops/whatsapp_evolution_maintenance.md`
+para el estado consolidado.** Tras esta actualización se hicieron dos rondas más de validación
+sobre el mismo contacto (reinicio del contenedor con sesión persistente, y un tercer mensaje real
+dentro de una conversación orgánica de negocio, no sintética) — ambas con entrega confirmada. Se
+decidió cerrar la sesión de pruebas aquí (evidencia ya suficientemente fuerte, seguir mandando
+mensajes al mismo contacto no aporta más) y consolidar todo en un documento operativo nuevo,
+estructurado por gates, en vez de seguir narrando cronológicamente en esta sección. **Ese
+documento (`docs/ops/whatsapp_evolution_maintenance.md`) es ahora la referencia viva para el
+estado de este bloqueador** — esta sección y las anteriores (9-14) quedan como bitácora histórica
+de cómo se llegó ahí, igual que `docs/ops/whatsapp_463_technical_report.md`.
 
 **What does NOT exist yet:**
 
