@@ -566,13 +566,45 @@ Tabla comparativa final, con el formato pedido:
 
 **Esto es evidencia real, no solo de logs, de que el cambio de versión de Baileys (rc9→rc13, que
 incluye el manejo de TC token/Reachout Timelock y direccionamiento LID) está causalmente
-relacionado con la resolución del 463** para este escenario concreto de contacto frío. Sigue
-siendo **una sola prueba, un solo contacto** — antes de considerar esto validado para producción,
-la recomendación (propia y del equipo técnico externo) es repetir con 2-3 contactos fríos más,
-una conversación de varias vueltas, un reinicio del contenedor (confirmar que la sesión
-sobrevive), y verificar el comportamiento tras una reconexión — recién después de eso evaluar
-migrar la instancia real, con backup previo. Ninguna de esas rondas adicionales se ha hecho
-todavía.
+relacionado con la resolución del 463** para este escenario concreto de contacto frío.
+
+## 5h. Segunda ronda de validación — conversación de varias vueltas y reinicio
+
+Con el mismo contacto ya "calentado" por el primer intercambio, se probaron dos de los criterios
+de validación pendientes:
+
+- **Reinicio del contenedor** (`docker restart`): la sesión de WhatsApp **sobrevivió sin pedir un
+  QR nuevo** — el log mostró `CONNECTED TO WHATSAPP` automáticamente al reiniciar, reconectando
+  con el mismo `wuid` (573015092386).
+- **Mensaje de seguimiento tras el reinicio** (conversación de varias vueltas + comportamiento
+  post-reconexión): se envió un segundo mensaje (`POST /message/sendText`) — `HTTP 201`, y esta
+  vez el `remoteJid` resolvió directo al JID de número real
+  (`573116387935@s.whatsapp.net`) en vez del formato LID del primer mensaje, sugiriendo que el
+  mapeo LID↔número ya quedó resuelto internamente tras el primer intercambio. **La persona
+  confirmó que también le llegó este segundo mensaje.**
+
+Con esto, de los cuatro criterios de validación pendientes, quedan confirmados: primer contacto
+frío ✅, conversación de varias vueltas ✅, sobrevive un reinicio ✅. **Pendiente todavía:**
+probar con 2-3 contactos fríos *distintos* (todo lo de esta sección usó el mismo contacto) — se
+pausó aquí por decisión explícita, no por un problema encontrado. Antes de considerar esto
+validado para producción, sigue faltando esa ronda con contactos independientes, y luego evaluar
+migrar la instancia real con backup previo.
+
+**Comprobaciones de seguridad realizadas antes de seguir usando la instancia de prueba en
+producción de facto** (pedidas explícitamente antes de continuar): `v2.3.7` sigue confirmado
+desconectado (`connectionStatus: close`, `disconnectionReasonCode: 401`); la instancia de prueba
+es la única sesión abierta para este número; no hay mensajes duplicados en la tabla `Message`
+(chequeado por `id`+`fromMe`+`timestamp`); y el contenedor real del backend (`backend`, el que
+sirve la IA) **no está corriendo en este momento** — descarta por completo que el backend
+pudiera estar enviando accidentalmente por dos instancias a la vez, porque no está enviando por
+ninguna.
+
+**Tercer mensaje real, no sintético — mismo contacto siguió conversando de forma orgánica** (no
+seguía un guion de prueba): escribió "Maravilloso" y "Ya Medardo le pasó la información" — texto
+de una conversación de negocio real, no una confirmación técnica. Se respondió con el texto
+exacto pedido ("Aun no me ha enviado nada, por favor recuerdale.") — `HTTP 201`, y **la persona
+confirmó que también le llegó.** Tercera entrega real confirmada, la primera sobre contenido de
+conversación genuina en vez de un mensaje de prueba explícito.
 
 ## 6. Conclusión y lo que se necesita del equipo técnico
 
