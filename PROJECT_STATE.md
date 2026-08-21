@@ -887,19 +887,42 @@ estrellas, cuenta de menos de un mes. Riesgo real de cadena de suministro al cor
 credenciales reales de WhatsApp sin poder auditar qué contiene — no se justifica todavía.
 Detalle completo, con logs, en `docs/ops/whatsapp_463_technical_report.md`.
 
-**Conclusión final (revisada):** de tres motores/librerías completamente distintos investigados
-(Baileys, whatsmeow/Evolution Go, whatsapp-web.js/OpenWA), los tres tienen alguna forma del mismo
-problema del lado de WhatsApp, y ahora se confirmó que tampoco se resuelve con tiempo ni
-cambiaría con un número nuevo — pero a diferencia de la conclusión anterior, **sí existe un
-camino de ingeniería concreto sin resolver todavía**: conseguir una imagen de Evolution API que
-traiga Baileys ≥ `rc.10` y arranque correctamente (arreglar el bug de Prisma en `homolog`, o
-alguna otra vía). Si eso tampoco resuelve el 463 en el escenario real (contacto que ya escribió,
-ver Baileys#2698), la alternativa de fondo sigue siendo la API oficial de WhatsApp Business de
-Meta (de pago, requiere aprobación por Meta, arquitectura distinta — no reimplementa el
-protocolo, lo habla oficialmente) — una decisión de producto/costo mayor. Dado que WhatsApp
-es el canal que de verdad le importa al piloto (no Telegram), esta decisión (evaluar la API
-oficial, o aceptar que WhatsApp vía este stack solo sirve para contactos que ya escribieron antes
-y no para clientes nuevos) se retoma como prioridad en la próxima sesión, no se archiva.
+**10. Actualización 21 de agosto (misma sesión) — se arregló el bug de Prisma, pero aparece un
+segundo bloqueador, distinto y todavía sin resolver.** Se intentó parchar `homolog` en un
+entorno completamente aislado (Postgres desechable en una red Docker separada, nunca contra la
+instancia real que sirve la sesión de WhatsApp): montando un `prisma.config.ts` propio con
+`datasource.url = env("DATABASE_CONNECTION_URI")` (la imagen ya trae `@prisma/config` y
+`@prisma/adapter-pg` como dependencias — solo faltaba ese archivo), las migraciones corrieron sin
+error y el proceso arrancó sirviendo en el puerto 8080.
+
+Al primer intento de usar un endpoint real (`GET /instance/fetchInstances`), apareció un
+bloqueador nuevo, no relacionado con Prisma ni con el 463: `HTTP 503 {"code":"LICENSE_REQUIRED"}`.
+Confirmado contra la documentación oficial: desde Evolution API `2.4.0` en adelante (aplica tanto
+a `homolog` como a `2.4.0-rc2`, ya descartado antes por el 463) exigen activar cada instancia
+contra el servidor de licencias de Evolution Foundation — gratuito, pero requiere registrar un
+email de operador y acepta telemetría periódica obligatoria (instance_id, versión, conteo de
+mensajes enviados — su documentación afirma que no incluye contenido de mensajes ni números de
+contacto). `v2.3.7` (< 2.4.0) no tiene esta exigencia, por eso nunca apareció antes.
+
+**Todavía NO se ha confirmado si Baileys `rc13` resuelve el 463 en la práctica** — el muro de
+licencia impidió llegar a probar el envío de un mensaje real. La instancia de producción
+(`v2.3.7`) no se tocó en ningún momento; sigue con la sesión real intacta. Detalle completo,
+con logs y las opciones propuestas, en `docs/ops/whatsapp_463_technical_report.md` (secciones 5c
+y 7).
+
+**Conclusión final (revisada, sigue sin resolverse):** de tres motores/librerías completamente
+distintos investigados (Baileys, whatsmeow/Evolution Go, whatsapp-web.js/OpenWA), los tres tienen
+alguna forma del mismo problema del lado de WhatsApp, y ya se confirmó que no se resuelve con
+tiempo ni cambiaría con un número nuevo. El camino de ingeniería que se identificó (Baileys ≥
+`rc.10` vía `homolog`) ya no está bloqueado por el bug de Prisma, pero sigue sin poder probarse
+de verdad por el muro de activación de licencia — no se ha confirmado ni descartado que resuelva
+el 463. Antes de avanzar más (completar la activación real contra el servidor de Evolution
+Foundation) se prefiere esperar confirmación del equipo técnico externo, dado que implica volver
+a interactuar con un servicio de un tercero. Si finalmente se confirma que ni con el fix de
+Baileys se resuelve, la alternativa de fondo sigue siendo la API oficial de WhatsApp Business de
+Meta (de pago, requiere aprobación por Meta) — una decisión de producto/costo mayor. Dado que
+WhatsApp es el canal que de verdad le importa al piloto (no Telegram), esta decisión se retoma
+como prioridad en la próxima sesión, no se archiva.
 
 **What does NOT exist yet:**
 
