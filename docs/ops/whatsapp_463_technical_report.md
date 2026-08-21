@@ -472,6 +472,55 @@ resultado). Arreglarlo requeriría modificar el código fuente real de Evolution
 recompilar — algo que está fuera de lo razonable para nuestro equipo hacer sobre un canal
 pre-release de un tercero.
 
+## 5f. El bug ya es público y ya tiene un fix escrito — pero está atascado sin mergear
+
+Antes de reportarlo como un hallazgo nuevo, se buscó en el repositorio real
+(`evolution-foundation/evolution-api`, GitHub) si alguien ya lo había documentado. Resultado:
+**sí, dos veces — como issue reportado por la comunidad y como PR con el fix ya escrito y
+aprobado por un mantenedor, pero nunca mergeado.**
+
+**Issue [#2631](https://github.com/evolution-foundation/evolution-api/issues/2631)** (abierto,
+sin resolver): reporta exactamente el mismo error (`Setting_instanceId_fkey`, instalación
+completamente limpia, Postgres y Redis recién creados), reproducido de forma independiente en
+`2.4.0`, `2.4.0-rc2` y `homolog`. Comentarios de la comunidad: alguien reporta que en su caso solo
+pasa en `homolog` (contradice parcialmente al autor original, que dice reproducirlo también en
+`2.4.0`/`2.4.0-rc2` — no hay consenso claro sobre el alcance exacto entre versiones, pero coincide
+con nuestro hallazgo en que `homolog` sí lo tiene siempre).
+
+**PR [#2608](https://github.com/evolution-foundation/evolution-api/pull/2608)** (`fix: instance
+creation broken by sanitization guard and silent error swallow`, contra `develop`, autor externo
+`pastoriniMatheus`): el diagnóstico del PR **coincide palabra por palabra** con lo que encontramos
+de forma independiente leyendo el bundle compilado — mismo mecanismo exacto (`sanitizeUntrustedInput`/
+`PROTECTED_INSTANCE_FIELDS` filtrando `instanceName` en `/instance/create`, `saveInstance()`
+tragando el error sin relanzarlo). El PR además corrige, en un segundo commit, **el mismo bug de
+Prisma que nosotros arreglamos con `prisma.config.ts`** (`Dockerfile` no copiaba
+`prisma.config.ts` a la imagen final) y un problema adicional no probado por nosotros (`?schema=`
+en la URL de conexión rompe las queries generadas por Prisma 7 con adaptador).
+
+Se verificó el estado real del PR, no solo el diff:
+- **Un mantenedor externo (`dpaes`) lo revisó línea por línea, confirmó el diagnóstico contra
+  `develop` directamente, y lo aprobó** (`APPROVED`, 2026-06-28) tras una ronda de cambios.
+- **Sigue sin mergear, casi dos meses después** (última actividad: 2026-06-28; hoy es
+  2026-08-21). La razón: el check obligatorio de CI (`check-lint-and-build`) falla — pero por un
+  problema de configuración del propio pipeline de CI de Evolution Foundation (no popula
+  `DATABASE_CONNECTION_URI`, que `prisma.config.ts` ahora exige — el mismo tipo de problema de
+  Prisma 7 que nos costó a nosotros), confirmado por el propio revisor como **preexistente en
+  `develop`, no causado por este PR**. Es un bloqueo de infraestructura de CI, no del código.
+- Se confirmó directamente contra el código fuente de `develop` (no solo el diff del PR) que **el
+  bug sigue presente hoy, sin mergear** (`src/api/abstract/abstract.router.ts` y
+  `src/api/services/monitor.service.ts` en `develop` tienen exactamente el código roto).
+- El commit específico del PR (`45d3122ca998b7d26b5153cb97984509e3289b92`) declara
+  `"baileys": "7.0.0-rc13"` en su `package.json` — **es decir, ese commit exacto tiene ambas
+  cosas a la vez: el fix de creación de instancia Y Baileys posterior al fix de TC token.**
+- No existe ninguna imagen Docker publicada (revisado el listado completo de tags en Docker Hub)
+  construida desde ese commit o esa rama — solo existe como código fuente en GitHub.
+
+**Esto cambia la opción "build propia" de especulativa a concreta y de bajo riesgo relativo:** a
+diferencia de `deployfybr/evolution:latest` (código no auditable, publicador desconocido), este
+commit es 100% público, del repositorio oficial, con diff visible línea por línea, y ya revisado
+y aprobado por un mantenedor humano independiente — el riesgo de cadena de suministro es
+comparable al de cualquier release oficial, no al de una imagen de origen desconocido.
+
 ## 6. Conclusión y lo que se necesita del equipo técnico
 
 Es una restricción del lado de los servidores de WhatsApp contra clientes no oficiales que
@@ -480,83 +529,80 @@ intentan responder a contactos nuevos/en frío, expuesta por un hueco de impleme
 oficiales investigados** (Baileys, whatsmeow, whatsapp-web.js) — pero con una precisión
 importante confirmada el 21 de agosto: **ninguna versión de Evolution API que hemos podido
 probar hasta ahora incluye el Baileys posterior al fix** (todas empaquetan `rc.6`-`rc.9`; el
-fix llegó en `rc.10`). La única que sí lo trae (`homolog`, oficial, internamente versión
-`2.4.0`) resultó tener **tres bugs de release independientes**, encontrados uno tras otro al ir
-resolviendo cada uno: (1) Prisma sin `datasource.url`/`prisma.config.ts` — **arreglado** con un
-`prisma.config.ts` propio; (2) activación de licencia obligatoria — **superada**, activación
-gratuita exitosa vía `EVOLUTION_OPERATOR_EMAIL`; (3) `POST /instance/create` con
-`integration: "WHATSAPP-BAILEYS"` falla siempre porque un filtro anti-tampering
-(`ug()`/`Cd=["instanceName","instanceId"]`, ver sección 5e) se aplica también a la única ruta
-donde el cliente necesita mandar `instanceName` — la fila `Instance` nunca se crea, y el error
-de foreign key visible es solo el efecto secundario. **Confirmado con el código fuente real
-dentro del bundle, no una hipótesis** — y, a diferencia de los otros dos, no parchable desde
-afuera del contenedor sin modificar y recompilar el código fuente de Evolution API. Este tercer
-bug es, hoy, el que efectivamente bloquea la prueba: nunca se llegó a crear una instancia,
-generar un QR, conectar una sesión, ni enviar un mensaje real. **El 463 sigue sin confirmarse
-resuelto ni descartado con Baileys ≥ rc.10** — no por el 463 mismo, sino porque el canal
-(`homolog`) que lo trae está roto en un punto anterior y no relacionado, y de una forma que ya no
-es razonable seguir parchando nosotros mismos desde afuera.
+fix llegó en `rc.10`). La única oficial que sí lo trae (`homolog`) resultó tener tres bugs de
+release independientes; el tercero (creación de instancia rota, ver 5d/5e) **ya es un issue
+público** ([#2631](https://github.com/evolution-foundation/evolution-api/issues/2631)) con **un
+fix ya escrito, revisado y aprobado por un mantenedor** ([PR #2608](https://github.com/evolution-foundation/evolution-api/pull/2608)) — pero
+sin mergear desde hace casi dos meses, bloqueado por un problema de CI no relacionado con el
+código. **El commit exacto de ese PR** (`45d3122ca998b7d26b5153cb97984509e3289b92`) **trae a la
+vez el fix de creación de instancia y Baileys `7.0.0-rc13`** — es, hoy, la única combinación
+conocida de "funciona" + "tiene el fix de TC token", aunque no existe como imagen Docker
+publicada, solo como código fuente auditable en GitHub. **El 463 sigue sin confirmarse resuelto
+ni descartado con Baileys ≥ rc.10** — la única vía para probarlo hoy es construir una imagen
+nosotros mismos desde ese commit específico, o esperar a que el PR se mergee.
 
-**Decisión tomada:** se deja de intentar parchar `homolog` más allá de este punto. Los primeros
-dos bugs (Prisma, licencia) eran de configuración/infraestructura, razonables de resolver desde
-afuera; este tercero vive en la lógica de validación ya compilada del propio proyecto —
-seguir acumulando parches sobre un pre-release con tres bugs de release independientes ya no
-tiene buen retorno. El foco pasa a: escalar este hallazgo puntual (es información valiosa incluso
-para el propio equipo de Evolution Foundation), y evaluar alternativas con evidencia verificable
-en vez de seguir invirtiendo tiempo en este canal específico.
+**Decisión tomada:** se deja de intentar parchar `homolog` más allá de este punto (tres bugs de
+release independientes en la misma imagen ya no da buen retorno seguir parcheando). El foco pasa
+a escalar el hallazgo puntual (ya con el issue/PR identificados, no hace falta reportarlo desde
+cero) y a evaluar construir nuestra propia imagen desde el commit del PR #2608 — opción
+sustancialmente menos riesgosa que `deployfybr` porque es código público, auditable, del
+repositorio oficial, y ya revisado por un mantenedor humano independiente.
 
 Preguntas concretas para el equipo técnico:
-1. Sobre el bug de la sección 5e (filtro `ug()` aplicado también a `/instance/create`) — ¿es un
-   bug conocido? ¿Alguien puede confirmarlo/reportarlo directamente al repositorio o Discord
-   oficial de Evolution Foundation? Tenemos el fragmento de código exacto y la reproducción
-   100% consistente, es un reporte de bug completo y verificable, no una sospecha.
-2. ¿Alguien del equipo tiene acceso a una imagen o build de Evolution API con Baileys ≥
-   `7.0.0-rc.10` en la que `POST /instance/create` con `integration: "WHATSAPP-BAILEYS"` **sí
-   funcione** — sin depender de `homolog`, dado que ya se decidió no seguir parchándolo?
+1. Sobre [PR #2608](https://github.com/evolution-foundation/evolution-api/pull/2608) — ¿alguien
+   puede empujar para que se mergee (el bloqueo es un problema de CI, no del código, ya
+   confirmado por el propio revisor), o confirmar si hay alguna razón para no hacerlo que no
+   veamos desde afuera?
+2. ¿Alguien tiene experiencia construyendo su propia imagen de Evolution API desde un commit
+   específico (Dockerfile del propio repo) para producción, en vez de depender de los tags
+   oficiales? ¿Hay algo no evidente en ese proceso que debamos saber?
 3. ¿Hay alguna otra integración/gateway de WhatsApp (fuera de Baileys/whatsmeow/whatsapp-web.js)
    con historial confirmado de **no** tener este problema?
 4. ¿Vale la pena evaluar otras alternativas de API como openWA (https://github.com/rmyndharis/OpenWA), WAHA (https://github.com/devlikeapro/waha - https://waha.devlike.pro/), Evolution API Go (https://github.com/evolution-foundation/evolution-go)?
-5. Sobre `deployfybr/evolution:latest` (sugerida por un compañero) — con el criterio más estricto
-   que ya acordamos: si el compañero puede indicar el repositorio/commit/Dockerfile exacto y la
-   versión de Baileys que trae, lo evaluamos con esa evidencia. Sin eso, sigue sin ser prudente
-   correrla contra credenciales reales — ver sección 5b para el detalle de por qué.
+5. Sobre `deployfybr/evolution:latest` (sugerida por un compañero) — con el commit del PR #2608
+   ya identificado como alternativa pública y auditable, ¿sigue teniendo sentido perseguir
+   `deployfybr`? Si el compañero puede dar de todas formas repositorio/commit/versión de Baileys,
+   lo evaluamos; si no, con esta alternativa disponible probablemente ya no haga falta.
 
 ## 7. Posibles soluciones — propuestas nuestras, ninguna confirmada aún
 
-Ninguna de las siguientes se ha probado contra el escenario real (mensaje de un contacto nuevo) —
-el bug de la sección 5e lo impidió. Ya se descartó seguir parchando `homolog` (no tiene sentido
-seguir invirtiendo en un canal con tres bugs de release independientes, el tercero no reparable
-desde afuera). Orden recomendado:
+Ninguna de las siguientes se ha probado contra el escenario real (mensaje de un contacto nuevo).
+Orden recomendado, actualizado tras encontrar el PR #2608:
 
-**A. Reportar el bug de la sección 5e al canal oficial de Evolution Foundation** (issue en su
-repositorio, o su Discord/soporte) — es información concreta y verificable, con el fragmento de
-código exacto y la reproducción, útil incluso para ellos. Preguntar directamente si hay un tag
-o build donde esto no ocurra.
+**A. Construir una imagen Docker propia desde el commit del PR #2608**
+(`45d3122ca998b7d26b5153cb97984509e3289b92`), usando el `Dockerfile` oficial del propio
+repositorio, en el mismo entorno de prueba aislado (Postgres/red Docker desechables). Es la
+opción con mejor relación evidencia/riesgo hoy: código público, diff auditado línea por línea,
+aprobado por un mantenedor humano, y con la combinación exacta que necesitamos (fix de instancia
++ Baileys `rc13`). Distinto de todo lo intentado hasta ahora — es la primera vez que
+construiríamos una imagen nosotros mismos en vez de usar una ya publicada.
 
-**B. Pedirle al compañero que sugirió `deployfybr/evolution:latest` el repositorio/commit/
-Dockerfile exacto y la versión de Baileys que contiene.** Solo con esa evidencia se evalúa —
-sin ella, sigue descartada por el mismo riesgo de cadena de suministro ya documentado (188
-descargas, 0 estrellas, cuenta reciente, sin fuente pública).
+**B. En paralelo, pedir en el propio PR/issue de GitHub que se mergee** — el bloqueo es de CI,
+no del código (confirmado por el revisor), así que empujarlo podría destrabarlo sin que
+nosotros necesitemos construir nada.
 
-**C. Esperar una versión estable de Evolution API ≥ 2.4.0** (no pre-release) una vez que
-Evolution Foundation publique una con Baileys ≥ rc.10 y sin estos bugs. El costo es tiempo de
-espera, no ingeniería.
+**C. Pedirle al compañero que sugirió `deployfybr/evolution:latest` el repositorio/commit/
+Dockerfile exacto** — con (A) disponible como alternativa pública y auditable, esto pierde
+prioridad, pero se mantiene abierto si puede dar esa evidencia igual.
 
 **D. Si (A) o (B) dan una instancia `WHATSAPP-BAILEYS` funcional con Baileys ≥ rc.10, retomar
 el plan original:** conectar la sesión real, probar con un contacto genuinamente frío, y llenar
 la tabla comparativa de la sección 5d. Solo si eso confirma que el 463 se resuelve, evaluar migrar
 la instancia real de `v2.3.7`.
 
-**E. Si ninguna vía anterior da una imagen funcional en un tiempo razonable**, esto empieza a leer
-como que la ruta Evolution API/Baileys — incluso con el fix de Baileys existiendo en teoría — no
-es viable en la práctica por la calidad del empaquetado del proyecto, y la alternativa de fondo
-pasa a ser la API oficial de WhatsApp Business de Meta (de pago, requiere aprobación) o revisar de
-nuevo whatsmeow/whatsapp-web.js por si tienen una versión más nueva sin este problema.
+**E. Si (A) tampoco resuelve el 463** (es decir, ni con el fix de instancia ni con Baileys rc13
+desaparece el bloqueo), eso cierra definitivamente la vía Evolution API/Baileys como arreglable
+con una actualización de versión, y la alternativa de fondo pasa a ser la API oficial de WhatsApp
+Business de Meta (de pago, requiere aprobación) o revisar de nuevo whatsmeow/whatsapp-web.js por
+si tienen una versión más nueva sin este problema.
 
 **F. Alternativa de bajo riesgo mientras se decide lo anterior:** seguir operando con `v2.3.7`
 tal como está hoy (sin cambios, sesión real intacta) y tratar el 463 como un riesgo conocido y
 aceptado a corto plazo — ya está así en `PROJECT_STATE.md`, no requiere ninguna acción adicional.
 
-Nuestra recomendación, si el equipo técnico no objeta: intentar (A) primero, en aislamiento total
-de la instancia real, porque es el único paso que realmente responde la pregunta que todo este
-reporte viene persiguiendo — si es Baileys `rc13`, y no otra cosa, lo que resuelve el 463.
+Nuestra recomendación: intentar (A), en aislamiento total de la instancia real, antes de decidir
+nada más — es, con la información que hay hoy, el único camino conocido hacia una instancia
+`WHATSAPP-BAILEYS` funcional con Baileys ≥ rc.10, y con un perfil de riesgo razonable (código
+público, auditado, aprobado). Antes de ejecutarlo, dado que implica construir y correr una imagen
+que nosotros mismos compilamos (no una ya publicada por Evolution Foundation), preferimos
+confirmarlo explícitamente con el equipo/usuario antes de proceder.

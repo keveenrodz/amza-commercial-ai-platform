@@ -950,19 +950,32 @@ evalúa si el compañero que la sugirió puede dar repositorio/commit/versión d
 Detalle completo con el fragmento de código real en
 `docs/ops/whatsapp_463_technical_report.md`, secciones 5e, 6 y 7.
 
-**Conclusión final (sigue sin resolverse, pero con una causa raíz clara):** de tres motores/
-librerías completamente distintos investigados (Baileys, whatsmeow/Evolution Go, whatsapp-web.js/
-OpenWA), los tres tienen alguna forma del mismo problema del lado de WhatsApp, y ya se confirmó
-que no se resuelve con tiempo ni cambiaría con un número nuevo. El camino de ingeniería
-identificado (Baileys ≥ `rc.10` vía `homolog`) sigue bloqueado — no por el 463, sino porque el
-canal que trae el fix está roto en un punto anterior, de una forma que ya no es razonable seguir
-parchando nosotros mismos. **El 463 sigue sin confirmarse resuelto ni descartado.** Próximos
-pasos: escalar el bug exacto a Evolution Foundation, pedir evidencia verificable sobre
-`deployfybr`, o esperar una release estable ≥ 2.4.0 sin estos bugs. Si ninguna vía da una imagen
-`WHATSAPP-BAILEYS` funcional en un tiempo razonable, la alternativa de fondo sigue siendo la API
-oficial de WhatsApp Business de Meta (de pago, requiere aprobación) — una decisión de
-producto/costo mayor. Dado que WhatsApp es el canal que de verdad le importa al piloto (no
-Telegram), esta decisión se retoma como prioridad en la próxima sesión, no se archiva.
+**13. Actualización 21 de agosto — el bug ya es público, y ya existe un commit concreto con el
+fix + Baileys rc13 (sin mergear).** Se buscó el bug de la sección 12 en el repositorio real
+(`evolution-foundation/evolution-api`) y ya está documentado: issue
+[#2631](https://github.com/evolution-foundation/evolution-api/issues/2631) (reproducido en
+`2.4.0`, `2.4.0-rc2` y `homolog` por la comunidad) y PR
+[#2608](https://github.com/evolution-foundation/evolution-api/pull/2608) con el fix ya escrito —
+el diagnóstico del PR coincide palabra por palabra con lo que encontramos leyendo el bundle
+compilado. Un mantenedor externo (`dpaes`) lo revisó contra `develop` y lo **aprobó**
+(2026-06-28), pero sigue **sin mergear casi dos meses después**, bloqueado por un fallo de CI no
+relacionado con el código (confirmado por el propio revisor como preexistente en `develop`). El
+commit exacto del PR (`45d3122ca998b7d26b5153cb97984509e3289b92`) declara
+`"baileys": "7.0.0-rc13"` — **tiene a la vez el fix de instancia y Baileys posterior al fix de TC
+token**, pero no existe como imagen Docker publicada, solo como código fuente en GitHub.
+
+**Conclusión final (sigue sin resolverse, pero con un camino concreto identificado):** de tres
+motores/librerías completamente distintos investigados (Baileys, whatsmeow/Evolution Go,
+whatsapp-web.js/OpenWA), los tres tienen alguna forma del mismo problema del lado de WhatsApp, y
+ya se confirmó que no se resuelve con tiempo ni cambiaría con un número nuevo. **El 463 sigue sin
+confirmarse resuelto ni descartado con Baileys ≥ rc.10** — la única vía conocida hoy para probarlo
+es construir una imagen propia desde el commit del PR #2608 (código público, auditado, aprobado
+por un mantenedor — perfil de riesgo mucho menor que `deployfybr`) o esperar a que el PR se
+mergee. Detalle completo en `docs/ops/whatsapp_463_technical_report.md`, secciones 5f, 6 y 7. Si
+esa vía tampoco resuelve el 463, la alternativa de fondo sigue siendo la API oficial de WhatsApp
+Business de Meta (de pago, requiere aprobación) — una decisión de producto/costo mayor. Dado que
+WhatsApp es el canal que de verdad le importa al piloto (no Telegram), esta decisión se retoma
+como prioridad en la próxima sesión, no se archiva.
 
 **What does NOT exist yet:**
 
