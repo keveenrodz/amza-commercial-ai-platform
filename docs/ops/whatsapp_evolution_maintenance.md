@@ -28,12 +28,12 @@ esto vive en memoria de conversación:
   alcanza el backend que corre directo en el host (no hay un contenedor `backend` corriendo en
   esta máquina — si eso cambia, hay que actualizar el webhook a `http://backend:8000/...` en su
   lugar, el nombre del servicio en `docker-compose.yml`).
-- **La instancia de prueba (`evo-pr2608-test-api`/`amza-empaques-pr2608-test`, puerto `8082`)
-  fue desconectada deliberadamente** (`DELETE /instance/logout/...`) tras un bug real de
-  mensajes duplicados causado por tenerla conectada en paralelo a producción (ver Gate 6, punto
-  7) — su contenedor y el de su Postgres (`evo-pr2608-test-pg`) siguen existiendo pero detenidos/
-  sin uso; se pueden eliminar con `docker rm` sin pérdida real (ya no tienen sesión de WhatsApp
-  activa ni datos que no estén también en el repo/backups).
+- **La instancia de prueba** (`evo-pr2608-test-api`/`amza-empaques-pr2608-test`, puerto `8082`)
+  fue desconectada (`DELETE /instance/logout/...`) tras un bug real de mensajes duplicados
+  causado por tenerla conectada en paralelo a producción (ver Gate 6, punto 7), y **ya se
+  eliminó por completo** (`docker rm`, junto con su Postgres y red dedicadas) — no queda nada de
+  esa infraestructura corriendo, el commit vendorizado en el repo es suficiente para reconstruirla
+  si algún día hace falta.
 - **Código fuente vendorizado**, ya en el repo (no depende de un directorio temporal ni de que
   GitHub siga teniendo la rama del PR): `docker/evolution/evolution-api-fix-2608/`.
 - **Backups en `backups/`** (no en git, `.gitignore`): varios timestamps, el más reciente
