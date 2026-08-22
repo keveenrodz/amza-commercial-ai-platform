@@ -401,6 +401,81 @@ async def test_receive_incoming_message_skips_duplicate_provider_message_id() ->
     assert len(fake_provider.sent) == 1
 
 
+async def test_receive_incoming_message_updates_display_name_when_it_changes() -> None:
+    """Regresión de un caso real: un cliente cambió el nombre de su perfil de WhatsApp entre un
+    mensaje y otro (ej. "Matamed" -> "Kevs - Matamed") -- la app no debe quedarse mostrando el
+    nombre de la primera vez que escribió para siempre."""
+    await _seed_organization()
+
+    async with AsyncSessionFactory() as session:
+        org = (
+            await session.execute(
+                select(OrganizationModel).where(OrganizationModel.slug == _ORG_SLUG)
+            )
+        ).scalar_one()
+        now = datetime.now(tz=UTC)
+        session.add(
+            AgentModel(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                name="Test Agent",
+                system_prompt="You are a helpful assistant.",
+                model="openai/gpt-4.1-nano",
+                status="active",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        await session.commit()
+
+    use_case = ReceiveIncomingMessageUseCase(
+        session_factory=AsyncSessionFactory,
+        ai_provider=_FakeAIProvider(),
+        channel_provider_registry=ChannelProviderRegistry(
+            {ChannelType.WHATSAPP: _FakeChannelProvider()}
+        ),
+        context_assembler=ConversationContextAssembler(working_memory_size=10),
+        summarization_service=ConversationSummarizationService(
+            ai_provider=_FakeAIProvider(),
+            summarization_model="openai/gpt-4.1-nano",
+        ),
+        summary_trigger_messages=999,
+    )
+
+    await use_case.execute(
+        IncomingMessageInput(
+            organization_slug=_ORG_SLUG,
+            channel_type=ChannelType.WHATSAPP,
+            external_contact_id="573217227941@s.whatsapp.net",
+            contact_display_name="Matamed",
+            content="Hola",
+            content_type=MessageContentType.TEXT,
+            provider_message_id="msg-1",
+        )
+    )
+    await use_case.execute(
+        IncomingMessageInput(
+            organization_slug=_ORG_SLUG,
+            channel_type=ChannelType.WHATSAPP,
+            external_contact_id="573217227941@s.whatsapp.net",
+            contact_display_name="Kevs - Matamed",
+            content="Sigo aqui",
+            content_type=MessageContentType.TEXT,
+            provider_message_id="msg-2",
+        )
+    )
+
+    async with AsyncSessionFactory() as session:
+        contact = (
+            await session.execute(
+                select(ContactModel).where(
+                    ContactModel.external_id == "573217227941@s.whatsapp.net"
+                )
+            )
+        ).scalar_one()
+        assert contact.display_name == "Kevs - Matamed"
+
+
 async def test_receive_incoming_message_passes_is_first_reply_to_the_channel_provider() -> None:
     """Regresión de spec 016: el use case sigue llamando send() sin romper nada con un registro
     de una sola entrada Telegram (que ignora is_first_reply) -- y calcula el valor correcto:

@@ -99,6 +99,13 @@ class ReceiveIncomingMessageUseCase:
                     updated_at=now,
                 )
                 await uow.contacts.save(contact)
+            elif contact.display_name != input.contact_display_name:
+                # El cliente puede cambiar su nombre de perfil en cualquier momento (visto en
+                # producción real) -- sin esto, la app se queda mostrando el nombre de la
+                # primera vez que escribió, para siempre.
+                contact.display_name = input.contact_display_name
+                contact.updated_at = datetime.now(tz=UTC)
+                await uow.contacts.save(contact)
 
             opportunity = await uow.opportunities.get_active_by_contact(
                 contact.id,

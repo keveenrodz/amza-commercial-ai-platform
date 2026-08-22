@@ -73,6 +73,52 @@ async def test_valid_text_payload_invokes_the_use_case_with_whatsapp_channel(
     assert call.provider_message_id == "ABC123"
 
 
+async def test_lid_message_resolves_to_the_phone_number_jid(client: AsyncClient) -> None:
+    """Regresión de un bug real en producción: el mismo cliente (+573217227941) quedó como dos
+    Contact distintos porque un mensaje llegó como remoteJid="...@lid" y otro como
+    "...@s.whatsapp.net". Con remoteJidAlt presente, el JID de número real debe ganar siempre."""
+    from app.main import app
+
+    spy = _SpyUseCase()
+    app.dependency_overrides[get_receive_incoming_message_use_case] = lambda: spy
+
+    payload = _valid_payload()
+    payload["data"]["key"]["remoteJid"] = "122891949609121@lid"
+    payload["data"]["key"]["remoteJidAlt"] = "573217227941@s.whatsapp.net"
+
+    response = await client.post(
+        "/webhooks/whatsapp/test-org",
+        json=payload,
+        headers={"X-Webhook-Secret": "test-whatsapp-secret"},
+    )
+
+    assert response.status_code == 200
+    assert spy.calls[0].external_contact_id == "573217227941@s.whatsapp.net"
+
+
+async def test_lid_message_without_alt_falls_back_to_the_lid_itself(
+    client: AsyncClient,
+) -> None:
+    """Sin remoteJidAlt no hay nada que resolver -- se usa el LID tal cual llegó, no se inventa
+    un número."""
+    from app.main import app
+
+    spy = _SpyUseCase()
+    app.dependency_overrides[get_receive_incoming_message_use_case] = lambda: spy
+
+    payload = _valid_payload()
+    payload["data"]["key"]["remoteJid"] = "122891949609121@lid"
+
+    response = await client.post(
+        "/webhooks/whatsapp/test-org",
+        json=payload,
+        headers={"X-Webhook-Secret": "test-whatsapp-secret"},
+    )
+
+    assert response.status_code == 200
+    assert spy.calls[0].external_contact_id == "122891949609121@lid"
+
+
 async def test_from_me_is_ignored_without_invoking_the_use_case(client: AsyncClient) -> None:
     from app.main import app
 

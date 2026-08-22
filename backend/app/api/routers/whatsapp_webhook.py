@@ -75,8 +75,8 @@ async def receive_whatsapp_event(
             IncomingMessageInput(
                 organization_slug=organization_slug,
                 channel_type=ChannelType.WHATSAPP,
-                external_contact_id=event.data.key.remoteJid,
-                contact_display_name=event.data.pushName or event.data.key.remoteJid,
+                external_contact_id=event.data.key.canonical_jid,
+                contact_display_name=event.data.pushName or event.data.key.canonical_jid,
                 content=content,
                 content_type=content_type,
                 provider_message_id=event.data.key.id,
