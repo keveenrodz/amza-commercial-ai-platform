@@ -86,7 +86,7 @@ conversación orgánica real, no solo mensajes de prueba).
 | **2 — Estabilidad de sesión** | reinicio del contenedor, reconexión, persistencia de sesión | ✅ Completo |
 | **3 — Cobertura del 463** | 2 contactos fríos distintos, ambos con entrega real confirmada | ✅ Completo |
 | **4 — Integración real** | flujo completo WhatsApp → webhook → backend → IA → Evolution → WhatsApp | ✅ Completo (22 de agosto) |
-| **5 — Artefacto reproducible** | commit congelado en repo propio, Dockerfile reproducible, imagen versionada, digest registrado | ⏳ Pendiente |
+| **5 — Artefacto reproducible** | commit congelado en repo propio, Dockerfile reproducible, imagen versionada, digest registrado | ✅ Completo (22 de agosto) |
 | **6 — Promoción formal** | backup fresco, ensayo con BD clonada, migración real, misma instancia `amza-empaques`, QR nuevo, smoke test | ⏳ Pendiente |
 
 **Importante:** el número real de WhatsApp está conectado hoy a la instancia de prueba (build
@@ -134,27 +134,33 @@ configuración temporal (apuntando a `:8082`/`amza-empaques-pr2608-test`), no co
 Antes de volver a trabajo normal de desarrollo, hay que reiniciarlo sin esas variables de entorno
 exportadas para que vuelva a leer la configuración real del `.env`.
 
-### Gate 5 — artefacto reproducible
-Antes de promover a producción, vendorizar el código fuente del commit dentro de este repo (no
-depender de que la rama del PR siga existiendo en GitHub):
+### Gate 5 — cerrado (22 de agosto)
+Vendorizado en `docker/evolution/evolution-api-fix-2608/`:
 
 ```
 docker/evolution/evolution-api-fix-2608/
 ├── .upstream/
 │   ├── repository.txt       # evolution-foundation/evolution-api
 │   ├── commit.txt           # 45d3122ca998b7d26b5153cb97984509e3289b92
-│   └── patch-reference.txt  # PR #2608
-├── Dockerfile                # con la imagen base (node:24-alpine) fijada por digest, no por tag flotante
-├── source/                   # snapshot del código en ese commit
-└── README.md                 # por qué existe esta copia, qué incluye
+│   └── patch-reference.txt  # PR #2608, estado, por qué este commit específico
+├── source/                   # snapshot completo del código en ese commit, sin .git ni node_modules
+│   └── Dockerfile            # con node:24-alpine fijado por digest en las dos etapas (builder y final)
+└── README.md                 # por qué existe esta copia, limitaciones, cuándo retirarla
 ```
 
-Registrar también, no solo el commit: el `Image ID` local de la build que se validó
-(`docker inspect --format='{{.Id}}' <imagen>`), la versión exacta de Node/Alpine, Baileys, y
-Prisma — el commit por sí solo no garantiza una rebuild idéntica si la imagen base `node:24-alpine`
-cambia con el tiempo.
+**Reproducibilidad confirmada, no solo asumida:** se reconstruyó la imagen desde este Dockerfile
+vendorizado y el `Image ID` resultante
+(`sha256:97e46ac4c09493ac6be03e7fafa901d083fb0db3829ec5f0d32353438f6d9ef4`) coincide exactamente
+con el de la imagen ya validada en vivo (Gates 1-4). Digest de `node:24-alpine` fijado:
+`sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43`.
 
-### Gate 6 — promoción formal
+**Hallazgo no técnico, pendiente:** la licencia real de Evolution API (Apache 2.0 + condiciones
+adicionales) exige mostrar una notificación visible de que se usa Evolution API cuando se integra
+dentro de otro sistema, accesible para administradores. No implementado todavía — ver
+`docker/evolution/evolution-api-fix-2608/README.md` para el detalle. Hay que resolverlo antes de
+considerar esto completamente cerrado para producción real, no es opcional.
+
+### Gate 6 — promoción formal (siguiente, en curso)
 1. Backup fresco de Postgres + volumen de `v2.3.7` (aunque ya haya varios de hoy, uno nuevo en el
    momento del cambio).
 2. Restaurar ese backup en una Postgres **clonada**, separada — nunca la real primero.
@@ -164,13 +170,18 @@ cambia con el tiempo.
    manuales a la API como se hizo durante la investigación) contra el clon, confirmando qué pasa
    con la fila `Instance` existente, configuración, webhooks y credenciales — no asumir que es
    idempotente sin probarlo.
-5. Cambiar `docker-compose.yml` para construir desde `docker/evolution/evolution-api-fix-2608/`
-   en vez de tirar de `evoapicloud/evolution-api:v2.3.7`. Agregar `EVOLUTION_OPERATOR_EMAIL` a
-   `.env` real — **decisión pendiente:** ¿email personal (el usado en las pruebas) o uno propio
-   de Amza/Stratio para la credencial de licencia permanente?
+5. Cambiar `docker-compose.yml` para construir desde
+   `docker/evolution/evolution-api-fix-2608/source/` en vez de tirar de
+   `evoapicloud/evolution-api:v2.3.7`. Agregar `EVOLUTION_OPERATOR_EMAIL` a `.env` real —
+   **decisión pendiente:** ¿email personal (el usado en las pruebas) o uno propio de Amza/Stratio
+   para la credencial de licencia permanente?
 6. Reconectar con la misma instancia (`amza-empaques`) — requiere un QR nuevo, la sesión de la
    instancia de prueba no se puede transferir directamente.
-7. Smoke test: repetir Gate 4 (flujo completo) ya contra el entorno real, no el temporal.
+7. Smoke test: repetir Gate 4 (flujo completo) ya contra el entorno real, no el temporal — y
+   revertir el backend a su `.env` normal (sin los overrides usados para Gate 4) una vez que
+   apunte de nuevo a la instancia real.
+8. Resolver el pendiente de licencia (notificación visible de uso de Evolution API) antes de
+   considerar esto cerrado del todo.
 
 ## 6. Qué hacer cuando Evolution API se actualice (mantenimiento futuro)
 
