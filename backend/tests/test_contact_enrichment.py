@@ -341,6 +341,66 @@ async def test_receive_incoming_message_marks_opportunity_unread() -> None:
     assert opportunity.unread_count == 1
 
 
+async def test_receive_incoming_message_skips_duplicate_provider_message_id() -> None:
+    """Regresión de la promoción del fix del error 463: dos entregas del mismo mensaje de
+    WhatsApp (dos instancias vinculadas al mismo número a la vez, cada una con su propio webhook)
+    generaban dos respuestas de IA distintas para el mismo mensaje del cliente. La segunda
+    entrega, con el mismo provider_message_id, ahora se ignora en silencio (devuelve None) en
+    vez de procesarse como un mensaje nuevo."""
+    await _seed_organization()
+
+    async with AsyncSessionFactory() as session:
+        org = (
+            await session.execute(
+                select(OrganizationModel).where(OrganizationModel.slug == _ORG_SLUG)
+            )
+        ).scalar_one()
+        now = datetime.now(tz=UTC)
+        session.add(
+            AgentModel(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                name="Test Agent",
+                system_prompt="You are a helpful assistant.",
+                model="openai/gpt-4.1-nano",
+                status="active",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        await session.commit()
+
+    fake_provider = _FakeChannelProvider()
+    use_case = ReceiveIncomingMessageUseCase(
+        session_factory=AsyncSessionFactory,
+        ai_provider=_FakeAIProvider(),
+        channel_provider_registry=ChannelProviderRegistry({ChannelType.WHATSAPP: fake_provider}),
+        context_assembler=ConversationContextAssembler(working_memory_size=10),
+        summarization_service=ConversationSummarizationService(
+            ai_provider=_FakeAIProvider(),
+            summarization_model="openai/gpt-4.1-nano",
+        ),
+        summary_trigger_messages=999,
+    )
+
+    duplicate_input = IncomingMessageInput(
+        organization_slug=_ORG_SLUG,
+        channel_type=ChannelType.WHATSAPP,
+        external_contact_id="573217227941@s.whatsapp.net",
+        contact_display_name="Cliente Duplicado",
+        content="Para venta al público, para comer en local y para llevar",
+        content_type=MessageContentType.TEXT,
+        provider_message_id="3AF0167AEF4B487373AD",
+    )
+
+    first_result = await use_case.execute(duplicate_input)
+    second_result = await use_case.execute(duplicate_input)
+
+    assert first_result is not None
+    assert second_result is None
+    assert len(fake_provider.sent) == 1
+
+
 async def test_receive_incoming_message_passes_is_first_reply_to_the_channel_provider() -> None:
     """Regresión de spec 016: el use case sigue llamando send() sin romper nada con un registro
     de una sola entrada Telegram (que ignora is_first_reply) -- y calcula el valor correcto:

@@ -132,5 +132,18 @@ class SQLAlchemyMessageRepository:
             out[OpportunityId(value=opportunity_id_value)] = _to_entity(message_model)
         return out
 
+    async def exists_by_provider_message_id(
+        self,
+        channel_type: ChannelType,
+        provider_message_id: str,
+    ) -> bool:
+        result = await self._session.execute(
+            select(MessageModel.id).where(
+                MessageModel.channel_type == channel_type.value,
+                MessageModel.provider_message_id == provider_message_id,
+            )
+        )
+        return result.scalar_one_or_none() is not None
+
     async def save(self, message: Message) -> None:
         await self._session.merge(_from_entity(message))

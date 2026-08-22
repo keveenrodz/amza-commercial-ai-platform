@@ -91,6 +91,14 @@ class MessageRepository(Protocol):
         """Evita N+1 al armar la vista previa del último mensaje en el listado."""
         ...
 
+    async def exists_by_provider_message_id(
+        self,
+        channel_type: ChannelType,
+        provider_message_id: str,
+    ) -> bool:
+        """Detecta si un mensaje entrante ya fue procesado (mismo canal, mismo ID del proveedor)."""
+        ...
+
     async def save(self, message: Message) -> None: ...
 
 

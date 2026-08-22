@@ -58,8 +58,25 @@ class ReceiveIncomingMessageUseCase:
         self._summarization_service = summarization_service
         self._summary_trigger_messages = summary_trigger_messages
 
-    async def execute(self, input: IncomingMessageInput) -> Opportunity:  # noqa: A002
+    async def execute(self, input: IncomingMessageInput) -> Opportunity | None:  # noqa: A002
         async with SQLAlchemyUnitOfWork(self._session_factory) as uow:
+            # Defensa contra que el mismo mensaje llegue dos veces por rutas distintas (ej. dos
+            # instancias de WhatsApp vinculadas al mismo número a la vez, cada una con su propio
+            # webhook) -- se vio pasar en la práctica durante la promoción del fix del error 463.
+            # Sin provider_message_id (algunos proveedores no lo mandan) no hay nada que comparar.
+            if input.provider_message_id is not None:
+                already_processed = await uow.messages.exists_by_provider_message_id(
+                    input.channel_type,
+                    input.provider_message_id,
+                )
+                if already_processed:
+                    logger.warning(
+                        "incoming_message.duplicate_skipped",
+                        channel_type=input.channel_type.value,
+                        provider_message_id=input.provider_message_id,
+                    )
+                    return None
+
             organization = await uow.organizations.get_by_slug(input.organization_slug)
             if organization is None:
                 raise OrganizationSlugNotFoundError(input.organization_slug)
