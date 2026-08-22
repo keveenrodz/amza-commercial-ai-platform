@@ -16,7 +16,13 @@ services:
       - evolution_postgres_data:/var/lib/postgresql/data
 
   evolution-api:
-    image: evoapicloud/evolution-api:v2.3.7
+    # Build propia desde un commit vendorizado, no la imagen oficial -- ver
+    # docker/evolution/evolution-api-fix-2608/README.md y docs/ops/whatsapp_evolution_maintenance.md
+    # para el por qué. Trae el fix de PR #2608 (instance creation) + Baileys 7.0.0-rc13 (fix del
+    # error 463 de WhatsApp al responder a contactos nuevos), validado en vivo contra el número
+    # real antes de este cambio.
+    build:
+      context: docker/evolution/evolution-api-fix-2608/source
     restart: always
     ports:
       - "8080:8080"
@@ -27,14 +33,16 @@ services:
       # el dominio público real de esta instancia. Nunca localhost si algo externo necesita
       # llegar hasta aquí.
       - SERVER_URL=${EVOLUTION_SERVER_URL:-http://localhost:8080}
+      # Activación de licencia (obligatoria desde Evolution API 2.4.0) -- gratuita, ver
+      # docs/ops/whatsapp_evolution_maintenance.md sección "Qué hacer cuando Evolution API se
+      # actualice" para el detalle del mecanismo. La base de datos real ya tiene una licencia
+      # persistida (RuntimeConfig) de una activación anterior con este mismo email -- esta
+      # variable es la red de seguridad si esa licencia alguna vez se pierde/expira.
+      - EVOLUTION_OPERATOR_EMAIL=${EVOLUTION_OPERATOR_EMAIL:-keveenrodriguez@gmail.com}
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://evolution:evolution@evolution-postgres:5432/evolution_db?schema=public
       - DATABASE_SAVE_DATA_INSTANCE=true
-      # Mitigación probada contra el error 463 ("reach-out time-lock") -- sin garantía de que
-      # sea la causa real (no confirmado contra los issues oficiales de Baileys/Evolution API,
-      # solo sugerido en foros), pero es de bajo riesgo y estas dos sí son variables reales
-      # documentadas. Ver PROJECT_STATE.md, tabla de Production Risks, para el detalle completo.
       - DATABASE_SAVE_DATA_NEW_MESSAGE=true
       - DATABASE_SAVE_MESSAGE_UPDATE=true
       - CACHE_REDIS_ENABLED=false

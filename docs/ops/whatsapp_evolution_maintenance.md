@@ -7,45 +7,39 @@ no todo lo que se investigó para llegar aquí.
 
 ## 0. Estado exacto de la infraestructura en este momento (para retomar sin contexto previo)
 
-Si esta sesión se corta, esto es lo que existe en la máquina real (`docker ps -a`, verificado
-2026-08-22) — nada de esto vive en memoria de conversación ni en un directorio temporal que se
-borre solo:
+**Producción real ya está en la build validada, conectada y funcionando.** Esto es lo que existe
+en la máquina real (verificado 2026-08-22, después de completar el núcleo de Gate 6) — nada de
+esto vive en memoria de conversación:
 
-- **`evo-pr2608-test-api`** (contenedor, imagen local `evolution-api:pr2608-test`, puerto
-  `8082→8080`) — la instancia de Evolution API construida desde el commit del PR #2608, **con el
-  número real de WhatsApp (+57 301 509 2386) conectado y funcionando**. Nombre de la instancia
-  dentro de Evolution: `amza-empaques-pr2608-test`. **No eliminar este contenedor** — la sesión de
-  WhatsApp (claves de multi-dispositivo) vive en su capa de escritura, no en un volumen aparte;
-  `docker rm` la perdería. `docker stop`/`docker start` sí es seguro.
-- **API key de licencia de esta instancia de prueba:**
-  `e880abbe1011e87c43fffc2faa347d9853a956ac74c8ce2b1bfd29406fc7e04f` (activada contra
-  `license.evolutionfoundation.com.br` con `EVOLUTION_OPERATOR_EMAIL=keveenrodriguez@gmail.com`,
-  tier `community`, `customer_id: 14299`). Se usa como header `apikey` en las llamadas a
-  `http://localhost:8082`.
-- **`evo-pr2608-test-pg`** (contenedor, `postgres:15`) — Postgres dedicada a la instancia de
-  prueba, red `evo-pr2608-test-net` (gateway `172.19.0.1`, esa IP es cómo el contenedor alcanza
-  servicios corriendo directo en el host).
-- **`amza-commercial-ai-platform-evolution-api-1`** (`v2.3.7`, puerto `8080`) — la instancia de
-  producción real, **actualmente desconectada de WhatsApp**
-  (`connectionStatus: close`, `disconnectionReasonCode: 401`) desde que se escaneó el QR de la
-  instancia de prueba con el mismo número. Su Postgres (`amza-commercial-ai-platform-evolution-postgres-1`)
-  sigue arriba, datos intactos.
-- **Backend local** (`python main.py`, fuera de Docker) corriendo con variables de entorno
-  temporales que sobreescriben el `.env` real:
-  `EVOLUTION_API_BASE_URL=http://localhost:8082`,
-  `EVOLUTION_API_KEY=e880abbe1011e87c43fffc2faa347d9853a956ac74c8ce2b1bfd29406fc7e04f`,
-  `EVOLUTION_INSTANCE_NAME=amza-empaques-pr2608-test` — es decir, **el backend real está
-  respondiendo a WhatsApp en este momento a través de la instancia de prueba, no de la de
-  producción.** El webhook de la instancia de prueba está registrado apuntando a
-  `http://172.19.0.1:8000/webhooks/whatsapp/amza-empaques`.
-- **Código fuente de la build de prueba:** clonado en un directorio temporal de esta sesión (no
-  persiste) desde `evolution-foundation/evolution-api`, commit
-  `45d3122ca998b7d26b5153cb97984509e3289b92`. La imagen Docker (`evolution-api:pr2608-test`) sí
-  persiste en el Docker local aunque el clon del código se pierda — pero para Gate 5 hay que
-  volver a clonar ese commit y vendorizarlo en el repo (ver sección 5, Gate 5).
-- **Backups tomados hoy**, en `backups/` (no en git, `.gitignore`): dumps de Postgres de
-  producción y del volumen `evolution_instances` con timestamp `pre_homolog_test` y anteriores —
-  todos de antes de tocar nada de esto, disponibles para restaurar si algo sale mal.
+- **`amza-commercial-ai-platform-evolution-api-1`** — ya **no** es la imagen oficial `v2.3.7`.
+  `docker-compose.yml` ahora la construye (`build:`) desde
+  `docker/evolution/evolution-api-fix-2608/source/` (el commit del PR #2608, Baileys `rc13`).
+  Puerto `8080`, instancia `amza-empaques`, **conectada al número real
+  (+57 301 509 2386, `connectionStatus: open`)**, con licencia auto-activada desde un registro ya
+  persistido en la base de datos real (tabla `RuntimeConfig`, de una activación anterior con
+  `keveenrodriguez@gmail.com`). Su Postgres es la misma de siempre
+  (`amza-commercial-ai-platform-evolution-postgres-1`), ya migrada a este build, datos intactos
+  (más un backup fresco pre-cambio en `backups/evolution_db_backup_pre_gate6_*.sql`).
+- **Backend local** (`python main.py`, fuera de Docker) corriendo **con su `.env` normal, sin
+  overrides** — apunta correctamente a `http://localhost:8080`/`amza-empaques`, la instancia real.
+  `EVOLUTION_OPERATOR_EMAIL=keveenrodriguez@gmail.com` ya está en `.env`/`.env.example`.
+- **Webhook de producción** apunta a `http://172.26.0.1:8000/webhooks/whatsapp/amza-empaques` —
+  `172.26.0.1` es el gateway de la red `amza-commercial-ai-platform_default`, así el contenedor
+  alcanza el backend que corre directo en el host (no hay un contenedor `backend` corriendo en
+  esta máquina — si eso cambia, hay que actualizar el webhook a `http://backend:8000/...` en su
+  lugar, el nombre del servicio en `docker-compose.yml`).
+- **La instancia de prueba (`evo-pr2608-test-api`/`amza-empaques-pr2608-test`, puerto `8082`)
+  fue desconectada deliberadamente** (`DELETE /instance/logout/...`) tras un bug real de
+  mensajes duplicados causado por tenerla conectada en paralelo a producción (ver Gate 6, punto
+  7) — su contenedor y el de su Postgres (`evo-pr2608-test-pg`) siguen existiendo pero detenidos/
+  sin uso; se pueden eliminar con `docker rm` sin pérdida real (ya no tienen sesión de WhatsApp
+  activa ni datos que no estén también en el repo/backups).
+- **Código fuente vendorizado**, ya en el repo (no depende de un directorio temporal ni de que
+  GitHub siga teniendo la rama del PR): `docker/evolution/evolution-api-fix-2608/`.
+- **Backups en `backups/`** (no en git, `.gitignore`): varios timestamps, el más reciente
+  (`pre_gate6_*`) es de justo antes de este cambio.
+- **Pendiente real, no técnico:** la notificación de uso de Evolution API que exige su licencia
+  (ver Gate 5/6 más abajo) — no bloquea el funcionamiento, pero no está resuelto.
 
 ## 1. El problema, en una frase
 
@@ -87,7 +81,7 @@ conversación orgánica real, no solo mensajes de prueba).
 | **3 — Cobertura del 463** | 2 contactos fríos distintos, ambos con entrega real confirmada | ✅ Completo |
 | **4 — Integración real** | flujo completo WhatsApp → webhook → backend → IA → Evolution → WhatsApp | ✅ Completo (22 de agosto) |
 | **5 — Artefacto reproducible** | commit congelado en repo propio, Dockerfile reproducible, imagen versionada, digest registrado | ✅ Completo (22 de agosto) |
-| **6 — Promoción formal** | backup fresco, ensayo con BD clonada, migración real, misma instancia `amza-empaques`, QR nuevo, smoke test | ⏳ Pendiente |
+| **6 — Promoción formal** | backup fresco, ensayo con BD clonada, migración real, misma instancia `amza-empaques`, QR nuevo, smoke test | ✅ Núcleo completo (22 de agosto) — falta solo el pendiente de licencia (no bloqueante) |
 
 **Importante:** el número real de WhatsApp está conectado hoy a la instancia de prueba (build
 `45d3122`, puerto 8082, instancia `amza-empaques-pr2608-test`), **no** al backend real de la
@@ -160,28 +154,51 @@ dentro de otro sistema, accesible para administradores. No implementado todavía
 `docker/evolution/evolution-api-fix-2608/README.md` para el detalle. Hay que resolverlo antes de
 considerar esto completamente cerrado para producción real, no es opcional.
 
-### Gate 6 — promoción formal (siguiente, en curso)
-1. Backup fresco de Postgres + volumen de `v2.3.7` (aunque ya haya varios de hoy, uno nuevo en el
-   momento del cambio).
-2. Restaurar ese backup en una Postgres **clonada**, separada — nunca la real primero.
-3. Levantar la nueva build contra ese clon, correr las migraciones, confirmar que el schema queda
-   correcto — solo si eso pasa, repetir contra la base real.
-4. Probar `scripts/register_whatsapp_instance.py` (el script real de este repo, no llamadas
-   manuales a la API como se hizo durante la investigación) contra el clon, confirmando qué pasa
-   con la fila `Instance` existente, configuración, webhooks y credenciales — no asumir que es
-   idempotente sin probarlo.
-5. Cambiar `docker-compose.yml` para construir desde
-   `docker/evolution/evolution-api-fix-2608/source/` en vez de tirar de
-   `evoapicloud/evolution-api:v2.3.7`. Agregar `EVOLUTION_OPERATOR_EMAIL` a `.env` real —
-   **decisión pendiente:** ¿email personal (el usado en las pruebas) o uno propio de Amza/Stratio
-   para la credencial de licencia permanente?
-6. Reconectar con la misma instancia (`amza-empaques`) — requiere un QR nuevo, la sesión de la
-   instancia de prueba no se puede transferir directamente.
-7. Smoke test: repetir Gate 4 (flujo completo) ya contra el entorno real, no el temporal — y
-   revertir el backend a su `.env` normal (sin los overrides usados para Gate 4) una vez que
-   apunte de nuevo a la instancia real.
-8. Resolver el pendiente de licencia (notificación visible de uso de Evolution API) antes de
-   considerar esto cerrado del todo.
+### Gate 6 — núcleo cerrado (22 de agosto), un pendiente de cumplimiento abierto
+
+1. **Backup fresco** de Postgres + volumen de producción — hecho
+   (`backups/evolution_db_backup_pre_gate6_*.sql`).
+2. **Restaurado en una Postgres clonada**, separada de la real — hecho.
+3. **Migración probada contra el clon primero:** `Migration succeeded`, sin conflictos. El clon
+   reveló algo importante: **la licencia ya estaba persistida en la base de datos real**
+   (tabla `RuntimeConfig`, de una activación anterior con el mismo email) — se activa sola al
+   arrancar, sin necesitar `EVOLUTION_OPERATOR_EMAIL` de nuevo. Solo entonces se repitió contra
+   la base real — mismo resultado, limpio.
+4. **`scripts/register_whatsapp_instance.py` NO es idempotente — confirmado, no asumido.**
+   Probado contra el clon: `POST /instance/create` con el nombre `amza-empaques` (ya existente)
+   responde `403 "This name ... is already in use."`. El procedimiento correcto para reconectar
+   una instancia existente es `GET /instance/connect/{name}` (QR nuevo) — nunca volver a correr
+   ese script contra una instancia que ya existe.
+5. **`docker-compose.yml` actualizado** — el servicio `evolution-api` ahora hace `build:` desde
+   `docker/evolution/evolution-api-fix-2608/source/` en vez de `image: evoapicloud/evolution-api:v2.3.7`.
+   `EVOLUTION_OPERATOR_EMAIL` agregado a `.env`/`.env.example` con
+   `keveenrodriguez@gmail.com` (decisión del usuario: mismo email de las pruebas).
+6. **Reconectado con QR nuevo, desde la app real** (`/admin` → Canales → Conectar) — no con
+   scripts manuales. Mismo nombre de instancia (`amza-empaques`), sesión de WhatsApp verificada
+   como `open` contra el número real.
+7. **Smoke test (Gate 4 contra el entorno real) — reveló un bug real de duplicados, ya
+   corregido en su causa raíz.** Un mensaje del contacto se procesó **dos veces**, generando
+   **dos respuestas distintas de la IA** enviadas al mismo contacto — confirmado en la base de
+   datos de la app (`backend/data/amza.db`, dos filas de `messages` para el mismo texto entrante,
+   27 segundos aparte). Causa: la instancia de prueba (`amza-empaques-pr2608-test`) seguía
+   conectada como dispositivo vinculado adicional al mismo número, con su webhook de Gate 4
+   todavía activo — WhatsApp multi-dispositivo sincronizó el mensaje a ambos dispositivos, cada
+   uno disparó su propio webhook, y el backend procesó cada uno de forma independiente. **No es
+   un defecto de la build nueva** — es un artefacto de nuestra propia metodología de prueba.
+   Corregido desactivando el webhook de la instancia de prueba y cerrando su sesión
+   (`DELETE /instance/logout/amza-empaques-pr2608-test`) — confirmado después que solo queda una
+   instancia conectada (`amza-empaques`, producción).
+
+   **Hallazgo de robustez real, para el backlog — no bloquea el cierre de este gate:** el backend
+   no tiene ninguna protección contra procesar el mismo mensaje de WhatsApp dos veces si llega
+   por dos rutas distintas (dos webhooks, dos "instancias" viéndolo). En operación normal (una
+   sola instancia conectada) no debería repetirse, pero sería razonable agregar una
+   deduplicación por ID de mensaje de WhatsApp en `ReceiveIncomingMessageUseCase` como
+   endurecimiento futuro, no como blocker de esta promoción.
+
+8. **Pendiente, no resuelto — cumplimiento de licencia:** la notificación visible de uso de
+   Evolution API que exige su licencia (ver sección 5, Gate 5) sigue sin implementarse. No
+   bloquea el funcionamiento técnico, pero es un pendiente real, no opcional.
 
 ## 6. Qué hacer cuando Evolution API se actualice (mantenimiento futuro)
 
