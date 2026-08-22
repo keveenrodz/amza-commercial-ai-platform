@@ -569,6 +569,10 @@ function WhatsAppChannelCard({ orgSlug }: { orgSlug: string }) {
           </div>
         </div>
       )}
+
+      <p className="mt-3 text-[10px] text-ink-faint">
+        Este canal usa Evolution API (proyecto de código abierto) como conector de WhatsApp.
+      </p>
     </div>
   );
 }
