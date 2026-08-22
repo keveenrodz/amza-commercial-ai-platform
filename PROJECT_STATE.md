@@ -775,7 +775,23 @@ preparar un despliegue más robusto):
 | Sin cola de reintentos para fallos de infraestructura | Aceptado para MVP |
 | Sin revocación explícita de JWT | Mitigado — `get_current_user()` valida contra BD en cada request |
 | Protección CSRF pendiente | Mitigación parcial — cookies `HttpOnly` + `SameSite=Lax` |
-| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **🟢 RESUELTO Y PROMOVIDO A PRODUCCIÓN — Gates 1-6 completos.** `docker-compose.yml` ya construye `evolution-api` desde `docker/evolution/evolution-api-fix-2608/` (fix PR #2608 + Baileys `rc13`), migrado contra la base de datos real (ensayado antes contra un clon), reconectado con el número real desde la app (`/admin` → Canales), y el flujo completo (WhatsApp → webhook → backend → IA → Evolution → WhatsApp) confirmado funcionando contra producción real. Notificación de licencia de Evolution API ya implementada (texto pequeño, solo visible para administradores en `/admin` → Canales). **Único pendiente no bloqueante:** endurecer `ReceiveIncomingMessageUseCase` contra mensajes duplicados si alguna vez hay más de una instancia conectada (se encontró y corrigió un caso real durante la promoción, causado por una instancia de prueba que quedó conectada en paralelo, no por la build en sí) — mejora de robustez futura, no un bloqueador. Ver `docs/ops/whatsapp_evolution_maintenance.md` para el detalle completo y `docs/ops/whatsapp_463_technical_report.md` para toda la investigación.** |
+| WhatsApp (Evolution API/Baileys): error 463 "reach-out time-lock" al responder a números nuevos | **🟢 RESUELTO Y PROMOVIDO A PRODUCCIÓN — Gates 1-6 completos.** `docker-compose.yml` ya construye `evolution-api` desde `docker/evolution/evolution-api-fix-2608/` (fix PR #2608 + Baileys `rc13`), migrado contra la base de datos real (ensayado antes contra un clon), reconectado con el número real desde la app (`/admin` → Canales), y el flujo completo (WhatsApp → webhook → backend → IA → Evolution → WhatsApp) confirmado funcionando contra producción real. Notificación de licencia de Evolution API ya implementada. Ver `docs/ops/whatsapp_evolution_maintenance.md` y `docs/ops/whatsapp_463_technical_report.md`. **Cerrado — ver la sección siguiente para el trabajo posterior (endurecimiento + hallazgos de UX) que arrancó justo después de cerrar esto.** |
+
+**Sesión del 22 de agosto, continuación — endurecimiento y hallazgos de UX sobre WhatsApp/Telegram**
+(pedido explícito del usuario tras cerrar el 463). Ver `docs/ops/whatsapp_followups_2026_08_22.md`
+(nuevo, creado para no seguir alargando esta tabla) para la lista completa priorizada por el
+usuario (4 ítems, orden: 1-contacto duplicado, 2-notificación desconexión+QR, 3-mensajes nativos,
+4-concurrencia) y el detalle de qué se investigó/implementó/quedó pendiente en cada uno. Estado
+al momento de pausar (batería baja del usuario, sesión suspendida a mitad del ítem 2):
+
+- **Ítem 1 (contacto duplicado LID/teléfono): ✅ completo y commiteado.**
+- **Ítem 2 (notificación de desconexión + contador de QR): ✅ completo, verificado en vivo, commiteado**
+  (incluye un bug real encontrado y arreglado en la propia verificación — ver el doc de detalle).
+- **Ítems 3 (mensajes enviados desde WhatsApp nativo) y 4 (concurrencia/cola de 30-50 clientes):
+  NO iniciados todavía** — son los siguientes al retomar.
+- Backend corriendo en este momento con todo el código de los ítems 1 y 2 activo
+  (`GET /health/status` ya responde). 89 tests backend pasan, `ruff`/`mypy`/`tsc`/`eslint`
+  limpios en todo lo tocado hoy.
 
 **Detalle del error 463 (WhatsApp/Evolution API/Baileys), por qué se acepta como riesgo (por
 ahora) en vez de seguir invirtiendo tiempo en resolverlo:**
