@@ -94,3 +94,8 @@ export interface WhatsAppStatus {
   connected: boolean;
   phone_number: string | null;
 }
+
+// Claves = ChannelType ("whatsapp", "telegram", ...) -- el mismo shape que ya devuelve
+// /health/ready, pero cacheado en el backend (ver ChannelHealthMonitor) para no generar
+// llamadas externas por cada pestaña abierta consultándolo.
+export type ChannelHealthStatus = Record<string, boolean>;

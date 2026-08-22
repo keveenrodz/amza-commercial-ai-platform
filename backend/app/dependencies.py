@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from app.config import settings
+from app.services.channel_health_monitor import ChannelHealthMonitor
 from app.services.channel_provider_registry import ChannelProviderRegistry
 from app.services.conversation_context_assembler import ConversationContextAssembler
 from app.services.conversation_summarization_service import ConversationSummarizationService
@@ -61,6 +62,11 @@ def get_channel_provider_registry() -> ChannelProviderRegistry:
             ),
         }
     )
+
+
+@lru_cache
+def get_channel_health_monitor() -> ChannelHealthMonitor:
+    return ChannelHealthMonitor(get_channel_provider_registry())
 
 
 @lru_cache

@@ -1,7 +1,7 @@
 import structlog
 from fastapi import FastAPI
 
-from app.dependencies import get_channel_provider_registry
+from app.dependencies import get_channel_health_monitor, get_channel_provider_registry
 from core.enums.channel import ChannelType
 from infrastructure.channels.whatsapp import WhatsAppChannelProvider
 
@@ -18,6 +18,7 @@ def register_lifecycle_events(app: FastAPI) -> None:
         whatsapp_provider = registry.get(ChannelType.WHATSAPP)
         if isinstance(whatsapp_provider, WhatsAppChannelProvider):
             whatsapp_provider.start()
+        get_channel_health_monitor().start()
         logger.info("application.started")
 
     @app.on_event("shutdown")
@@ -26,4 +27,5 @@ def register_lifecycle_events(app: FastAPI) -> None:
         whatsapp_provider = registry.get(ChannelType.WHATSAPP)
         if isinstance(whatsapp_provider, WhatsAppChannelProvider):
             await whatsapp_provider.stop()
+        await get_channel_health_monitor().stop()
         logger.info("application.stopped")

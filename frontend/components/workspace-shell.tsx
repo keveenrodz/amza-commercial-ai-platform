@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { ChannelDisconnectToast } from "@/components/channel-disconnect-toast";
 import { AdminIcon, BookIcon, ChatIcon, MediaIcon } from "@/components/icons";
 import { initials } from "@/components/status-chips";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -117,6 +118,7 @@ export function WorkspaceShell({
           "link"/"main" en tests confundieran la navegación de la barra lateral con el
           contenido de la página. */}
       <div className="flex min-h-0 flex-1 overflow-hidden bg-paper">{children}</div>
+      <ChannelDisconnectToast />
     </div>
   );
 }

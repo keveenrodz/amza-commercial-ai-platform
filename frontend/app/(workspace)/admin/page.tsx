@@ -430,19 +430,44 @@ function AgentTab({ orgSlug }: { orgSlug: string }) {
   );
 }
 
+// Confirmado en el código real de Evolution API (qrTimeout: 45_000) -- Baileys regenera el QR
+// solo a los 45s si nadie escaneó. Sin refrescar la imagen nosotros mismos, el administrador se
+// queda viendo un QR ya muerto sin ningún aviso.
+const QR_VALIDITY_SECONDS = 45;
+
 function WhatsAppChannelCard({ orgSlug }: { orgSlug: string }) {
   const { data: status, isLoading, refetch, isFetching } = useWhatsAppStatus(orgSlug);
   const connect = useConnectWhatsApp();
   const disconnect = useDisconnectWhatsApp();
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(QR_VALIDITY_SECONDS);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
   function handleConnect() {
     connect.mutate(
       { organizationSlug: orgSlug },
-      { onSuccess: (data) => setQrCode(data.qrcode_base64) },
+      {
+        onSuccess: (data) => {
+          setQrCode(data.qrcode_base64);
+          setSecondsLeft(QR_VALIDITY_SECONDS);
+        },
+      },
     );
   }
+
+  // Cuenta regresiva de 1s -- cuando llega a 0, pide un QR nuevo automáticamente en vez de
+  // dejar la imagen vieja (ya inválida) en pantalla sin ningún aviso.
+  useEffect(() => {
+    if (!qrCode) return;
+    if (secondsLeft <= 0) {
+      handleConnect();
+      return;
+    }
+    const timeout = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearTimeout(timeout);
+    // handleConnect se recrea cada render (usa connect.mutate) -- incluirlo dispararía un loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrCode, secondsLeft]);
 
   // Sondeo acotado -- solo mientras el QR está en pantalla, nunca en segundo plano ni
   // reconectando sola (esa sigue siendo la regla de la sección 3 del spec 017). Esto es
@@ -487,14 +512,14 @@ function WhatsAppChannelCard({ orgSlug }: { orgSlug: string }) {
           <p className="pl-7 text-xs text-ink-faint">
             {isConnected && status?.phone_number
               ? `Número vinculado: +${status.phone_number}`
-              : "Sin sesión activa -- escanea un código QR para conectar un número."}
+              : "Sin sesión activa, escanea un código QR para conectar un número."}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            title="Este panel no comprueba la conexión solo -- pulsa esto después de escanear el QR desde otra pantalla, o si sospechas que la sesión se cayó."
+            title="Este panel no comprueba la conexión solo, pulsa esto después de escanear el QR desde otra pantalla, o si sospechas que la sesión se cayó."
             className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink-muted hover:bg-surface-2 disabled:opacity-50"
           >
             {isFetching ? "Consultando..." : "Actualizar estado"}
@@ -527,13 +552,21 @@ function WhatsAppChannelCard({ orgSlug }: { orgSlug: string }) {
           <p className="text-xs text-ink-muted">
             Escanea este código con el WhatsApp que quieres conectar.
           </p>
-          {/* eslint-disable-next-line @next/next/no-img-element -- data URI generado en tiempo
-              de ejecución, no un asset estático que next/image pueda optimizar */}
-          <img
-            src={`data:image/png;base64,${qrCode}`}
-            alt="Código QR de WhatsApp"
-            className="h-56 w-56"
-          />
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element -- data URI generado en
+                tiempo de ejecución, no un asset estático que next/image pueda optimizar */}
+            <img
+              src={`data:image/png;base64,${qrCode}`}
+              alt="Código QR de WhatsApp"
+              className="h-56 w-56"
+            />
+            <span
+              title="El QR se renueva solo cuando llega a 0, no hace falta hacer nada"
+              className="absolute bottom-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-ink/80 text-[11px] font-bold text-paper"
+            >
+              {secondsLeft}
+            </span>
+          </div>
           <button
             onClick={() => setQrCode(null)}
             className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink-muted hover:bg-surface-2"

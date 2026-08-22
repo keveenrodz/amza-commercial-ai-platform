@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from app.dependencies import get_ai_provider, get_channel_provider_registry
+from app.dependencies import (
+    get_ai_provider,
+    get_channel_health_monitor,
+    get_channel_provider_registry,
+)
+from app.services.channel_health_monitor import ChannelHealthMonitor
 from app.services.channel_provider_registry import ChannelProviderRegistry
 from core.interfaces.providers import AIProvider
 from infrastructure.database.session import AsyncSessionFactory
@@ -15,6 +20,17 @@ router = APIRouter(prefix="/health", tags=["health"])
 @router.get("")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@router.get("/status")
+async def status(
+    monitor: ChannelHealthMonitor = Depends(get_channel_health_monitor),
+) -> dict[str, bool]:
+    """Para que el frontend consulte el estado de los canales sin generar tráfico externo --
+    a diferencia de /health/ready, esto nunca llama a OpenRouter/Evolution API/Telegram
+    directamente, solo lee el resultado ya cacheado por ChannelHealthMonitor (una revisión real
+    cada 60s, sin importar cuántas pestañas del frontend estén consultando esto)."""
+    return monitor.status
 
 
 @router.get("/ready")

@@ -39,3 +39,21 @@ class TelegramChannelProvider:
             return False
         data: dict[str, Any] = response.json()
         return response.status_code == httpx.codes.OK and bool(data.get("ok"))
+
+    async def webhook_health(self) -> bool:
+        """Distinto de health(): ese solo confirma que el token del bot es válido, no que
+        Telegram esté entregando mensajes de verdad. El caso real que esto detecta: la URL
+        pública registrada (ngrok en desarrollo) rotó y nadie volvió a correr
+        register_telegram_webhook.py -- Telegram sigue aceptando el token, pero cada intento de
+        entrega falla, y eso queda registrado en getWebhookInfo, no en getMe."""
+        try:
+            response = await self._client.get("/getWebhookInfo")
+        except httpx.HTTPError:
+            return False
+        data: dict[str, Any] = response.json()
+        if not data.get("ok"):
+            return False
+        result: dict[str, Any] = data.get("result", {})
+        if not result.get("url"):
+            return False
+        return not result.get("last_error_date")
