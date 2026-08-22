@@ -43,7 +43,7 @@ conversación orgánica real, no solo mensajes de prueba).
 | **1 — Transporte básico** | creación de instancia, QR, conexión, `sendText`, entrega física | ✅ Completo |
 | **2 — Estabilidad de sesión** | reinicio del contenedor, reconexión, persistencia de sesión | ✅ Completo |
 | **3 — Cobertura del 463** | 2 contactos fríos distintos, ambos con entrega real confirmada | ✅ Completo |
-| **4 — Integración real** | flujo completo WhatsApp → webhook → backend → IA → Evolution → WhatsApp | ⏳ Pendiente — ver plan abajo |
+| **4 — Integración real** | flujo completo WhatsApp → webhook → backend → IA → Evolution → WhatsApp | ✅ Completo (22 de agosto) |
 | **5 — Artefacto reproducible** | commit congelado en repo propio, Dockerfile reproducible, imagen versionada, digest registrado | ⏳ Pendiente |
 | **6 — Promoción formal** | backup fresco, ensayo con BD clonada, migración real, misma instancia `amza-empaques`, QR nuevo, smoke test | ⏳ Pendiente |
 
@@ -64,20 +64,33 @@ contactos distintos validados (más las tres rondas ya hechas sobre el primero: 
 reinicio/reconexión, conversación orgánica), Gate 3 se considera cerrado. No hace falta seguir
 sumando contactos solo por acumular conteo — el siguiente trabajo de valor real es Gate 4.
 
-### Gate 4 — integración real (decisión ya tomada: Opción A)
-En vez de promover primero la build al `docker-compose` real, se prueba el flujo completo end to
-end apuntando temporalmente el backend real a la instancia de prueba, sin tocar la configuración
-permanente de producción:
+### Gate 4 — cerrado (22 de agosto)
+Se ejecutó la Opción A tal como estaba planeada, sin tocar el `.env` real: variables
+`EVOLUTION_API_BASE_URL`/`EVOLUTION_API_KEY`/`EVOLUTION_INSTANCE_NAME` exportadas como variables
+de entorno reales antes de arrancar `python main.py` (pydantic-settings les da prioridad sobre el
+`.env` file, así que no hizo falta ni siquiera crear un archivo `.env.test-integration` separado
+— alcanzó con exportarlas en el shell). Se reinició el proceso de backend local existente (venía
+corriendo desde una sesión anterior, apuntando a `v2.3.7`) con estas variables.
 
-- Crear una configuración de entorno explícita de validación (ej. `.env.test-integration`, nunca
-  el `.env` real) con `EVOLUTION_API_BASE_URL=http://localhost:8082` y
-  `EVOLUTION_INSTANCE_NAME=amza-empaques-pr2608-test`.
-- Confirmar que solo hay una URL/instancia en juego antes de arrancar el backend con esa config
-  (para no correr el riesgo de que procese contra dos instancias a la vez).
-- Arrancar el backend con esa config temporal, registrar el webhook de la instancia de prueba
-  apuntando a él.
-- Contacto real escribe → webhook → backend → IA → respuesta → Evolution test → entrega física.
-- Verificar: sin duplicados, sin reenvíos de mensajes viejos, secretos/config correctos.
+Se registró el webhook en la instancia de prueba (`POST /webhook/set/amza-empaques-pr2608-test`)
+apuntando a `http://172.19.0.1:8000/webhooks/whatsapp/amza-empaques` — `172.19.0.1` es el gateway
+de la red Docker del contenedor de prueba, que en Linux permite alcanzar servicios corriendo
+directamente en el host (el backend, corrido con `python main.py`, no en un contenedor).
+
+**Resultado: flujo completo confirmado, sin ninguna intervención manual.** Un mensaje real
+("Hola, que empaque tienen para perros y hamburguesas?") llegó por webhook (`200`, verificación
+de `X-Webhook-Secret` correcta — confirma que Evolution API sí reenvía headers personalizados de
+webhook, algo que spec 016 había dejado como no confirmado), el backend generó una respuesta real
+vía OpenRouter, aplicó el delay de anti-baneo del worker, y la envió
+(`POST /message/sendText → 201`). **La persona confirmó que la respuesta le llegó a su
+teléfono.** Sin mensajes duplicados verificado en la base de datos después. Esta es la primera
+vez que se prueba el pipeline completo de la aplicación (no solo el transporte de WhatsApp)
+contra Baileys `rc13` — cierra Gate 4.
+
+**Estado al momento de escribir esto:** el proceso de backend sigue corriendo con la
+configuración temporal (apuntando a `:8082`/`amza-empaques-pr2608-test`), no con el `.env` real.
+Antes de volver a trabajo normal de desarrollo, hay que reiniciarlo sin esas variables de entorno
+exportadas para que vuelva a leer la configuración real del `.env`.
 
 ### Gate 5 — artefacto reproducible
 Antes de promover a producción, vendorizar el código fuente del commit dentro de este repo (no
