@@ -1,9 +1,51 @@
 # Mantenimiento de Evolution API / WhatsApp — error 463 y plan de continuidad
 
-**Última actualización:** 2026-08-21
+**Última actualización:** 2026-08-22
 **Para el detalle completo de la investigación (todo lo probado, con logs y evidencia):**
 `docs/ops/whatsapp_463_technical_report.md`. Este documento es el resumen operativo — qué hacer,
 no todo lo que se investigó para llegar aquí.
+
+## 0. Estado exacto de la infraestructura en este momento (para retomar sin contexto previo)
+
+Si esta sesión se corta, esto es lo que existe en la máquina real (`docker ps -a`, verificado
+2026-08-22) — nada de esto vive en memoria de conversación ni en un directorio temporal que se
+borre solo:
+
+- **`evo-pr2608-test-api`** (contenedor, imagen local `evolution-api:pr2608-test`, puerto
+  `8082→8080`) — la instancia de Evolution API construida desde el commit del PR #2608, **con el
+  número real de WhatsApp (+57 301 509 2386) conectado y funcionando**. Nombre de la instancia
+  dentro de Evolution: `amza-empaques-pr2608-test`. **No eliminar este contenedor** — la sesión de
+  WhatsApp (claves de multi-dispositivo) vive en su capa de escritura, no en un volumen aparte;
+  `docker rm` la perdería. `docker stop`/`docker start` sí es seguro.
+- **API key de licencia de esta instancia de prueba:**
+  `e880abbe1011e87c43fffc2faa347d9853a956ac74c8ce2b1bfd29406fc7e04f` (activada contra
+  `license.evolutionfoundation.com.br` con `EVOLUTION_OPERATOR_EMAIL=keveenrodriguez@gmail.com`,
+  tier `community`, `customer_id: 14299`). Se usa como header `apikey` en las llamadas a
+  `http://localhost:8082`.
+- **`evo-pr2608-test-pg`** (contenedor, `postgres:15`) — Postgres dedicada a la instancia de
+  prueba, red `evo-pr2608-test-net` (gateway `172.19.0.1`, esa IP es cómo el contenedor alcanza
+  servicios corriendo directo en el host).
+- **`amza-commercial-ai-platform-evolution-api-1`** (`v2.3.7`, puerto `8080`) — la instancia de
+  producción real, **actualmente desconectada de WhatsApp**
+  (`connectionStatus: close`, `disconnectionReasonCode: 401`) desde que se escaneó el QR de la
+  instancia de prueba con el mismo número. Su Postgres (`amza-commercial-ai-platform-evolution-postgres-1`)
+  sigue arriba, datos intactos.
+- **Backend local** (`python main.py`, fuera de Docker) corriendo con variables de entorno
+  temporales que sobreescriben el `.env` real:
+  `EVOLUTION_API_BASE_URL=http://localhost:8082`,
+  `EVOLUTION_API_KEY=e880abbe1011e87c43fffc2faa347d9853a956ac74c8ce2b1bfd29406fc7e04f`,
+  `EVOLUTION_INSTANCE_NAME=amza-empaques-pr2608-test` — es decir, **el backend real está
+  respondiendo a WhatsApp en este momento a través de la instancia de prueba, no de la de
+  producción.** El webhook de la instancia de prueba está registrado apuntando a
+  `http://172.19.0.1:8000/webhooks/whatsapp/amza-empaques`.
+- **Código fuente de la build de prueba:** clonado en un directorio temporal de esta sesión (no
+  persiste) desde `evolution-foundation/evolution-api`, commit
+  `45d3122ca998b7d26b5153cb97984509e3289b92`. La imagen Docker (`evolution-api:pr2608-test`) sí
+  persiste en el Docker local aunque el clon del código se pierda — pero para Gate 5 hay que
+  volver a clonar ese commit y vendorizarlo en el repo (ver sección 5, Gate 5).
+- **Backups tomados hoy**, en `backups/` (no en git, `.gitignore`): dumps de Postgres de
+  producción y del volumen `evolution_instances` con timestamp `pre_homolog_test` y anteriores —
+  todos de antes de tocar nada de esto, disponibles para restaurar si algo sale mal.
 
 ## 1. El problema, en una frase
 
