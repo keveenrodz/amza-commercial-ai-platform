@@ -49,17 +49,18 @@ pena confirmar antes de asumir que sigue siendo la misma build validada).
 docker build -t evolution-api:pr2608-test docker/evolution/evolution-api-fix-2608/source/
 ```
 
-## Cumplimiento de licencia (pendiente, no resuelto en esta sesión)
+## Cumplimiento de licencia — resuelto (22 de agosto)
 
 La licencia real de Evolution API (`source/LICENSE`) es Apache 2.0 **más dos condiciones
 adicionales**: (a) no remover/modificar el logo ni la información de copyright en componentes de
-frontend (el `manager` que se vendorizó aquí los incluye), y (b) **si se usa dentro de otro
-sistema — incluso uno cerrado — debe mostrarse una notificación clara y visible de que se está
-usando Evolution API**, accesible para los administradores del sistema (documentación o pantalla
-de configuración). Amza Empaques usa Evolution API como backend de WhatsApp dentro de esta
-aplicación — probablemente aplica el requisito (b). **No se implementó ningún aviso todavía** —
-queda como pendiente a resolver antes de una promoción formal a producción, no algo que se pueda
-ignorar silenciosamente.
+frontend (el `manager` que se vendorizó aquí los incluye, sin tocar), y (b) **si se usa dentro de
+otro sistema — incluso uno cerrado — debe mostrarse una notificación clara y visible de que se
+está usando Evolution API**, accesible para los administradores del sistema.
+
+Implementado como un texto pequeño (`text-[10px] text-ink-faint`) dentro de la tarjeta de
+WhatsApp en `frontend/app/(workspace)/admin/page.tsx` (`/admin` → Canales) — visible solo para
+administradores, ya que esa ruta está protegida por rol desde spec 014, no para asesores ni
+clientes.
 
 ## Cuándo dejar de usar esta imagen
 

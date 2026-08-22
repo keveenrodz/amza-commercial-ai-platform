@@ -38,8 +38,11 @@ esto vive en memoria de conversación:
   GitHub siga teniendo la rama del PR): `docker/evolution/evolution-api-fix-2608/`.
 - **Backups en `backups/`** (no en git, `.gitignore`): varios timestamps, el más reciente
   (`pre_gate6_*`) es de justo antes de este cambio.
-- **Pendiente real, no técnico:** la notificación de uso de Evolution API que exige su licencia
-  (ver Gate 5/6 más abajo) — no bloquea el funcionamiento, pero no está resuelto.
+- **Notificación de licencia de Evolution API: ya implementada** (22 de agosto) — texto pequeño
+  (`text-[10px] text-ink-faint`) en la tarjeta de WhatsApp dentro de `/admin` → Canales, visible
+  solo para administradores (esa ruta ya está protegida por rol desde spec 014). Único pendiente
+  real que queda: la deduplicación de mensajes por ID (ver Gate 6, punto 7) — de robustez, no
+  bloqueante.
 
 ## 1. El problema, en una frase
 
@@ -81,7 +84,7 @@ conversación orgánica real, no solo mensajes de prueba).
 | **3 — Cobertura del 463** | 2 contactos fríos distintos, ambos con entrega real confirmada | ✅ Completo |
 | **4 — Integración real** | flujo completo WhatsApp → webhook → backend → IA → Evolution → WhatsApp | ✅ Completo (22 de agosto) |
 | **5 — Artefacto reproducible** | commit congelado en repo propio, Dockerfile reproducible, imagen versionada, digest registrado | ✅ Completo (22 de agosto) |
-| **6 — Promoción formal** | backup fresco, ensayo con BD clonada, migración real, misma instancia `amza-empaques`, QR nuevo, smoke test | ✅ Núcleo completo (22 de agosto) — falta solo el pendiente de licencia (no bloqueante) |
+| **6 — Promoción formal** | backup fresco, ensayo con BD clonada, migración real, misma instancia `amza-empaques`, QR nuevo, smoke test | ✅ Completo (22 de agosto) |
 
 **Importante:** el número real de WhatsApp está conectado hoy a la instancia de prueba (build
 `45d3122`, puerto 8082, instancia `amza-empaques-pr2608-test`), **no** al backend real de la
@@ -148,11 +151,13 @@ vendorizado y el `Image ID` resultante
 con el de la imagen ya validada en vivo (Gates 1-4). Digest de `node:24-alpine` fijado:
 `sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43`.
 
-**Hallazgo no técnico, pendiente:** la licencia real de Evolution API (Apache 2.0 + condiciones
-adicionales) exige mostrar una notificación visible de que se usa Evolution API cuando se integra
-dentro de otro sistema, accesible para administradores. No implementado todavía — ver
-`docker/evolution/evolution-api-fix-2608/README.md` para el detalle. Hay que resolverlo antes de
-considerar esto completamente cerrado para producción real, no es opcional.
+**Hallazgo no técnico, resuelto el 22 de agosto:** la licencia real de Evolution API (Apache 2.0 +
+condiciones adicionales) exige mostrar una notificación visible de que se usa Evolution API
+cuando se integra dentro de otro sistema, accesible para administradores. Implementado como un
+texto pequeño (`text-[10px] text-ink-faint`) dentro de la tarjeta de WhatsApp en
+`frontend/app/(workspace)/admin/page.tsx` (`/admin` → Canales) — visible solo para
+administradores, ya que esa ruta está protegida por rol desde spec 014. Verificado visualmente
+(Playwright): se ve como una línea pequeña y discreta, sin problemas de layout.
 
 ### Gate 6 — núcleo cerrado (22 de agosto), un pendiente de cumplimiento abierto
 
@@ -196,9 +201,8 @@ considerar esto completamente cerrado para producción real, no es opcional.
    deduplicación por ID de mensaje de WhatsApp en `ReceiveIncomingMessageUseCase` como
    endurecimiento futuro, no como blocker de esta promoción.
 
-8. **Pendiente, no resuelto — cumplimiento de licencia:** la notificación visible de uso de
-   Evolution API que exige su licencia (ver sección 5, Gate 5) sigue sin implementarse. No
-   bloquea el funcionamiento técnico, pero es un pendiente real, no opcional.
+8. **Cumplimiento de licencia — resuelto (22 de agosto):** notificación visible de uso de
+   Evolution API implementada en `/admin` → Canales, solo para administradores. Ver sección 5.
 
 ## 6. Qué hacer cuando Evolution API se actualice (mantenimiento futuro)
 
