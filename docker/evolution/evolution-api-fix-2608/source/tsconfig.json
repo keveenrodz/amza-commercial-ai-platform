@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "declaration": true,
+    "target": "es2020",
+    "module": "preserve",
+    "rootDir": "./",
+    "resolveJsonModule": true,
+    "removeComments": true,
+    "outDir": "./dist",
+    "noEmitOnError": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "incremental": true,
+    "noImplicitAny": false,
+    "paths": {
+      "@prisma/client": ["./prisma/generated/client/client.ts"],
+      "@api/*": ["./src/api/*"],
+      "@cache/*": ["./src/cache/*"],
+      "@config/*": ["./src/config/*"],
+      "@exceptions": ["./src/exceptions"],
+      "@libs/*": ["./src/libs/*"],
+      "@licensing/*": ["./src/licensing/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@validate/*": ["./src/validate/*"]
+    },
+    "moduleResolution": "bundler"
+  },
+  "exclude": ["node_modules", "./test", "./dist", "./prisma"],
+  "include": [
+    "src/**/*",
+    "src/**/*.json"
+  ]
+}

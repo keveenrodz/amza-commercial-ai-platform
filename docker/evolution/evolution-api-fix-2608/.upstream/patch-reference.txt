@@ -1,0 +1,27 @@
+PR #2608 — evolution-foundation/evolution-api
+https://github.com/evolution-foundation/evolution-api/pull/2608
+
+"fix: instance creation broken by sanitization guard and silent error swallow"
+Base branch: develop
+Head commit: 45d3122ca998b7d26b5153cb97984509e3289b92
+Author: Matheus Pastorini (pastoriniMatheus)
+
+Status as of 2026-08-22: OPEN, not merged. Reviewed and APPROVED by maintainer
+`dpaes` (2026-06-28). Blocked only by a pre-existing, unrelated CI failure
+(check-lint-and-build fails at `npx prisma generate` because the workflow does
+not populate DATABASE_CONNECTION_URI -- confirmed by the reviewer as already
+broken on `develop` before this PR, not caused by it).
+
+Related issue: #2631 — https://github.com/evolution-foundation/evolution-api/issues/2631
+("Setting_instanceId_fkey" foreign key violation on POST /instance/create,
+reproduced by the community on 2.4.0, 2.4.0-rc2, and homolog)
+
+Why this commit specifically: it is the only known combination of (a) the
+instance-creation fix and (b) Baileys >= 7.0.0-rc.10 (the version that added
+TC-token/Reachout Timelock handling, believed to fix WhatsApp error 463 for
+replies to cold contacts). This exact commit declares "baileys": "7.0.0-rc13"
+in package.json.
+
+Full investigation, evidence, and validation log:
+docs/ops/whatsapp_463_technical_report.md (sections 5b-5i)
+docs/ops/whatsapp_evolution_maintenance.md (operational summary)
