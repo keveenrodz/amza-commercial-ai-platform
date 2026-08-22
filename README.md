@@ -32,6 +32,7 @@ amza-commercial-ai-platform/
 │   ├── services/     API client layer (all backend calls go through here)
 │   └── types/        Shared TypeScript types
 ├── docker/           Dockerfiles for each service
+│   └── evolution/    Vendored Evolution API build (WhatsApp gateway) -- see its own README
 ├── docs/             Product and engineering documentation
 ├── specifications/   MVP implementation specifications (one per feature)
 ├── scripts/          Operational and automation scripts
@@ -162,22 +163,27 @@ React loads. Open an incognito window to confirm the app works without extension
 
 ## Running with Docker Compose
 
-Docker Compose builds and runs both services in isolated containers.
+Docker Compose builds and runs four services in isolated containers: `backend`, `frontend`,
+and `evolution-api` + `evolution-postgres` (the self-hosted WhatsApp gateway, see
+"WhatsApp channel setup" below — it needs its own build step and one-time provisioning, it's
+not just "start and it works").
 Use this to validate the full deployment before shipping a feature.
 
 ```bash
-# Build images (required once, and after any Dockerfile change)
+# Build images (required once, and after any Dockerfile change -- evolution-api's Dockerfile
+# lives in docker/evolution/evolution-api-fix-2608/source/, not docker/)
 docker compose build
 
-# Start both services in background
+# Start all four services in background
 docker compose up -d
 
-# Verify both are running and ports are exposed
+# Verify they're running and ports are exposed
 docker compose ps
 
 # View logs
 docker compose logs -f backend
 docker compose logs -f frontend
+docker compose logs -f evolution-api
 
 # Stop everything
 docker compose down
@@ -185,9 +191,11 @@ docker compose down
 
 Expected `docker compose ps` output:
 ```
-NAME          ...   PORTS
-backend-1     ...   0.0.0.0:8000->8000/tcp
-frontend-1    ...   0.0.0.0:3000->3000/tcp
+NAME                 ...   PORTS
+backend-1            ...   0.0.0.0:8000->8000/tcp
+frontend-1           ...   0.0.0.0:3000->3000/tcp
+evolution-api-1      ...   0.0.0.0:8080->8080/tcp
+evolution-postgres-1 ...
 ```
 
 Known issue: if the backend process is already running locally on port 8000 and you
@@ -200,6 +208,16 @@ kill $(lsof -t -i:8000) 2>/dev/null || true
 docker compose down
 docker compose up -d
 ```
+
+### WhatsApp channel setup (Evolution API)
+
+`evolution-api` needs three things `docker compose up -d` alone won't give you: (1) building
+from source the first time (`docker compose build evolution-api` — its Dockerfile lives in
+`docker/evolution/evolution-api-fix-2608/source/`, not a Docker Hub image), (2)
+`EVOLUTION_OPERATOR_EMAIL` in `.env` to auto-activate its (free, mandatory since its 2.4.0)
+license, and (3) scanning a QR code once to link a real WhatsApp number — this can't be
+automated, a human has to scan it. Full step-by-step guide, including what to do when the
+session drops (it will, eventually — this is normal): `docs/ops/whatsapp_setup.md`.
 
 ---
 
@@ -228,13 +246,14 @@ class of errors that Ruff cannot.
 ## Tests
 
 ```bash
-# Backend (pytest) -- 13 tests as of spec 010, covers auth/identity + advisor reply end to end
+# Backend (pytest) -- covers auth/identity, advisor reply, WhatsApp/Telegram channels end to end
 make test-backend
 
-# Frontend unit tests (Vitest) -- none written yet, exits 0 with "No test files found"
+# Frontend unit tests (Vitest) -- a handful of component tests, grows as UI logic gets complex
+# enough to warrant it (most frontend coverage is Playwright, see below)
 make test-frontend
 
-# Frontend end-to-end (Playwright) -- 4 tests as of spec 010, covers the Advisor Workspace.
+# Frontend end-to-end (Playwright) -- covers the Advisor Workspace, admin panel, and search.
 # Starts its own dev server automatically (see frontend/playwright.config.ts), no need to
 # have `npm run dev` already running.
 make test-e2e
