@@ -42,7 +42,7 @@ conversación orgánica real, no solo mensajes de prueba).
 |---|---|---|
 | **1 — Transporte básico** | creación de instancia, QR, conexión, `sendText`, entrega física | ✅ Completo |
 | **2 — Estabilidad de sesión** | reinicio del contenedor, reconexión, persistencia de sesión | ✅ Completo |
-| **3 — Cobertura del 463** | contacto frío inicial | ✅ validado — **contactos fríos *distintos* adicionales** | ⏳ Pendiente |
+| **3 — Cobertura del 463** | 2 contactos fríos distintos, ambos con entrega real confirmada | ✅ Completo |
 | **4 — Integración real** | flujo completo WhatsApp → webhook → backend → IA → Evolution → WhatsApp | ⏳ Pendiente — ver plan abajo |
 | **5 — Artefacto reproducible** | commit congelado en repo propio, Dockerfile reproducible, imagen versionada, digest registrado | ⏳ Pendiente |
 | **6 — Promoción formal** | backup fresco, ensayo con BD clonada, migración real, misma instancia `amza-empaques`, QR nuevo, smoke test | ⏳ Pendiente |
@@ -57,9 +57,12 @@ pero el backend de la aplicación (`amza-commercial-ai-platform`) sigue apuntand
 
 ## 5. Plan para la próxima sesión
 
-### Gate 3 — cerrar cobertura
-Conseguir 1-2 contactos fríos más (distintos del ya usado) y repetir la prueba de entrega. No
-hace falta repetir reinicio/reconexión/persistencia — eso ya está validado.
+### Gate 3 — cerrado (21 de agosto)
+Un segundo contacto frío, genuinamente distinto (número diferente, nunca había escrito antes)
+escribió y se le respondió — entrega confirmada por el receptor, sin 463 en los logs. Con dos
+contactos distintos validados (más las tres rondas ya hechas sobre el primero: mensaje inicial,
+reinicio/reconexión, conversación orgánica), Gate 3 se considera cerrado. No hace falta seguir
+sumando contactos solo por acumular conteo — el siguiente trabajo de valor real es Gate 4.
 
 ### Gate 4 — integración real (decisión ya tomada: Opción A)
 En vez de promover primero la build al `docker-compose` real, se prueba el flujo completo end to

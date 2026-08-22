@@ -606,6 +606,18 @@ exacto pedido ("Aun no me ha enviado nada, por favor recuerdale.") — `HTTP 201
 confirmó que también le llegó.** Tercera entrega real confirmada, la primera sobre contenido de
 conversación genuina en vez de un mensaje de prueba explícito.
 
+## 5i. Segundo contacto frío, genuinamente distinto — cierra Gate 3
+
+Un número completamente distinto del primero (`97466514685`, nunca había escrito antes a este
+WhatsApp) envió: *"Hola, estoy buscando unas cajas para unos pasteles"*. Se respondió
+manualmente (`POST /message/sendText`) — `HTTP 201`, `messageStubParameters: []` (sin 463 en los
+logs), y **la persona confirmó que la respuesta le llegó a su teléfono.**
+
+Con esto quedan validados **dos contactos fríos completamente distintos**, ambos con entrega
+real confirmada — cierra el criterio de "más de un contacto" pendiente de la sección 5g/5h. No
+se considera necesario seguir sumando contactos solo por acumular conteo; el siguiente paso de
+valor real es la integración con el backend/IA real (Gate 4), no más pruebas de transporte.
+
 ## 6. Conclusión y lo que se necesita del equipo técnico
 
 Es una restricción del lado de los servidores de WhatsApp contra clientes no oficiales que
